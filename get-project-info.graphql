@@ -1,0 +1,11 @@
+query GetProject($projectId: String!) {
+  project(id: $projectId) {
+    id
+    name
+    services {
+      id
+      name
+      createdAt
+    }
+  }
+}
