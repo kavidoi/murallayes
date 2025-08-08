@@ -9,6 +9,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     await this.$connect();
   }
 
+  // Delegate property getters for Prisma v6 compatibility
+  get user() { return (this as any).user; }
+  get role() { return (this as any).role; }
+  get task() { return (this as any).task; }
+  get pTORequest() { return (this as any).pTORequest; }
+
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {
     // @ts-ignore – not part of current PrismaClient but exists in some flavours; fallback to $queryRaw
