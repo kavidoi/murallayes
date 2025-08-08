@@ -41,7 +41,11 @@ declare module '@prisma/client' {
 
   /* Generic catch-all for model delegates */
   interface PrismaClient {
-    [model: string]: any;
+    user: any;
+      role: any;
+      task: any;
+      pTORequest: any;
+      [model: string]: any;
   }
   /* Finance Inputs */
   export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
@@ -54,6 +58,10 @@ declare module '@prisma/client' {
 declare module '@prisma/client' {
   namespace Prisma {
     interface PrismaClient {
+      user: any;
+      role: any;
+      task: any;
+      pTORequest: any;
       [model: string]: any;
       $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
     }
