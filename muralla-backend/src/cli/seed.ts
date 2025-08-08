@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from '@prisma/client';
 import '../prisma-v6-compat';
 import * as bcrypt from 'bcrypt';
 import { Command } from 'commander';
 import * as readline from 'readline';
 
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 interface BootstrapOptions {

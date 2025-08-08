@@ -42,7 +42,7 @@ export class PrismaService implements OnModuleInit {
   get magicToken() { return this.prisma.magicToken; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
-  $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {
+  $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): any {
     // @ts-ignore – not part of current PrismaClient but exists in some flavours; fallback to $queryRaw
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
