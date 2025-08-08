@@ -29,6 +29,8 @@ declare module '@prisma/client' {
   export type NotificationType = Prisma.NotificationType;
   export const NotificationStatus: typeof Prisma.NotificationStatus;
   export type NotificationStatus = Prisma.NotificationStatus;
+  export const RuleTrigger: typeof Prisma.RuleTrigger;
+  export type RuleTrigger = Prisma.RuleTrigger;
 
   /* Enums */
   export const PTOStatus: typeof Prisma.PTOStatus;
@@ -66,7 +68,7 @@ declare module '@prisma/client' {
     export type RoleUpdateInput = import('@prisma/client').Prisma.RoleUpdateArgs['data'];
     export type ProjectCreateInput = import('@prisma/client').Prisma.ProjectCreateArgs['data'];
     export type ProjectUpdateInput = import('@prisma/client').Prisma.ProjectUpdateArgs['data'];
-    export type PrismaPromise<T> = import('@prisma/client').Prisma.PrismaPromise<T>;
+    export type PrismaPromise<T = any> = import('@prisma/client').Prisma.PrismaPromise<T>;
   }
 
 

@@ -3,19 +3,31 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import '../prisma-v6-compat';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
+export class PrismaService implements OnModuleInit {
+  private prisma = new PrismaClient();
+
   async onModuleInit() {
-    await this.$connect();
+    await this.prisma.$connect();
   }
 
-  // Delegate property getters for Prisma v6 compatibility
-  get user() { return super.user; }
-  get role() { return super.role; }
-  get task() { return super.task; }
-  get pTORequest() { return super.pTORequest; }
-  get notification() { return super.notification; }
-  get project() { return super.project; }
-  get pTOBalance() { return super.pTOBalance; }
+  // Forward all PrismaClient methods and properties
+  get $connect() { return this.prisma.$connect.bind(this.prisma); }
+  get $disconnect() { return this.prisma.$disconnect.bind(this.prisma); }
+  get $transaction() { return this.prisma.$transaction.bind(this.prisma); }
+  get $queryRaw() { return this.prisma.$queryRaw.bind(this.prisma); }
+  get $executeRaw() { return this.prisma.$executeRaw.bind(this.prisma); }
+
+  // Delegate property getters for all models
+  get user() { return this.prisma.user; }
+  get role() { return this.prisma.role; }
+  get task() { return this.prisma.task; }
+  get project() { return this.prisma.project; }
+  get pTORequest() { return this.prisma.pTORequest; }
+  get pTOBalance() { return this.prisma.pTOBalance; }
+  get notification() { return this.prisma.notification; }
+  get notificationTemplate() { return this.prisma.notificationTemplate; }
+  get notificationRule() { return this.prisma.notificationRule; }
+  get document() { return this.prisma.document; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {
