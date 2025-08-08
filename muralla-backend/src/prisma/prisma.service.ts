@@ -4,16 +4,18 @@ import '../prisma-v6-compat';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
-
   async onModuleInit() {
     await this.$connect();
   }
 
   // Delegate property getters for Prisma v6 compatibility
-  get user() { return (this as any).user; }
-  get role() { return (this as any).role; }
-  get task() { return (this as any).task; }
-  get pTORequest() { return (this as any).pTORequest; }
+  get user() { return super.user; }
+  get role() { return super.role; }
+  get task() { return super.task; }
+  get pTORequest() { return super.pTORequest; }
+  get notification() { return super.notification; }
+  get project() { return super.project; }
+  get pTOBalance() { return super.pTOBalance; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {

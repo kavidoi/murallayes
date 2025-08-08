@@ -25,6 +25,10 @@ declare module '@prisma/client' {
   export type TransactionStatus = Prisma.TransactionStatus;
   export const PaymentMethod: typeof Prisma.PaymentMethod;
   export type PaymentMethod = Prisma.PaymentMethod;
+  export const NotificationType: typeof Prisma.NotificationType;
+  export type NotificationType = Prisma.NotificationType;
+  export const NotificationStatus: typeof Prisma.NotificationStatus;
+  export type NotificationStatus = Prisma.NotificationStatus;
 
   /* Enums */
   export const PTOStatus: typeof Prisma.PTOStatus;
@@ -60,6 +64,9 @@ declare module '@prisma/client' {
     export type TaskUpdateInput = import('@prisma/client').Prisma.TaskUpdateArgs['data'];
     export type RoleCreateInput = import('@prisma/client').Prisma.RoleCreateArgs['data'];
     export type RoleUpdateInput = import('@prisma/client').Prisma.RoleUpdateArgs['data'];
+    export type ProjectCreateInput = import('@prisma/client').Prisma.ProjectCreateArgs['data'];
+    export type ProjectUpdateInput = import('@prisma/client').Prisma.ProjectUpdateArgs['data'];
+    export type PrismaPromise<T> = import('@prisma/client').Prisma.PrismaPromise<T>;
   }
 
 
