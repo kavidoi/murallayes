@@ -15,6 +15,14 @@ declare module '@prisma/client' {
   export type Project = Prisma.Project;
   export type PTO = Prisma.PTO;
 
+  /* Finance & Other Enums */
+  export const TransactionType: typeof Prisma.TransactionType;
+  export type TransactionType = Prisma.TransactionType;
+  export const TransactionStatus: typeof Prisma.TransactionStatus;
+  export type TransactionStatus = Prisma.TransactionStatus;
+  export const PaymentMethod: typeof Prisma.PaymentMethod;
+  export type PaymentMethod = Prisma.PaymentMethod;
+
   /* Enums */
   export const PTOStatus: typeof Prisma.PTOStatus;
   export type PTOStatus = Prisma.PTOStatus;
@@ -30,6 +38,8 @@ declare module '@prisma/client' {
   export type ProjectUpdateInput = Prisma.ProjectUpdateInput;
   export type PTOCreateInput = Prisma.PTOCreateInput;
   export type PTOUpdateInput = Prisma.PTOUpdateInput;
+  /* Finance Inputs */
+  export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
 }
 
 // --------------------------------------------------------------------------------
