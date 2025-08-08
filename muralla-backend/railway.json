@@ -4,7 +4,8 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "pnpm run start:prod",
+    "installCommand": "pnpm install --no-frozen-lockfile",
+    "startCommand": "pnpm --filter muralla-backend run start:prod",
     "preDeployCommand": "pnpm exec prisma generate && pnpm exec prisma migrate deploy",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 100,
