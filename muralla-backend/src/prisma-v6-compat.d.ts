@@ -77,6 +77,7 @@ declare module '@prisma/client' {
     export type ProductUpdateInput = import('@prisma/client').Prisma.ProductUpdateArgs['data'];
     export type SaleCreateInput = import('@prisma/client').Prisma.SaleCreateArgs['data'];
     export type DocumentWhereInput = import('@prisma/client').Prisma.DocumentWhereInput;
+    export type TransactionCategoryCreateInput = import('@prisma/client').Prisma.TransactionCategoryCreateArgs['data'];
   }
 
 

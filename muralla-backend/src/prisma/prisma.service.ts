@@ -7,7 +7,8 @@ export class PrismaService implements OnModuleInit {
   private prisma: PrismaClient;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    const { PrismaClient: Client } = require('@prisma/client');
+    this.prisma = new Client();
   }
 
   async onModuleInit() {
@@ -35,6 +36,9 @@ export class PrismaService implements OnModuleInit {
   get documentRevision() { return this.prisma.documentRevision; }
   get product() { return this.prisma.product; }
   get sale() { return this.prisma.sale; }
+  get transaction() { return this.prisma.transaction; }
+  get transactionCategory() { return this.prisma.transactionCategory; }
+  get bankAccount() { return this.prisma.bankAccount; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {
