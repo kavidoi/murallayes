@@ -6,8 +6,8 @@
   "deploy": {
     "startCommand": "pnpm --filter muralla-backend run start:prod",
     "preDeployCommand": "pnpm --filter muralla-backend exec prisma generate && pnpm --filter muralla-backend exec prisma migrate deploy",
-    "healthcheckPath": "/healthz",
-    "healthcheckTimeout": 100,
+    "healthcheckPath": null,
+    "healthcheckTimeout": null,
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
