@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { Prisma } from '@prisma/client';
+import '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'manager', 'staff')

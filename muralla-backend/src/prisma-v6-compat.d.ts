@@ -7,6 +7,9 @@
 import '@prisma/client';
 import { Prisma } from '@prisma/client';
 
+// Re-export Prisma namespace for files that import it directly
+export { Prisma } from '@prisma/client';
+
 declare module '@prisma/client' {
   /* Models */
   export type User = Prisma.User;

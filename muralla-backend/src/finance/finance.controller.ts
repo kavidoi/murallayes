@@ -19,6 +19,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { Public } from '../auth/public.decorator';
 import { Prisma, TransactionType, TransactionStatus } from '@prisma/client';
+import '../prisma-v6-compat';
 
 @Controller('finance')
 export class FinanceController {

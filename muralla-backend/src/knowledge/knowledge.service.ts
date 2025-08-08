@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService, AuditOperation } from '../common/audit.service';
 import { Prisma, DocumentType, DocumentStatus } from '@prisma/client';
+import '../prisma-v6-compat';
 
 interface CreateDocumentDto {
   title: string;

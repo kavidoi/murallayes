@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService, AuditOperation } from '../common/audit.service';
 import { Prisma, TransactionType, TransactionStatus, PaymentMethod } from '@prisma/client';
+import '../prisma-v6-compat';
 
 @Injectable()
 export class FinanceService {
