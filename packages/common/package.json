@@ -1,6 +1,6 @@
 {
   "name": "@muralla/common",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shared types, DTOs, and utilities for Muralla Org",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
