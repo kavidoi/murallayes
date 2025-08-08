@@ -14,7 +14,8 @@
     "class-transformer": "^0.5.1"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/node": "^20.11.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0"
