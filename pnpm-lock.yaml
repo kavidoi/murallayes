@@ -30,8 +30,8 @@ importers:
         specifier: ^10.0.25
         version: 10.0.25(graphql@16.11.0)
       '@muralla/common':
-        specifier: file:muralla-common-1.0.0.tgz
-        version: file:muralla-backend/muralla-common-1.0.0.tgz(@nestjs/common@11.1.5)
+        specifier: file:muralla-common-1.0.1.tgz
+        version: file:muralla-backend/muralla-common-1.0.1.tgz(@nestjs/common@11.1.5)
       '@nestjs/apollo':
         specifier: ^13.1.0
         version: 13.1.0(@apollo/server@4.12.2)(@nestjs/common@11.1.5)(@nestjs/core@11.1.5)(@nestjs/graphql@13.1.0)(graphql@16.11.0)
@@ -7290,11 +7290,11 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  file:muralla-backend/muralla-common-1.0.0.tgz(@nestjs/common@11.1.5):
-    resolution: {integrity: sha512-HdmVMQxNfnUDm85dJBUbbx5NMtQ4vcWE096JfdYOlj6yKW+A7i5Vvze3wdrhlhQmp9J32BBLerQxzoN9bDfIKw==, tarball: file:muralla-backend/muralla-common-1.0.0.tgz}
-    id: file:muralla-backend/muralla-common-1.0.0.tgz
+  file:muralla-backend/muralla-common-1.0.1.tgz(@nestjs/common@11.1.5):
+    resolution: {integrity: sha512-AWap8fKRMuldKYvce9aB1dI0PJ26Ztt+WonAJw/aUJ3gc8RQi8qiXhFDUXOajvRmLFFF2p8j6XUcvFK6XMPjrQ==, tarball: file:muralla-backend/muralla-common-1.0.1.tgz}
+    id: file:muralla-backend/muralla-common-1.0.1.tgz
     name: '@muralla/common'
-    version: 1.0.0
+    version: 1.0.1
     peerDependencies:
       '@nestjs/common': ^10.0.0
     dependencies:
