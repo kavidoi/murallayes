@@ -52,6 +52,16 @@ declare module '@prisma/client' {
     $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
   }
 
+  namespace Prisma {
+    // Add missing Input types that don't exist in v6
+    export type UserCreateInput = import('@prisma/client').Prisma.UserCreateArgs['data'];
+    export type UserUpdateInput = import('@prisma/client').Prisma.UserUpdateArgs['data'];
+    export type TaskCreateInput = import('@prisma/client').Prisma.TaskCreateArgs['data'];
+    export type TaskUpdateInput = import('@prisma/client').Prisma.TaskUpdateArgs['data'];
+    export type RoleCreateInput = import('@prisma/client').Prisma.RoleCreateArgs['data'];
+    export type RoleUpdateInput = import('@prisma/client').Prisma.RoleUpdateArgs['data'];
+  }
+
 
   /* Finance Inputs */
   export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
