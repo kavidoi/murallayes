@@ -39,14 +39,7 @@ declare module '@prisma/client' {
   export type PTOCreateInput = Prisma.PTOCreateInput;
   export type PTOUpdateInput = Prisma.PTOUpdateInput;
 
-  /* Generic catch-all for model delegates */
-  interface PrismaClient {
-    user: any;
-      role: any;
-      task: any;
-      pTORequest: any;
-      [model: string]: any;
-  }
+
   /* Finance Inputs */
   export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
 }
@@ -56,8 +49,7 @@ declare module '@prisma/client' {
 // --------------------------------------------------------------------------------
 
 declare module '@prisma/client' {
-  namespace Prisma {
-    interface PrismaClient {
+  interface PrismaClient {
       user: any;
       role: any;
       task: any;
