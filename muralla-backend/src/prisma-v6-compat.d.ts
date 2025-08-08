@@ -49,6 +49,7 @@ declare module '@prisma/client' {
 declare module '@prisma/client' {
   namespace Prisma {
     interface PrismaClient {
+      [model: string]: any;
       $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
     }
     interface PrismaClientSQL extends Prisma.PrismaClient {
