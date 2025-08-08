@@ -39,6 +39,7 @@ export class PrismaService implements OnModuleInit {
   get transaction() { return this.prisma.transaction; }
   get transactionCategory() { return this.prisma.transactionCategory; }
   get bankAccount() { return this.prisma.bankAccount; }
+  get magicToken() { return this.prisma.magicToken; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {
