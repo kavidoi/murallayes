@@ -39,79 +39,17 @@ declare module '@prisma/client' {
   export type PTOCreateInput = Prisma.PTOCreateInput;
   export type PTOUpdateInput = Prisma.PTOUpdateInput;
 
+  // Model delegate shims (added for v6 compatibility)
+  interface PrismaClient {
+    user: any;
+    role: any;
+    task: any;
+    pTORequest: any;
+    [model: string]: any;
+    $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
+  }
+
 
   /* Finance Inputs */
   export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
-}
-
-// --------------------------------------------------------------------------------
-// Legacy names inside the Prisma namespace (e.g., Prisma.UserCreateInput)
-// --------------------------------------------------------------------------------
-
-declare module '@prisma/client' {
-  interface PrismaClient {
-      user: any;
-      role: any;
-      task: any;
-      pTORequest: any;
-      [model: string]: any;
-      $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
-    }
-    interface PrismaClientSQL extends Prisma.PrismaClient {
-      $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
-    }
-    // Map removed *CreateInput / *UpdateInput names to the new canonical aliases
-    // so existing code that references Prisma.UserCreateInput continues to work.
-    // They are inferred from the corresponding Args types so they stay in sync.
-    // For models where unchecked variants exist, we map to them; otherwise to Args.
-
-    type UserCreateInput = import('@prisma/client').Prisma.UserCreateArgs['data'];
-    type UserUpdateInput = import('@prisma/client').Prisma.UserUpdateArgs['data'];
-
-    type RoleCreateInput = import('@prisma/client').Prisma.RoleCreateArgs['data'];
-    type RoleUpdateInput = import('@prisma/client').Prisma.RoleUpdateArgs['data'];
-
-    type TaskCreateInput = import('@prisma/client').Prisma.TaskCreateArgs['data'];
-    type TaskUpdateInput = import('@prisma/client').Prisma.TaskUpdateArgs['data'];
-
-    type ProjectCreateInput = import('@prisma/client').Prisma.ProjectCreateArgs['data'];
-    type ProjectUpdateInput = import('@prisma/client').Prisma.ProjectUpdateArgs['data'];
-
-    type PTOCreateInput = import('@prisma/client').Prisma.PTOCreateArgs['data'];
-    type PTOUpdateInput = import('@prisma/client').Prisma.PTOUpdateArgs['data'];
-
-    // Finance models
-    type TransactionCreateInput = import('@prisma/client').Prisma.TransactionCreateArgs['data'];
-    type TransactionUpdateInput = import('@prisma/client').Prisma.TransactionUpdateArgs['data'];
-    type TransactionCategoryCreateInput = import('@prisma/client').Prisma.TransactionCategoryCreateArgs['data'];
-    const TransactionType: typeof import('@prisma/client').Prisma.TransactionType;
-    type TransactionType = import('@prisma/client').Prisma.TransactionType;
-    const TransactionStatus: typeof import('@prisma/client').Prisma.TransactionStatus;
-    type TransactionStatus = import('@prisma/client').Prisma.TransactionStatus;
-    const PaymentMethod: typeof import('@prisma/client').Prisma.PaymentMethod;
-    type PaymentMethod = import('@prisma/client').Prisma.PaymentMethod;
-
-    // Inventory models
-    type ProductCreateInput = import('@prisma/client').Prisma.ProductCreateArgs['data'];
-    type ProductUpdateInput = import('@prisma/client').Prisma.ProductUpdateArgs['data'];
-    type SaleCreateInput = import('@prisma/client').Prisma.SaleCreateArgs['data'];
-
-    // Knowledge models
-    type DocumentWhereInput = import('@prisma/client').Prisma.DocumentWhereInput;
-    const DocumentType: typeof import('@prisma/client').Prisma.DocumentType;
-    type DocumentType = import('@prisma/client').Prisma.DocumentType;
-    const DocumentStatus: typeof import('@prisma/client').Prisma.DocumentStatus;
-    type DocumentStatus = import('@prisma/client').Prisma.DocumentStatus;
-
-    // Notifications
-    const RuleTrigger: typeof import('@prisma/client').Prisma.RuleTrigger;
-    type RuleTrigger = import('@prisma/client').Prisma.RuleTrigger;
-
-    // Enums preserved as const enums mapping
-    const NotificationType: typeof import('@prisma/client').Prisma.NotificationType;
-    type NotificationType = import('@prisma/client').Prisma.NotificationType;
-
-    const NotificationStatus: typeof import('@prisma/client').Prisma.NotificationStatus;
-    type NotificationStatus = import('@prisma/client').Prisma.NotificationStatus;
-  }
 }
