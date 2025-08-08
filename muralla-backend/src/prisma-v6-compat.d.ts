@@ -41,6 +41,9 @@ declare module '@prisma/client' {
     interface PrismaClient {
       $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
     }
+    interface PrismaClientSQL extends Prisma.PrismaClient {
+      $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
+    }
     // Map removed *CreateInput / *UpdateInput names to the new canonical aliases
     // so existing code that references Prisma.UserCreateInput continues to work.
     // They are inferred from the corresponding Args types so they stay in sync.
@@ -60,6 +63,17 @@ declare module '@prisma/client' {
 
     type PTOCreateInput = import('@prisma/client').Prisma.PTOCreateArgs['data'];
     type PTOUpdateInput = import('@prisma/client').Prisma.PTOUpdateArgs['data'];
+
+    // Finance models
+    type TransactionCreateInput = import('@prisma/client').Prisma.TransactionCreateArgs['data'];
+    type TransactionUpdateInput = import('@prisma/client').Prisma.TransactionUpdateArgs['data'];
+    type TransactionCategoryCreateInput = import('@prisma/client').Prisma.TransactionCategoryCreateArgs['data'];
+    const TransactionType: typeof import('@prisma/client').Prisma.TransactionType;
+    type TransactionType = import('@prisma/client').Prisma.TransactionType;
+    const TransactionStatus: typeof import('@prisma/client').Prisma.TransactionStatus;
+    type TransactionStatus = import('@prisma/client').Prisma.TransactionStatus;
+    const PaymentMethod: typeof import('@prisma/client').Prisma.PaymentMethod;
+    type PaymentMethod = import('@prisma/client').Prisma.PaymentMethod;
 
     // Inventory models
     type ProductCreateInput = import('@prisma/client').Prisma.ProductCreateArgs['data'];
