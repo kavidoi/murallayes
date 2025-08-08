@@ -38,6 +38,11 @@ declare module '@prisma/client' {
   export type ProjectUpdateInput = Prisma.ProjectUpdateInput;
   export type PTOCreateInput = Prisma.PTOCreateInput;
   export type PTOUpdateInput = Prisma.PTOUpdateInput;
+
+  /* Generic catch-all for model delegates */
+  interface PrismaClient {
+    [model: string]: any;
+  }
   /* Finance Inputs */
   export type BankAccountCreateInput = Prisma.BankAccountCreateInput;
 }
