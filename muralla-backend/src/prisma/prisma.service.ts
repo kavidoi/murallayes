@@ -4,7 +4,11 @@ import '../prisma-v6-compat';
 
 @Injectable()
 export class PrismaService implements OnModuleInit {
-  private prisma = new PrismaClient();
+  private prisma: PrismaClient;
+
+  constructor() {
+    this.prisma = new PrismaClient();
+  }
 
   async onModuleInit() {
     await this.prisma.$connect();
@@ -28,6 +32,9 @@ export class PrismaService implements OnModuleInit {
   get notificationTemplate() { return this.prisma.notificationTemplate; }
   get notificationRule() { return this.prisma.notificationRule; }
   get document() { return this.prisma.document; }
+  get documentRevision() { return this.prisma.documentRevision; }
+  get product() { return this.prisma.product; }
+  get sale() { return this.prisma.sale; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): Prisma.PrismaPromise<T> {

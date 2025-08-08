@@ -31,6 +31,10 @@ declare module '@prisma/client' {
   export type NotificationStatus = Prisma.NotificationStatus;
   export const RuleTrigger: typeof Prisma.RuleTrigger;
   export type RuleTrigger = Prisma.RuleTrigger;
+  export const DocumentType: typeof Prisma.DocumentType;
+  export type DocumentType = Prisma.DocumentType;
+  export const DocumentStatus: typeof Prisma.DocumentStatus;
+  export type DocumentStatus = Prisma.DocumentStatus;
 
   /* Enums */
   export const PTOStatus: typeof Prisma.PTOStatus;
@@ -69,6 +73,10 @@ declare module '@prisma/client' {
     export type ProjectCreateInput = import('@prisma/client').Prisma.ProjectCreateArgs['data'];
     export type ProjectUpdateInput = import('@prisma/client').Prisma.ProjectUpdateArgs['data'];
     export type PrismaPromise<T = any> = import('@prisma/client').Prisma.PrismaPromise<T>;
+    export type ProductCreateInput = import('@prisma/client').Prisma.ProductCreateArgs['data'];
+    export type ProductUpdateInput = import('@prisma/client').Prisma.ProductUpdateArgs['data'];
+    export type SaleCreateInput = import('@prisma/client').Prisma.SaleCreateArgs['data'];
+    export type DocumentWhereInput = import('@prisma/client').Prisma.DocumentWhereInput;
   }
 
 
