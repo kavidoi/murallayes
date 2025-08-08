@@ -64,7 +64,6 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
-!muralla-backend/muralla-common-1.0.0.tgz
 !muralla-backend/muralla-common-1.0.2.tgz
 
 # Yarn Integrity file
