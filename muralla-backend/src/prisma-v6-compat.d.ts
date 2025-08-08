@@ -38,6 +38,9 @@ declare module '@prisma/client' {
 
 declare module '@prisma/client' {
   namespace Prisma {
+    interface PrismaClient {
+      $queryRawUnsafe<T = any>(query: string, ...params: any[]): Prisma.PrismaPromise<T>;
+    }
     // Map removed *CreateInput / *UpdateInput names to the new canonical aliases
     // so existing code that references Prisma.UserCreateInput continues to work.
     // They are inferred from the corresponding Args types so they stay in sync.
@@ -57,6 +60,22 @@ declare module '@prisma/client' {
 
     type PTOCreateInput = import('@prisma/client').Prisma.PTOCreateArgs['data'];
     type PTOUpdateInput = import('@prisma/client').Prisma.PTOUpdateArgs['data'];
+
+    // Inventory models
+    type ProductCreateInput = import('@prisma/client').Prisma.ProductCreateArgs['data'];
+    type ProductUpdateInput = import('@prisma/client').Prisma.ProductUpdateArgs['data'];
+    type SaleCreateInput = import('@prisma/client').Prisma.SaleCreateArgs['data'];
+
+    // Knowledge models
+    type DocumentWhereInput = import('@prisma/client').Prisma.DocumentWhereInput;
+    const DocumentType: typeof import('@prisma/client').Prisma.DocumentType;
+    type DocumentType = import('@prisma/client').Prisma.DocumentType;
+    const DocumentStatus: typeof import('@prisma/client').Prisma.DocumentStatus;
+    type DocumentStatus = import('@prisma/client').Prisma.DocumentStatus;
+
+    // Notifications
+    const RuleTrigger: typeof import('@prisma/client').Prisma.RuleTrigger;
+    type RuleTrigger = import('@prisma/client').Prisma.RuleTrigger;
 
     // Enums preserved as const enums mapping
     const NotificationType: typeof import('@prisma/client').Prisma.NotificationType;
