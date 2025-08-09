@@ -13,7 +13,7 @@ import { InventoryService } from './inventory.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
-import { Prisma } from '@prisma/client';
+// Removed Prisma import to avoid runtime reflection on types
 import type {} from '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,7 +23,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post('products')
-  createProduct(@Body() createProductDto: Prisma.ProductCreateInput) {
+  createProduct(@Body() createProductDto: any) {
     return this.inventoryService.createProduct(createProductDto);
   }
 
@@ -38,7 +38,7 @@ export class InventoryController {
   }
 
   @Patch('products/:id')
-  updateProduct(@Param('id') id: string, @Body() updateProductDto: Prisma.ProductUpdateInput) {
+  updateProduct(@Param('id') id: string, @Body() updateProductDto: any) {
     return this.inventoryService.updateProduct(id, updateProductDto);
   }
 
@@ -48,7 +48,7 @@ export class InventoryController {
   }
 
   @Post('sales')
-  createSale(@Body() createSaleDto: Prisma.SaleCreateInput) {
+  createSale(@Body() createSaleDto: any) {
     return this.inventoryService.createSale(createSaleDto);
   }
 

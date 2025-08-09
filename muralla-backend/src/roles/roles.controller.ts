@@ -14,7 +14,7 @@ import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
-import { Prisma } from '@prisma/client';
+// Removed Prisma import to avoid runtime reflection on types
 import type {} from '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,7 +25,7 @@ export class RolesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createRoleDto: Prisma.RoleCreateInput) {
+  create(@Body() createRoleDto: any) {
     return this.rolesService.create(createRoleDto);
   }
 
@@ -40,7 +40,7 @@ export class RolesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRoleDto: Prisma.RoleUpdateInput) {
+  update(@Param('id') id: string, @Body() updateRoleDto: any) {
     return this.rolesService.update(id, updateRoleDto);
   }
 

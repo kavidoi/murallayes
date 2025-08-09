@@ -13,7 +13,7 @@ import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
-import { Prisma } from '@prisma/client';
+// Removed Prisma import to avoid runtime reflection on types
 import type {} from '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,7 +23,7 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
-  create(@Body() createTaskDto: Prisma.TaskCreateInput) {
+  create(@Body() createTaskDto: any) {
     return this.tasksService.create(createTaskDto);
   }
 
@@ -40,7 +40,7 @@ export class TasksController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTaskDto: Prisma.TaskUpdateInput) {
+  update(@Param('id') id: string, @Body() updateTaskDto: any) {
     return this.tasksService.update(id, updateTaskDto);
   }
 

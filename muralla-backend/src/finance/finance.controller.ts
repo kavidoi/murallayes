@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { Public } from '../auth/public.decorator';
-import { Prisma, TransactionType, TransactionStatus } from '@prisma/client';
+import { TransactionType, TransactionStatus } from '@prisma/client';
 import type {} from '../prisma-v6-compat';
 
 @Controller('finance')
@@ -32,7 +32,7 @@ export class FinanceController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'manager')
   @Post('accounts')
-  createBankAccount(@Body() data: Prisma.BankAccountCreateInput, @Request() req: any) {
+  createBankAccount(@Body() data: any, @Request() req: any) {
     return this.financeService.createBankAccount(data, req.user?.id);
   }
 
@@ -52,7 +52,7 @@ export class FinanceController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'manager', 'employee')
   @Post('transactions')
-  createTransaction(@Body() data: Prisma.TransactionCreateInput, @Request() req: any) {
+  createTransaction(@Body() data: any, @Request() req: any) {
     return this.financeService.createTransaction(data, req.user?.id);
   }
 
@@ -92,7 +92,7 @@ export class FinanceController {
   @Patch('transactions/:id')
   updateTransaction(
     @Param('id') id: string,
-    @Body() data: Prisma.TransactionUpdateInput,
+    @Body() data: any,
     @Request() req: any,
   ) {
     return this.financeService.updateTransaction(id, data, req.user?.id);
@@ -109,7 +109,7 @@ export class FinanceController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'manager')
   @Post('categories')
-  createTransactionCategory(@Body() data: Prisma.TransactionCategoryCreateInput, @Request() req: any) {
+  createTransactionCategory(@Body() data: any, @Request() req: any) {
     return this.financeService.createTransactionCategory(data, req.user?.id);
   }
 

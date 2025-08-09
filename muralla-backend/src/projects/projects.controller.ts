@@ -12,7 +12,6 @@ import { ProjectsService } from './projects.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
-import { Prisma } from '@prisma/client';
 import type {} from '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -22,7 +21,7 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  create(@Body() createProjectDto: Prisma.ProjectCreateInput) {
+  create(@Body() createProjectDto: any) {
     return this.projectsService.create(createProjectDto);
   }
 
@@ -37,7 +36,7 @@ export class ProjectsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProjectDto: Prisma.ProjectUpdateInput) {
+  update(@Param('id') id: string, @Body() updateProjectDto: any) {
     return this.projectsService.update(id, updateProjectDto);
   }
 
