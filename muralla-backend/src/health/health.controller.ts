@@ -19,7 +19,7 @@ export class HealthController {
     return this.health.check([
       () => this.prismaHealth.pingCheck('database', this.prisma),
       () => this.memoryHealth.checkHeap('memory_heap', 150 * 1024 * 1024),
-      () => this.memoryHealth.checkRSS('memory_rss', 150 * 1024 * 1024),
+      () => this.memoryHealth.checkRSS('memory_rss', 512 * 1024 * 1024),
     ]);
   }
 
@@ -46,8 +46,8 @@ export class HealthController {
   @HealthCheck()
   liveness() {
     return this.health.check([
-      () => this.memoryHealth.checkHeap('memory_heap', 200 * 1024 * 1024),
-      () => this.memoryHealth.checkRSS('memory_rss', 200 * 1024 * 1024),
+      () => this.memoryHealth.checkHeap('memory_heap', 512 * 1024 * 1024),
+      () => this.memoryHealth.checkRSS('memory_rss', 512 * 1024 * 1024),
       async () => {
         // Basic application health check
         return { application: { status: 'up', timestamp: new Date().toISOString() } };
