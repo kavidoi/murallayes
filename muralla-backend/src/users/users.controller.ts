@@ -14,7 +14,6 @@ import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
-import { Prisma } from '@prisma/client';
 import type {} from '../prisma-v6-compat';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,8 +24,8 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createUserDto: Prisma.UserCreateInput) {
-    return this.usersService.create(createUserDto);
+  create(@Body() body: any) {
+    return this.usersService.create(body);
   }
 
   @Get()
@@ -40,8 +39,8 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: Prisma.UserUpdateInput) {
-    return this.usersService.update(id, updateUserDto);
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.usersService.update(id, body);
   }
 
   @Delete(':id')
