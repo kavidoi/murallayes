@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import MainLayout from './components/layout/MainLayout'
 import Dashboard from './components/modules/dashboard/Dashboard'
 import Login from './components/modules/auth/Login'
+import PaymentBrick from './components/modules/finance/PaymentBrick'
 import FinanceDashboard from './components/modules/finance/FinanceDashboard'
 import PeopleOverview from './components/modules/people/PeopleOverview'
 import TeamDirectory from './components/modules/people/TeamDirectory'
@@ -80,6 +81,7 @@ function App() {
               {/* Finance & Analytics Routes */}
               <Route path="/finance" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
               <Route path="/finance/bank" element={<ProtectedRoute><BankAccount /></ProtectedRoute>} />
+              <Route path="/finance/payment/brick" element={<ProtectedRoute><PaymentBrick /></ProtectedRoute>} />
               <Route path="/finance/transactions" element={<ProtectedRoute><PlaceholderPage title="Revenue & Expenses" description="Real-time ledger of every transaction" icon="💳" /></ProtectedRoute>} />
               <Route path="/finance/taxes" element={<ProtectedRoute><PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" /></ProtectedRoute>} />
               <Route path="/finance/budgets" element={<ProtectedRoute><PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" /></ProtectedRoute>} />
