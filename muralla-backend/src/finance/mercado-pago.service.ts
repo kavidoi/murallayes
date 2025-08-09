@@ -116,6 +116,14 @@ export class MercadoPagoService {
     unit_price: number;
     currency_id?: string;
     external_reference?: string;
+    // Quality recommendations
+    category_id?: string;
+    description?: string;
+    payer?: {
+      email?: string;
+      first_name?: string;
+      last_name?: string;
+    };
   }): Promise<any> {
     try {
       const preference = new Preference(this.client);
@@ -128,6 +136,8 @@ export class MercadoPagoService {
             quantity: data.quantity,
             unit_price: data.unit_price,
             currency_id: data.currency_id || process.env.MP_CURRENCY || 'CLP',
+            category_id: data.category_id || 'others',
+            description: data.description || data.title,
           },
         ],
         external_reference: data.external_reference,
@@ -138,7 +148,12 @@ export class MercadoPagoService {
           pending: `${process.env.FRONTEND_URL}/finance/payment/pending`,
         },
         auto_return: 'approved',
-      };
+        payer: data.payer && {
+          email: data.payer.email,
+          name: data.payer.first_name,
+          surname: data.payer.last_name,
+        },
+      } as any;
 
       const result = await preference.create({ body: preferenceData });
       return result;
