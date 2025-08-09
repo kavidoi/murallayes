@@ -23,6 +23,12 @@ export class MercadoPagoService {
         const payment = await new Payment(this.client).get({ id: data.id });
         
         if (payment.status === 'approved') {
+          // Idempotency: if we already have this mpPaymentId, ignore
+          const existing = await this.prisma.transaction.findFirst({ where: { mpPaymentId: payment.id.toString() } });
+          if (existing) {
+            this.logger.log(`Skipping duplicate webhook for payment ${payment.id}`);
+            return;
+          }
           await this.createTransactionFromPayment(payment);
         }
       }
