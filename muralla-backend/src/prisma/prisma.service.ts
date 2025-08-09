@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
-import '../prisma-v6-compat';
+// Import type only to satisfy TS without emitting require
+import type {} from '../prisma-v6-compat';
 
 @Injectable()
 export class PrismaService implements OnModuleInit {
