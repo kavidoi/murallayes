@@ -12,6 +12,7 @@ import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
 import BankAccount from './components/modules/finance/BankAccount'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
+import { AuthService } from './services/authService'
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const token = localStorage.getItem('authToken');
@@ -21,6 +22,8 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
 
 function App() {
   const [darkMode, setDarkMode] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, false = not auth, true = auth
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Check for user preference or system preference
@@ -36,6 +39,47 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    // Check authentication status on app load
+    const checkAuth = async () => {
+      try {
+        const token = AuthService.getToken()
+        const refreshToken = AuthService.getRefreshToken()
+        
+        if (!token && !refreshToken) {
+          setIsAuthenticated(false)
+          setIsLoading(false)
+          return
+        }
+
+        // If token is expired but we have refresh token, try to refresh
+        if (AuthService.isTokenExpired(token) && refreshToken) {
+          try {
+            await AuthService.refreshTokens()
+            setIsAuthenticated(true)
+          } catch (error) {
+            console.log('Token refresh failed, redirecting to login')
+            AuthService.clearTokens()
+            setIsAuthenticated(false)
+          }
+        } else if (token && !AuthService.isTokenExpired(token)) {
+          setIsAuthenticated(true)
+        } else {
+          AuthService.clearTokens()
+          setIsAuthenticated(false)
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error)
+        AuthService.clearTokens()
+        setIsAuthenticated(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode
     setDarkMode(newDarkMode)
@@ -48,74 +92,98 @@ function App() {
     }
   }
 
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Verificando autenticación...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Force login if not authenticated
+  if (isAuthenticated === false) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </Router>
+    )
+  }
+
+  // Render main app if authenticated
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={
           <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
             <Routes>
-              <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route index element={<Dashboard />} />
               
               {/* Knowledge Hub Routes */}
-              <Route path="/knowledge" element={<ProtectedRoute><KnowledgeOverview /></ProtectedRoute>} />
-              <Route path="/knowledge/policies" element={<ProtectedRoute><PlaceholderPage title="Policies & SOPs" description="Company policies, procedures, and compliance documentation" icon="📋" /></ProtectedRoute>} />
-              <Route path="/knowledge/playbooks" element={<ProtectedRoute><PlaceholderPage title="Playbooks & Templates" description="Reusable frameworks and templates for common scenarios" icon="📖" /></ProtectedRoute>} />
-              <Route path="/knowledge/wiki" element={<ProtectedRoute><PlaceholderPage title="Institutional Memory" description="Wiki pages, lessons learned, and organizational knowledge" icon="🧠" /></ProtectedRoute>} />
+              <Route path="/knowledge" element={<KnowledgeOverview />} />
+              <Route path="/knowledge/policies" element={<PlaceholderPage title="Policies & SOPs" description="Company policies, procedures, and compliance documentation" icon="📋" />} />
+              <Route path="/knowledge/playbooks" element={<PlaceholderPage title="Playbooks & Templates" description="Reusable frameworks and templates for common scenarios" icon="📖" />} />
+              <Route path="/knowledge/wiki" element={<PlaceholderPage title="Institutional Memory" description="Wiki pages, lessons learned, and organizational knowledge" icon="🧠" />} />
               
               {/* Projects & Tasks Routes */}
-              <Route path="/projects" element={<ProtectedRoute><PlaceholderPage title="Projects & Tasks" description="Project management with multiple views and collaboration tools" icon="📋" /></ProtectedRoute>} />
-              <Route path="/projects/kanban" element={<ProtectedRoute><PlaceholderPage title="Kanban Board" description="Visual task management with drag-and-drop functionality" icon="📊" /></ProtectedRoute>} />
-              <Route path="/projects/timeline" element={<ProtectedRoute><PlaceholderPage title="Timeline View" description="Gantt-style project timeline and dependencies" icon="📅" /></ProtectedRoute>} />
-              <Route path="/projects/calendar" element={<ProtectedRoute><PlaceholderPage title="Calendar View" description="Calendar-based project and task scheduling" icon="🗓️" /></ProtectedRoute>} />
-              <Route path="/projects/backlog" element={<ProtectedRoute><PlaceholderPage title="Backlog" description="Product backlog and sprint planning" icon="📝" /></ProtectedRoute>} />
-              <Route path="/projects/goals" element={<ProtectedRoute><PlaceholderPage title="Goal Tree" description="Hierarchical goal tracking and OKRs" icon="🎯" /></ProtectedRoute>} />
+              <Route path="/projects" element={<PlaceholderPage title="Projects & Tasks" description="Project management with multiple views and collaboration tools" icon="📋" />} />
+              <Route path="/projects/kanban" element={<PlaceholderPage title="Kanban Board" description="Visual task management with drag-and-drop functionality" icon="📊" />} />
+              <Route path="/projects/timeline" element={<PlaceholderPage title="Timeline View" description="Gantt-style project timeline and dependencies" icon="📅" />} />
+              <Route path="/projects/calendar" element={<PlaceholderPage title="Calendar View" description="Calendar-based project and task scheduling" icon="🗓️" />} />
+              <Route path="/projects/backlog" element={<PlaceholderPage title="Backlog" description="Product backlog and sprint planning" icon="📝" />} />
+              <Route path="/projects/goals" element={<PlaceholderPage title="Goal Tree" description="Hierarchical goal tracking and OKRs" icon="🎯" />} />
               
               {/* People & Roles Routes */}
-              <Route path="/people" element={<ProtectedRoute><PeopleOverview /></ProtectedRoute>} />
-              <Route path="/people/directory" element={<ProtectedRoute><TeamDirectory /></ProtectedRoute>} />
-              <Route path="/people/shifts" element={<ProtectedRoute><PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" /></ProtectedRoute>} />
-              <Route path="/people/pto" element={<ProtectedRoute><PTO /></ProtectedRoute>} />
-              <Route path="/people/finances" element={<ProtectedRoute><StaffFinances /></ProtectedRoute>} />
+              <Route path="/people" element={<PeopleOverview />} />
+              <Route path="/people/directory" element={<TeamDirectory />} />
+              <Route path="/people/shifts" element={<PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" />} />
+              <Route path="/people/pto" element={<PTO />} />
+              <Route path="/people/finances" element={<StaffFinances />} />
               
               {/* Finance & Analytics Routes */}
-              <Route path="/finance" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
-              <Route path="/finance/bank" element={<ProtectedRoute><BankAccount /></ProtectedRoute>} />
-              <Route path="/finance/payment/brick" element={<ProtectedRoute><PaymentBrick /></ProtectedRoute>} />
-              <Route path="/finance/transactions" element={<ProtectedRoute><PlaceholderPage title="Revenue & Expenses" description="Real-time ledger of every transaction" icon="💳" /></ProtectedRoute>} />
-              <Route path="/finance/taxes" element={<ProtectedRoute><PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" /></ProtectedRoute>} />
-              <Route path="/finance/budgets" element={<ProtectedRoute><PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" /></ProtectedRoute>} />
-              <Route path="/finance/kpis" element={<ProtectedRoute><PlaceholderPage title="KPI Dashboards" description="Surface financial metrics that matter at a glance" icon="📈" /></ProtectedRoute>} />
-              <Route path="/finance/forecasts" element={<ProtectedRoute><PlaceholderPage title="Scenario Planning" description="Model alternative futures and prepare decisions" icon="🔮" /></ProtectedRoute>} />
+              <Route path="/finance" element={<FinanceDashboard />} />
+              <Route path="/finance/bank" element={<BankAccount />} />
+              <Route path="/finance/payment/brick" element={<PaymentBrick />} />
+              <Route path="/finance/transactions" element={<PlaceholderPage title="Revenue & Expenses" description="Real-time ledger of every transaction" icon="💳" />} />
+              <Route path="/finance/taxes" element={<PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" />} />
+              <Route path="/finance/budgets" element={<PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" />} />
+              <Route path="/finance/kpis" element={<PlaceholderPage title="KPI Dashboards" description="Surface financial metrics that matter at a glance" icon="📈" />} />
+              <Route path="/finance/forecasts" element={<PlaceholderPage title="Scenario Planning" description="Model alternative futures and prepare decisions" icon="🔮" />} />
               
               {/* Inventory & Sales Routes */}
-              <Route path="/inventory" element={<ProtectedRoute><PlaceholderPage title="Inventory & Sales" description="Track products, sales, and stock movements" icon="📦" /></ProtectedRoute>} />
-              <Route path="/inventory/products" element={<ProtectedRoute><PlaceholderPage title="Products" description="Authoritative catalog for every item or service" icon="🏷️" /></ProtectedRoute>} />
-              <Route path="/inventory/sales" element={<ProtectedRoute><PlaceholderPage title="Sales" description="Record revenue events and inventory deductions" icon="💰" /></ProtectedRoute>} />
-              <Route path="/inventory/stock" element={<ProtectedRoute><PlaceholderPage title="Stock" description="Location-based snapshot of on-hand quantities" icon="📊" /></ProtectedRoute>} />
-              <Route path="/inventory/movements" element={<ProtectedRoute><PlaceholderPage title="Other Movements" description="Non-sales inventory changes and adjustments" icon="🔄" /></ProtectedRoute>} />
+              <Route path="/inventory" element={<PlaceholderPage title="Inventory & Sales" description="Track products, sales, and stock movements" icon="📦" />} />
+              <Route path="/inventory/products" element={<PlaceholderPage title="Products" description="Authoritative catalog for every item or service" icon="🏷️" />} />
+              <Route path="/inventory/sales" element={<PlaceholderPage title="Sales" description="Record revenue events and inventory deductions" icon="💰" />} />
+              <Route path="/inventory/stock" element={<PlaceholderPage title="Stock" description="Location-based snapshot of on-hand quantities" icon="📊" />} />
+              <Route path="/inventory/movements" element={<PlaceholderPage title="Other Movements" description="Non-sales inventory changes and adjustments" icon="🔄" />} />
               
               {/* CRM & Community Routes */}
-              <Route path="/crm" element={<ProtectedRoute><PlaceholderPage title="CRM & Community" description="Customer relationship management and community engagement" icon="👥" /></ProtectedRoute>} />
-              <Route path="/crm/contacts" element={<ProtectedRoute><PlaceholderPage title="Contacts" description="Customer and prospect contact management" icon="📞" /></ProtectedRoute>} />
-              <Route path="/crm/segments" element={<ProtectedRoute><PlaceholderPage title="Segments" description="Customer segmentation and targeting" icon="🎯" /></ProtectedRoute>} />
-              <Route path="/crm/logs" element={<ProtectedRoute><PlaceholderPage title="Activity Logs" description="Track customer interactions and touchpoints" icon="📝" /></ProtectedRoute>} />
-              <Route path="/crm/feedback" element={<ProtectedRoute><PlaceholderPage title="Feedback" description="Collect and manage customer feedback" icon="💬" /></ProtectedRoute>} />
+              <Route path="/crm" element={<PlaceholderPage title="CRM & Community" description="Customer relationship management and community engagement" icon="👥" />} />
+              <Route path="/crm/contacts" element={<PlaceholderPage title="Contacts" description="Customer and prospect contact management" icon="📞" />} />
+              <Route path="/crm/segments" element={<PlaceholderPage title="Segments" description="Customer segmentation and targeting" icon="🎯" />} />
+              <Route path="/crm/logs" element={<PlaceholderPage title="Activity Logs" description="Track customer interactions and touchpoints" icon="📝" />} />
+              <Route path="/crm/feedback" element={<PlaceholderPage title="Feedback" description="Collect and manage customer feedback" icon="💬" />} />
               
               {/* Events & Scheduling Routes */}
-              <Route path="/events" element={<ProtectedRoute><PlaceholderPage title="Events & Scheduling" description="Event management and resource scheduling" icon="🎉" /></ProtectedRoute>} />
-              <Route path="/events/calendar" element={<ProtectedRoute><PlaceholderPage title="Calendar" description="Event calendar and scheduling interface" icon="📅" /></ProtectedRoute>} />
-              <Route path="/events/bookings" element={<ProtectedRoute><PlaceholderPage title="Bookings" description="Event bookings and reservation management" icon="🎫" /></ProtectedRoute>} />
-              <Route path="/events/resources" element={<ProtectedRoute><PlaceholderPage title="Resource Allocation" description="Manage event resources and equipment" icon="🛠️" /></ProtectedRoute>} />
+              <Route path="/events" element={<PlaceholderPage title="Events & Scheduling" description="Event management and resource scheduling" icon="🎉" />} />
+              <Route path="/events/calendar" element={<PlaceholderPage title="Calendar" description="Event calendar and scheduling interface" icon="📅" />} />
+              <Route path="/events/bookings" element={<PlaceholderPage title="Bookings" description="Event bookings and reservation management" icon="🎫" />} />
+              <Route path="/events/resources" element={<PlaceholderPage title="Resource Allocation" description="Manage event resources and equipment" icon="🛠️" />} />
               
               {/* Notifications Routes */}
-              <Route path="/notifications" element={<ProtectedRoute><PlaceholderPage title="Notifications" description="Alert management and automation rules" icon="🔔" /></ProtectedRoute>} />
-              <Route path="/notifications/inbox" element={<ProtectedRoute><PlaceholderPage title="Alert Inbox" description="Centralized notification management" icon="📥" /></ProtectedRoute>} />
-              <Route path="/notifications/rules" element={<ProtectedRoute><PlaceholderPage title="Rules Engine" description="Create automated notification rules" icon="⚙️" /></ProtectedRoute>} />
-              <Route path="/notifications/templates" element={<ProtectedRoute><PlaceholderPage title="Templates" description="Manage notification templates" icon="📄" /></ProtectedRoute>} />
+              <Route path="/notifications" element={<PlaceholderPage title="Notifications" description="Alert management and automation rules" icon="🔔" />} />
+              <Route path="/notifications/inbox" element={<PlaceholderPage title="Alert Inbox" description="Centralized notification management" icon="📥" />} />
+              <Route path="/notifications/rules" element={<PlaceholderPage title="Rules Engine" description="Create automated notification rules" icon="⚙️" />} />
+              <Route path="/notifications/templates" element={<PlaceholderPage title="Templates" description="Manage notification templates" icon="📄" />} />
               
               {/* Settings */}
-              <Route path="/settings" element={<ProtectedRoute><PlaceholderPage title="Settings" description="System configuration and preferences" icon="⚙️" /></ProtectedRoute>} />
+              <Route path="/settings" element={<PlaceholderPage title="Settings" description="System configuration and preferences" icon="⚙️" />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </MainLayout>
