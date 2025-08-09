@@ -290,7 +290,7 @@ model Transaction {
   @@index([status])
   @@index([createdAt])
   @@index([reference])
-  @@index([mpPaymentId])
+  @@unique([mpPaymentId])
 }
 
 model BankBalance {
