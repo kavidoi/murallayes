@@ -6,7 +6,7 @@
     "start:dev": "ts-node --transpile-only src/main.ts",
     "build": "tsc -p .",
     "start": "node dist/main.js",
-    "start:prod": "npm run build && npm run start",
+    "start:prod": "npm run build && npm run migrate:deploy && npm run start",
     "seed": "ts-node prisma/seed.ts",
     "cli": "ts-node src/cli/seed.ts",
     "bootstrap": "npm run cli bootstrap",
@@ -21,7 +21,8 @@
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "pre-commit": "lint-staged",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
