@@ -14,6 +14,10 @@
 #   DATABASE_URL           – if you prefer passing a concrete URL instead of a reference
 #   REDIS_URL              – concrete URL instead of a reference
 #   VITE_ENABLE_DEMO       – default false for Frontend
+#   MP_ACCESS_TOKEN        – MercadoPago access token
+#   MP_PUBLIC_KEY          – MercadoPago public key
+#   MP_CLIENT_ID           – MercadoPago client ID
+#   MP_CLIENT_SECRET       – MercadoPago client secret
 #
 # Notes:
 # - FRONTEND_URL and BACKEND_URL are set using Railway-provided domains via reference variables.
@@ -69,6 +73,24 @@ set_backend_vars() {
     rw variables --set "REDIS_URL=\$\{\{ ${REDIS_SERVICE_NAME}.REDIS_URL \}\}"
   else
     echo "ℹ️ Skipping REDIS_URL (set REDIS_URL or REDIS_SERVICE_NAME if using queues)."
+  fi
+
+  # MercadoPago (optional)
+  if [[ -n "${MP_ACCESS_TOKEN:-}" ]]; then
+    rw variables --set "MP_ACCESS_TOKEN=$MP_ACCESS_TOKEN"
+    echo "✓ MP_ACCESS_TOKEN set"
+  fi
+  if [[ -n "${MP_PUBLIC_KEY:-}" ]]; then
+    rw variables --set "MP_PUBLIC_KEY=$MP_PUBLIC_KEY"
+    echo "✓ MP_PUBLIC_KEY set"
+  fi
+  if [[ -n "${MP_CLIENT_ID:-}" ]]; then
+    rw variables --set "MP_CLIENT_ID=$MP_CLIENT_ID"
+    echo "✓ MP_CLIENT_ID set"
+  fi
+  if [[ -n "${MP_CLIENT_SECRET:-}" ]]; then
+    rw variables --set "MP_CLIENT_SECRET=$MP_CLIENT_SECRET"
+    echo "✓ MP_CLIENT_SECRET set"
   fi
 }
 
