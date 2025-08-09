@@ -33,3 +33,8 @@ The Railway Frontend service serves the `dist` directory via Nixpacks’ static 
 
 ---
 Made with ❤️ and Vite.
+
+## Production (Railway)
+- Set `VITE_API_BASE_URL` to `${{Backend.RAILWAY_PUBLIC_DOMAIN}}` in the Frontend service variables.
+- Do NOT enable `VITE_ENABLE_DEMO` in production.
+- Redeploy the Frontend to apply changes.

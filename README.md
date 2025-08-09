@@ -45,3 +45,21 @@ Backend health check: `https://api.<domain>/health/healthz`
 3. Frontend attaches `Authorization: Bearer <token>` on each call.
 
 �� Have fun building! 
+
+## Environment variables
+
+### Backend service
+| Variable | Purpose | Example / Note |
+|----------|---------|-----------------|
+| `DATABASE_URL` | Postgres connection string | Provided by Railway Postgres |
+| `REDIS_URL` | Redis connection string | Provided by Railway Redis |
+| `JWT_SECRET` | JWT signing secret | Use a strong random string |
+| `JWT_EXPIRES_IN` | Token lifetime | e.g. `24h` |
+| `FRONTEND_URL` | CORS allowed origin | `${{Frontend.RAILWAY_PUBLIC_DOMAIN}}` |
+| `DISABLE_QUEUES` | Disable BullMQ queues | `true` to disable when Redis absent |
+
+### Frontend service
+| Variable | Purpose | Example / Note |
+|----------|---------|-----------------|
+| `VITE_API_BASE_URL` | Backend base URL | `${{Backend.RAILWAY_PUBLIC_DOMAIN}}` |
+| `VITE_ENABLE_DEMO` | Preload demo token (non-prod) | `true` only for staging/dev | 
