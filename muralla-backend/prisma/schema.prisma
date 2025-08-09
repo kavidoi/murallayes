@@ -347,6 +347,10 @@ model User {
   ptoRequests PTORequest[] @relation("PTOEmployee")
   ptoApprovals PTORequest[] @relation("PTOApprover")
   ptoBalances PTOBalance[] @relation("PTOBalanceEmployee")
+  
+  // Auth tokens
+  refreshToken String? // For JWT refresh token storage
+  
   isDeleted Boolean  @default(false)
   deletedAt DateTime?
   deletedBy String?

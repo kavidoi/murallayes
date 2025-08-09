@@ -1,25 +1,26 @@
-// Simple auth service for demo purposes
+// Advanced auth service with automatic token refresh
 export class AuthService {
   private static readonly TOKEN_KEY = 'authToken';
+  private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
   private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-  // For demo purposes only (dev environments). Do NOT enable in production.
-  private static readonly DEMO_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWRyYWo3ZGg4MDAwMXN1dHFvdDk3aWdxIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc1NDIzMzk1MywiZXhwIjoxNzg1NzY5OTUzfQ.6kvsSWL7iN-pkjNuohpyKmHU7aP2WqvBIu8_jxeePQI';
+  private static refreshPromise: Promise<void> | null = null;
 
   static getToken(): string {
     return localStorage.getItem(this.TOKEN_KEY) || '';
   }
 
-  static clearToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+  static getRefreshToken(): string {
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY) || '';
   }
 
-  static setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+  static clearTokens(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
-  static removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+  static setTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem(this.TOKEN_KEY, accessToken);
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
   }
 
   static getAuthHeaders(): HeadersInit {
@@ -29,23 +30,83 @@ export class AuthService {
       : { 'Content-Type': 'application/json' };
   }
 
+  static isTokenExpired(token: string): boolean {
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      // Check if token expires within next 5 minutes
+      return payload.exp < (currentTime + 300);
+    } catch {
+      return true;
+    }
+  }
+
+  static async refreshTokens(): Promise<void> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await fetch(`${this.API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      this.clearTokens();
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    this.setTokens(data.access_token, data.refresh_token);
+  }
+
+  static async ensureValidToken(): Promise<void> {
+    const token = this.getToken();
+    
+    if (!token || this.isTokenExpired(token)) {
+      // If already refreshing, wait for that to complete
+      if (this.refreshPromise) {
+        await this.refreshPromise;
+        return;
+      }
+
+      // Start refresh process
+      this.refreshPromise = this.refreshTokens();
+      try {
+        await this.refreshPromise;
+      } finally {
+        this.refreshPromise = null;
+      }
+    }
+  }
+
   static async login(identifier: string, password: string): Promise<void> {
     const res = await fetch(`${this.API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: identifier, password }),
-      // backend accepts username or email per updated strategy
     });
+    
     if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    
     const data = await res.json();
-    if (data?.access_token) this.setToken(data.access_token);
+    if (data?.access_token && data?.refresh_token) {
+      this.setTokens(data.access_token, data.refresh_token);
+    }
   }
 
   static logout(): void {
-    this.clearToken();
+    this.clearTokens();
+    // Optional: call backend logout endpoint
   }
 
   static async apiCall<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // Ensure we have a valid token before making the call
+    await this.ensureValidToken();
+
     const url = `${this.API_BASE_URL}${endpoint}`;
     const headers = {
       ...this.getAuthHeaders(),
@@ -54,6 +115,34 @@ export class AuthService {
 
     const response = await fetch(url, { ...options, headers });
 
+    // If we get 401, try refreshing once more
+    if (response.status === 401) {
+      try {
+        await this.refreshTokens();
+        // Retry with new token
+        const retryHeaders = {
+          ...this.getAuthHeaders(),
+          ...options.headers,
+        } as HeadersInit;
+        
+        const retryResponse = await fetch(url, { ...options, headers: retryHeaders });
+        
+        if (!retryResponse.ok) {
+          if (retryResponse.status === 401) {
+            this.clearTokens();
+            window.location.href = '/login';
+          }
+          throw new Error(`API call failed: ${retryResponse.status} ${retryResponse.statusText}`);
+        }
+        
+        return (await retryResponse.json()) as T;
+      } catch (refreshError) {
+        this.clearTokens();
+        window.location.href = '/login';
+        throw new Error('Authentication failed');
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`API call failed: ${response.status} ${response.statusText}`);
     }
@@ -61,16 +150,24 @@ export class AuthService {
     return (await response.json()) as T;
   }
 
-  static async refreshToken(): Promise<void> {
-    const response = await fetch(`${this.API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'admin123' })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      this.setToken(data.access_token);
+  static debugToken(): void {
+    const token = this.getToken();
+    const refreshToken = this.getRefreshToken();
+    
+    if (!token) { 
+      console.log('No access token present'); 
+      return; 
+    }
+    
+    console.log('Current token:', token.substring(0, 50) + '...');
+    console.log('Refresh token:', refreshToken ? refreshToken.substring(0, 50) + '...' : 'None');
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('Token expires at:', new Date(payload.exp * 1000));
+      console.log('Token expired:', this.isTokenExpired(token));
+    } catch (e) {
+      console.error('Failed to decode token:', e);
     }
   }
 
@@ -78,20 +175,10 @@ export class AuthService {
   static init(): void {
     const enableDemo = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO === 'true';
     if (enableDemo) {
-      this.setToken(this.DEMO_TOKEN);
+      // For demo mode, just set a long-lived token
+      const demoToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWRyYWo3ZGg4MDAwMXN1dHFvdDk3aWdxIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc1NDIzMzk1MywiZXhwIjoxNzg1NzY5OTUzfQ.6kvsSWL7iN-pkjNuohpyKmHU7aP2WqvBIu8_jxeePQI';
+      this.setTokens(demoToken, demoToken);
       console.log('AuthService initialized with demo token (dev only)');
-    }
-  }
-
-  static debugToken(): void {
-    const token = this.getToken();
-    if (!token) { console.log('No token present'); return; }
-    console.log('Current token:', token.substring(0, 50) + '...');
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      console.log('Token expires at:', new Date(payload.exp * 1000));
-    } catch (e) {
-      console.error('Failed to decode token:', e);
     }
   }
 }

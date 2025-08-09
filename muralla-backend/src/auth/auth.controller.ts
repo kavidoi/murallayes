@@ -63,4 +63,12 @@ export class AuthController {
   async resetPassword(@Body() body: { token: string; newPassword: string }) {
     return this.authService.resetPassword(body.token, body.newPassword);
   }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 attempts per minute
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() body: { refreshToken: string }) {
+    return this.authService.refreshToken(body.refreshToken);
+  }
 }

@@ -31,9 +31,52 @@ export class AuthService {
 
   async login(user: any) {
     const payload = { sub: user.id, username: user.username, role: user.role?.name };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    
+    // Store refresh token in database (optional - for revocation)
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: refreshToken },
+    });
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: process.env.JWT_EXPIRES_IN || '60m',
     };
+  }
+
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        include: { role: true },
+      });
+
+      if (!user || user.refreshToken !== refreshToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const newPayload = { sub: user.id, username: user.username, role: user.role?.name };
+      const newAccessToken = this.jwtService.sign(newPayload);
+      const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+
+      // Update refresh token in database
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { refreshToken: newRefreshToken },
+      });
+
+      return {
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken,
+        expires_in: process.env.JWT_EXPIRES_IN || '60m',
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 
   async register(data: any) {

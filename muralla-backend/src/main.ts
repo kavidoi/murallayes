@@ -11,7 +11,7 @@ async function bootstrap() {
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://sdk.mercadopago.com'],
         imgSrc: ["'self'", "data:", "https:"],
       },
     },

@@ -153,6 +153,8 @@ export class MercadoPagoService {
           name: data.payer.first_name,
           surname: data.payer.last_name,
         },
+        // Descripción-Resumen de tarjeta para evitar contracargos
+        statement_descriptor: process.env.MP_STATEMENT_DESCRIPTOR || 'MURALLA',
       } as any;
 
       const result = await preference.create({ body: preferenceData });
