@@ -30,6 +30,10 @@
     "node": ">=18.17.0",
     "pnpm": ">=8.0.0"
   },
+  "config": {
+    "ADMIN_EMAIL": "contacto@murallacafe.cl",
+    "ADMIN_PASSWORD": "Muralla2025"
+  },
   "description": "",
   "devDependencies": {
     "@eslint/js": "^9.32.0",

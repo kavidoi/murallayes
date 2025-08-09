@@ -29,6 +29,22 @@ export class AuthService {
       : { 'Content-Type': 'application/json' };
   }
 
+  static async login(identifier: string, password: string): Promise<void> {
+    const res = await fetch(`${this.API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: identifier, password }),
+      // backend accepts username or email per updated strategy
+    });
+    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    const data = await res.json();
+    if (data?.access_token) this.setToken(data.access_token);
+  }
+
+  static logout(): void {
+    this.clearToken();
+  }
+
   static async apiCall<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.API_BASE_URL}${endpoint}`;
     const headers = {

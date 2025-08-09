@@ -29,6 +29,24 @@ import { MetricsController } from './common/metrics.controller';
 import { MetricsInterceptor } from './common/metrics.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { UsersService } from './users/users.service';
+
+@Injectable()
+class BootstrapService implements OnModuleInit {
+  constructor(private users: UsersService) {}
+  async onModuleInit() {
+    const email = process.env.ADMIN_EMAIL || 'contacto@murallacafe.cl';
+    const password = process.env.ADMIN_PASSWORD || 'Muralla2025';
+    try {
+      await this.users.findOrCreateAdmin(email, password);
+      // eslint-disable-next-line no-console
+      console.log(`Admin ensured: ${email}`);
+    } catch (e) {
+      console.error('Failed to ensure admin user', e);
+    }
+  }
+}
 
 @Module({
   imports: [
@@ -71,6 +89,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     PaginationService,
     AbilityFactory,
     MetricsService,
+    BootstrapService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

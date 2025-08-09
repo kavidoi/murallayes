@@ -7,6 +7,30 @@ import type {} from '../prisma-v6-compat';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  async findOrCreateAdmin(email: string, plainPassword: string): Promise<User> {
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) return existing;
+    const bcrypt = await import('bcrypt');
+    const hashed = await bcrypt.hash(plainPassword, 10);
+    const username = email.split('@')[0];
+    const adminRole = await this.prisma.role.upsert({
+      where: { name: 'admin' },
+      update: { permissions: ['*'] as any },
+      create: { name: 'admin', description: 'Full access', permissions: ['*'] as any },
+    });
+    return this.prisma.user.create({
+      data: {
+        email,
+        username,
+        firstName: 'Admin',
+        lastName: 'User',
+        password: hashed,
+        roleId: adminRole.id,
+        isActive: true,
+      },
+    });
+  }
+
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return this.prisma.user.create({
       data,
