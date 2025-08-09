@@ -35,9 +35,6 @@ type Project {
   id: ID!
   name: String!
   description: String
-  status: String!
-  startDate: DateTime
-  endDate: DateTime
   tasks: [Task!]!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -48,8 +45,6 @@ type Task {
   title: String!
   description: String
   status: TaskStatus!
-  priority: String
-  dueDate: DateTime
   project: Project!
   assignee: User
   createdAt: DateTime!
@@ -152,17 +147,12 @@ input UpdateUserInput {
 input CreateProjectInput {
   name: String!
   description: String
-  status: String!
-  startDate: DateTime
-  endDate: DateTime
 }
 
 input CreateTaskInput {
   title: String!
   description: String
   status: TaskStatus!
-  priority: String
-  dueDate: DateTime
   projectId: String!
   assigneeId: String
 }

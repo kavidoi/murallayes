@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx --yes serve -s dist -l $PORT",
+    "startCommand": "pnpm run preview -- --port $PORT",
     "healthcheckPath": "/",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",

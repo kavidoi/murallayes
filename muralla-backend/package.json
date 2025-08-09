@@ -61,7 +61,7 @@
     "@graphql-tools/load-files": "^7.0.1",
     "@graphql-tools/merge": "^9.1.1",
     "@graphql-tools/schema": "^10.0.25",
-    "@muralla/common": "file:./muralla-common-1.0.2.tgz",
+    "@muralla/common": "workspace:*",
     "@nestjs/apollo": "^13.1.0",
     "@nestjs/bull": "^11.0.3",
     "@nestjs/common": "^11.1.5",
@@ -79,8 +79,8 @@
     "apollo-server-express": "^3.13.0",
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
-    "bullmq": "^5.56.9",
-    "casl": "^0.2.0",
+
+
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "commander": "^14.0.0",

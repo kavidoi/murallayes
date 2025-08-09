@@ -1,4 +1,0 @@
-# Ensure pnpm is available in the build environment
-[phases.setup]
-# Install pnpm from Nix packages so Nixpacks builder can use it during build and start phases
-nixPkgs = ["pnpm"]

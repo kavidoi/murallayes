@@ -81,10 +81,6 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
       useClass: AbilitiesGuard,
     },
     {

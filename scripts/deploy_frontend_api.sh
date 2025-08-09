@@ -55,16 +55,10 @@ echo "✅ Frontend Service ID: $SERVICE_ID"
 fi
 
 # 3. Trigger deploy from GitHub source (latest commit on main)
-createPayload=$(cat <<JSON
-{"query":"mutation deploymentCreateFromSource($input:DeploymentCreateFromSourceInput!){deploymentCreateFromSource(input:$input){id status}}","variables":{"input":{"serviceId":"$SERVICE_ID"}}}
-JSON
-)
-
-echo "🚀 Triggering deploy via API…"
-DEPLOY_RESP=$(curl -sSL -H "Content-Type: application/json" -H "Authorization: Bearer ${RAILWAY_TOKEN}" --data "$createPayload" "$GRAPHQL_ENDPOINT")
-DEPLOY_ID=$(echo "$DEPLOY_RESP" | jq -r '.data.deploymentCreateFromSource.id')
-if [[ -z "$DEPLOY_ID" || "$DEPLOY_ID" == "null" ]]; then
-  echo "Failed to create deployment: $DEPLOY_RESP" >&2
+echo "🚀 Triggering deploy via Railway CLI…"
+DEPLOY_ID=$(railway deployment create --service "$SERVICE_ID" 2>/dev/null | grep -Eo "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+if [[ -z "$DEPLOY_ID" ]]; then
+  echo "❌ Failed to trigger deploy via CLI" >&2
   exit 1
 fi
 
