@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/roles.guard';
 import { Roles } from '../../../common/roles.decorator';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { TransactionType, TransactionStatus, PaymentMethod } from '@prisma/client';
 
 interface BankTransaction {
   id: string;
@@ -40,65 +42,7 @@ interface BankCategory {
 @Controller('api/bank')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BankController {
-  // Mock data based on legacy bank-routes.js
-  private bankTransactions: BankTransaction[] = [
-    {
-      id: '1',
-      date: new Date('2024-01-15T10:30:00Z'),
-      description: 'Venta de café - Juan Pérez',
-      amount: 15000,
-      category: 'Ventas',
-      type: 'income',
-      status: 'completed',
-      payment_method: 'Mercado Pago',
-      reference: 'MP-2024-001',
-      category_icon: 'shopping-cart',
-      customer_name: 'Juan Pérez',
-      items: ['Café Americano', 'Croissant']
-    },
-    {
-      id: '2',
-      date: new Date('2024-01-15T14:20:00Z'),
-      description: 'Compra de insumos - Proveedor Café',
-      amount: -85000,
-      category: 'Compras',
-      type: 'expense',
-      status: 'completed',
-      payment_method: 'Transferencia Bancaria',
-      reference: 'TR-2024-002',
-      category_icon: 'shopping-bag',
-      supplier_name: 'Proveedor Café S.A.',
-      items: ['Café grano 5kg', 'Leche 10L', 'Azúcar 5kg']
-    },
-    {
-      id: '3',
-      date: new Date('2024-01-16T09:15:00Z'),
-      description: 'Pago de nómina - María González',
-      amount: -450000,
-      category: 'Nómina',
-      type: 'expense',
-      status: 'completed',
-      payment_method: 'Transferencia Bancaria',
-      reference: 'TR-2024-003',
-      category_icon: 'users',
-      employee_name: 'María González'
-    },
-    {
-      id: '4',
-      date: new Date('2024-01-16T16:45:00Z'),
-      description: 'Venta de evento - Corporación XYZ',
-      amount: 250000,
-      category: 'Ventas',
-      type: 'income',
-      status: 'completed',
-      payment_method: 'Mercado Pago',
-      reference: 'MP-2024-004',
-      category_icon: 'shopping-cart',
-      customer_name: 'Corporación XYZ'
-    }
-  ];
-
-  private currentBalance = 1250000;
+  constructor(private prisma: PrismaService) {}
 
   @Get('transactions')
   @Roles('admin', 'finance_manager', 'employee')
@@ -111,54 +55,63 @@ export class BankController {
     @Query('offset') offset = '0'
   ) {
     try {
-      let filteredTransactions = [...this.bankTransactions];
-
-      // Apply filters
-      if (startDate) {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.date) >= new Date(startDate)
-        );
+      const where: any = {};
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate);
+        if (endDate) where.createdAt.lte = new Date(endDate);
       }
-
-      if (endDate) {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.date) <= new Date(endDate)
-        );
-      }
-
       if (type) {
-        filteredTransactions = filteredTransactions.filter(t => t.type === type);
+        where.type = type === 'income' ? TransactionType.INCOME : TransactionType.EXPENSE;
       }
-
       if (category) {
-        filteredTransactions = filteredTransactions.filter(t => t.category === category);
+        where.category = { is: { name: category } };
       }
 
-      // Calculate summary data
+      const [totalCount, rows] = await Promise.all([
+        this.prisma.transaction.count({ where }),
+        this.prisma.transaction.findMany({
+          where,
+          include: { category: true },
+          orderBy: { createdAt: 'desc' },
+          skip: parseInt(offset),
+          take: parseInt(limit)
+        })
+      ]);
+
       const now = new Date();
-      const monthlyIncome = filteredTransactions
-        .filter(t => t.amount > 0 && new Date(t.date).getMonth() === now.getMonth())
-        .reduce((sum, t) => sum + t.amount, 0);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const [incomeAgg, expenseAgg] = await Promise.all([
+        this.prisma.transaction.aggregate({ where: { createdAt: { gte: monthStart }, type: TransactionType.INCOME }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { createdAt: { gte: monthStart }, type: TransactionType.EXPENSE }, _sum: { amount: true } })
+      ]);
 
-      const monthlyExpenses = Math.abs(filteredTransactions
-        .filter(t => t.amount < 0 && new Date(t.date).getMonth() === now.getMonth())
-        .reduce((sum, t) => sum + t.amount, 0));
+      const monthlyIncome = incomeAgg._sum.amount || 0;
+      const monthlyExpenses = expenseAgg._sum.amount || 0;
 
-      const paginatedTransactions = filteredTransactions
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+      const paginatedTransactions: BankTransaction[] = rows.map(t => ({
+        id: t.id,
+        date: t.createdAt as any,
+        description: (t as any).description || 'Transacción',
+        amount: t.type === TransactionType.INCOME ? Number(t.amount) : -Math.abs(Number(t.amount)),
+        category: (t as any).category?.name || 'Otros',
+        type: t.type === TransactionType.INCOME ? 'income' : 'expense',
+        status: t.status === TransactionStatus.PENDING ? 'pending' : (t.status === TransactionStatus.FAILED ? 'failed' : 'completed'),
+        payment_method: t.paymentMethod === PaymentMethod.MERCADO_PAGO ? 'Mercado Pago' : (t.paymentMethod || 'Otro'),
+        reference: (t as any).reference || (t as any).externalId || t.id,
+      }));
 
       return {
         success: true,
         transactions: paginatedTransactions,
-        currentBalance: this.currentBalance,
+        currentBalance: await this.getCurrentBalance(),
         monthlyIncome,
         monthlyExpenses,
-        totalCount: filteredTransactions.length,
+        totalCount,
         summary: {
-          totalIncome: filteredTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0),
-          totalExpenses: Math.abs(filteredTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)),
-          transactionCount: filteredTransactions.length
+          totalIncome: Number(incomeAgg._sum.amount || 0),
+          totalExpenses: Number(expenseAgg._sum.amount || 0),
+          transactionCount: totalCount
         }
       };
     } catch (error) {
@@ -171,11 +124,8 @@ export class BankController {
   @Roles('admin', 'finance_manager', 'employee')
   async getBalance() {
     try {
-      return {
-        success: true,
-        balance: this.currentBalance,
-        lastUpdated: new Date().toISOString()
-      };
+      const balance = await this.getCurrentBalance();
+      return { success: true, balance, lastUpdated: new Date().toISOString() };
     } catch (error) {
       throw new Error('Error al obtener balance');
     }
@@ -203,24 +153,30 @@ export class BankController {
         throw new Error('Faltan campos requeridos');
       }
 
-      const newTransaction: BankTransaction = {
-        id: (this.bankTransactions.length + 1).toString(),
-        date: new Date(),
-        description,
-        amount: type === 'expense' ? -Math.abs(amount) : Math.abs(amount),
-        category,
-        type,
-        status: 'completed',
-        payment_method,
-        reference: reference || `${type.toUpperCase()}-${Date.now()}`,
-        customer_name,
-        supplier_name
-      };
+      const cat = await this.prisma.transactionCategory.upsert({
+        where: { name: category },
+        update: {},
+        create: { name: category, icon: 'shopping-cart', color: '#10b981' }
+      });
 
-      this.bankTransactions.unshift(newTransaction);
-      this.currentBalance += newTransaction.amount;
+      const account = await this.getOrCreateDefaultAccount();
 
-      return { success: true, transaction: newTransaction };
+      const created = await this.prisma.transaction.create({
+        data: {
+          description,
+          amount: Math.abs(amount),
+          type: type === 'income' ? TransactionType.INCOME : TransactionType.EXPENSE,
+          status: TransactionStatus.COMPLETED,
+          paymentMethod: payment_method === 'Mercado Pago' ? PaymentMethod.MERCADO_PAGO : PaymentMethod.OTHER,
+          reference: reference || `${type.toUpperCase()}-${Date.now()}`,
+          accountId: account.id,
+          categoryId: cat.id,
+          customerName: customer_name || null,
+          supplierName: supplier_name || null,
+        }
+      });
+
+      return { success: true, transaction: created };
     } catch (error) {
       console.error('Error creating transaction:', error);
       throw new Error('Error al crear transacción');
@@ -231,33 +187,34 @@ export class BankController {
   @Roles('admin', 'finance_manager', 'employee')
   async getSummary(@Query('period') period = 'monthly') {
     try {
-      let filteredTransactions = [...this.bankTransactions];
       const now = new Date();
+      let rangeStart: Date | undefined;
+      if (period === 'daily') rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      else if (period === 'weekly') rangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      else rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      if (period === 'daily') {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.date).toDateString() === now.toDateString()
-        );
-      } else if (period === 'weekly') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.date) >= weekAgo
-        );
-      } else if (period === 'monthly') {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.date).getMonth() === now.getMonth() && 
-          new Date(t.date).getFullYear() === now.getFullYear()
-        );
-      }
+      const where = { createdAt: { gte: rangeStart } } as any;
+      const rows = await this.prisma.transaction.findMany({ where, include: { category: true }, orderBy: { createdAt: 'desc' } });
+      const mapped: BankTransaction[] = rows.map(t => ({
+        id: t.id,
+        date: t.createdAt as any,
+        description: (t as any).description || 'Transacción',
+        amount: t.type === TransactionType.INCOME ? Number(t.amount) : -Math.abs(Number(t.amount)),
+        category: (t as any).category?.name || 'Otros',
+        type: t.type === TransactionType.INCOME ? 'income' : 'expense',
+        status: t.status === TransactionStatus.PENDING ? 'pending' : (t.status === TransactionStatus.FAILED ? 'failed' : 'completed'),
+        payment_method: t.paymentMethod === PaymentMethod.MERCADO_PAGO ? 'Mercado Pago' : (t.paymentMethod || 'Otro'),
+        reference: (t as any).reference || (t as any).externalId || t.id,
+      }));
 
       const summary: BankSummary = {
-        totalIncome: filteredTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0),
-        totalExpenses: Math.abs(filteredTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)),
-        transactionCount: filteredTransactions.length,
-        averageTransaction: filteredTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0) / filteredTransactions.length || 0,
-        categories: this.getCategorySummary(filteredTransactions),
-        dailyTotals: this.getDailyTotals(filteredTransactions),
-        topTransactions: filteredTransactions.slice(0, 5)
+        totalIncome: mapped.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0),
+        totalExpenses: Math.abs(mapped.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)),
+        transactionCount: mapped.length,
+        averageTransaction: mapped.reduce((s, t) => s + Math.abs(t.amount), 0) / (mapped.length || 1),
+        categories: this.getCategorySummary(mapped),
+        dailyTotals: this.getDailyTotals(mapped),
+        topTransactions: mapped.slice(0, 5)
       };
 
       return { success: true, summary };
@@ -286,6 +243,36 @@ export class BankController {
     }
   }
 
+  private async getCurrentBalance(): Promise<number> {
+    // Prefer bank account balance if present
+    const account = await this.prisma.bankAccount.findFirst({ where: { name: 'Mercado Pago Account', isActive: true } });
+    if (account && typeof (account as any).currentBalance === 'number') {
+      return Number((account as any).currentBalance);
+    }
+    // Fallback: income - expenses
+    const [incomeAgg, expenseAgg] = await Promise.all([
+      this.prisma.transaction.aggregate({ where: { type: TransactionType.INCOME }, _sum: { amount: true } }),
+      this.prisma.transaction.aggregate({ where: { type: TransactionType.EXPENSE }, _sum: { amount: true } })
+    ]);
+    return Number(incomeAgg._sum.amount || 0) - Number(expenseAgg._sum.amount || 0);
+  }
+
+  private async getOrCreateDefaultAccount() {
+    let account = await this.prisma.bankAccount.findFirst({ where: { name: 'Mercado Pago Account', isActive: true } });
+    if (!account) {
+      account = await this.prisma.bankAccount.create({
+        data: {
+          name: 'Mercado Pago Account',
+          accountType: 'mercado_pago',
+          currency: 'ARS',
+          isActive: true,
+          currentBalance: 0,
+        },
+      });
+    }
+    return account;
+  }
+
   // Mercado Pago webhook endpoint
   @Post('mercadopago/webhook')
   async handleMercadoPagoWebhook(@Body() webhookData: any) {
@@ -293,25 +280,9 @@ export class BankController {
       const { type, data } = webhookData;
 
       if (type === 'payment') {
-        // In a real implementation, you would verify the payment with Mercado Pago API
-        // For now, we'll simulate a successful payment
-        const transaction: BankTransaction = {
-          id: data.id || Date.now().toString(),
-          date: new Date(),
-          description: 'Pago Mercado Pago',
-          amount: data.transaction_amount || 0,
-          category: 'Ventas',
-          type: 'income',
-          status: 'completed',
-          payment_method: 'Mercado Pago',
-          reference: data.id?.toString() || `MP-${Date.now()}`
-        };
-
-        this.bankTransactions.unshift(transaction);
-        this.currentBalance += transaction.amount;
-
-        // In a real implementation, you would emit real-time updates via WebSocket
-        console.log('New Mercado Pago transaction:', transaction);
+        // Prefer dedicated finance webhook in FinanceController.
+        // This endpoint remains for backward compatibility.
+        console.log('Mercado Pago webhook (bank) received:', data?.id);
       }
 
       return { success: true };
