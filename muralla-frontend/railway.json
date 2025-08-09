@@ -1,11 +1,11 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "rootDirectory": "muralla-frontend",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm -C muralla-frontend install --prod=false && pnpm -C muralla-frontend run build"
   },
   "deploy": {
-    "startCommand": "npx --yes serve -s dist -l $PORT",
+    "startCommand": "npx --yes serve -s muralla-frontend/dist -l $PORT",
     "healthcheckPath": "/",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
