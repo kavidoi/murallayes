@@ -37,31 +37,8 @@ function App() {
     // Check authentication status on app load
     const checkAuth = async () => {
       try {
-        const token = AuthService.getToken()
-        const refreshToken = AuthService.getRefreshToken()
-        
-        if (!token && !refreshToken) {
-          setIsAuthenticated(false)
-          setIsLoading(false)
-          return
-        }
-
-        // If token is expired but we have refresh token, try to refresh
-        if (AuthService.isTokenExpired(token) && refreshToken) {
-          try {
-            await AuthService.refreshTokens()
-            setIsAuthenticated(true)
-          } catch (error) {
-            console.log('Token refresh failed, redirecting to login')
-            AuthService.clearTokens()
-            setIsAuthenticated(false)
-          }
-        } else if (token && !AuthService.isTokenExpired(token)) {
-          setIsAuthenticated(true)
-        } else {
-          AuthService.clearTokens()
-          setIsAuthenticated(false)
-        }
+        const ok = await AuthService.isAuthenticated()
+        setIsAuthenticated(ok)
       } catch (error) {
         console.error('Authentication check failed:', error)
         AuthService.clearTokens()
@@ -114,7 +91,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
         <Route path="*" element={
           <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
             <Routes>

@@ -150,6 +150,29 @@ export class AuthService {
     return (await response.json()) as T;
   }
 
+  static async isAuthenticated(): Promise<boolean> {
+    const token = this.getToken();
+    if (!token) return false;
+
+    if (this.isTokenExpired(token)) {
+      try {
+        await this.refreshTokens();
+      } catch {
+        return false;
+      }
+    }
+
+    try {
+      const res = await fetch(`${this.API_BASE_URL}/auth/me`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   static debugToken(): void {
     const token = this.getToken();
     const refreshToken = this.getRefreshToken();
