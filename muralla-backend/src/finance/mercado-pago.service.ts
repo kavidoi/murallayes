@@ -127,7 +127,7 @@ export class MercadoPagoService {
             title: data.title,
             quantity: data.quantity,
             unit_price: data.unit_price,
-            currency_id: data.currency_id || 'ARS',
+            currency_id: data.currency_id || process.env.MP_CURRENCY || 'CLP',
           },
         ],
         external_reference: data.external_reference,
