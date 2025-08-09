@@ -14,12 +14,6 @@ import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
 
-function ProtectedRoute({ children }: { children: React.ReactElement }) {
-  const token = localStorage.getItem('authToken');
-  if (!token) return <Navigate to="/login" replace />;
-  return children;
-}
-
 function App() {
   const [darkMode, setDarkMode] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, false = not auth, true = auth
