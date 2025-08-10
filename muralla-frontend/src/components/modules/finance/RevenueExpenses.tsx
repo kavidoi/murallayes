@@ -241,10 +241,10 @@ const RevenueExpenses: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando datos financieros...</p>
+          <p className="text-gray-600 dark:text-gray-400">Cargando datos financieros...</p>
         </div>
       </div>
     );
@@ -252,12 +252,12 @@ const RevenueExpenses: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
           <button
             onClick={fetchData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
           >
             Reintentar
           </button>
@@ -267,12 +267,12 @@ const RevenueExpenses: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Revenue & Expenses</h1>
-          <p className="text-gray-600">Comprehensive financial tracking and analysis</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Revenue & Expenses</h1>
+          <p className="text-gray-600 dark:text-gray-400">Comprehensive financial tracking and analysis</p>
         </div>
 
         {/* Navigation Tabs */}
@@ -288,8 +288,8 @@ const RevenueExpenses: React.FC = () => {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center px-3 py-2 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <span className="mr-2">{tab.icon}</span>
@@ -304,92 +304,92 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Financial Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span className="text-green-600 text-lg">💰</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.totalRevenue)}</p>
-                  </div>
-                </div>
-              </div>
+                           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+               <div className="flex items-center">
+                 <div className="flex-shrink-0">
+                   <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                     <span className="text-green-600 dark:text-green-400 text-lg">💰</span>
+                   </div>
+                 </div>
+                 <div className="ml-4">
+                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Revenue</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalRevenue)}</p>
+                 </div>
+               </div>
+             </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                      <span className="text-red-600 text-lg">💸</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Expenses</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.totalExpenses)}</p>
-                  </div>
-                </div>
-              </div>
+                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                 <div className="flex items-center">
+                   <div className="flex-shrink-0">
+                     <div className="w-8 h-8 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
+                       <span className="text-red-600 dark:text-red-400 text-lg">💸</span>
+                     </div>
+                   </div>
+                   <div className="ml-4">
+                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</p>
+                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalExpenses)}</p>
+                   </div>
+                 </div>
+               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      summary.netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      <span className={`text-lg ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {summary.netProfit >= 0 ? '📈' : '📉'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Net Profit</p>
-                    <p className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(summary.netProfit)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                 <div className="flex items-center">
+                   <div className="flex-shrink-0">
+                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                       summary.netProfit >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
+                     }`}>
+                       <span className={`text-lg ${summary.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                         {summary.netProfit >= 0 ? '📈' : '📉'}
+                       </span>
+                     </div>
+                   </div>
+                   <div className="ml-4">
+                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Profit</p>
+                     <p className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                       {formatCurrency(summary.netProfit)}
+                     </p>
+                   </div>
+                 </div>
+               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 text-lg">🏦</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Bank Balance</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.bankBalance)}</p>
-                  </div>
-                </div>
-              </div>
+                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                 <div className="flex items-center">
+                   <div className="flex-shrink-0">
+                     <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                       <span className="text-blue-600 dark:text-blue-400 text-lg">🏦</span>
+                     </div>
+                   </div>
+                   <div className="ml-4">
+                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Bank Balance</p>
+                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.bankBalance)}</p>
+                   </div>
+                 </div>
+               </div>
             </div>
 
             {/* Category Breakdowns */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue by Category */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Category</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Revenue by Category</h3>
                 <div className="space-y-3">
                   {Object.entries(summary.revenueByCategory).map(([category, amount]) => (
                     <div key={category} className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">{category}</span>
-                      <span className="font-medium text-green-600">{formatCurrency(amount)}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{category}</span>
+                      <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(amount)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Expenses by Category */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Expenses by Category</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Expenses by Category</h3>
                 <div className="space-y-3">
                   {Object.entries(summary.expensesByCategory).map(([category, amount]) => (
                     <div key={category} className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">{category}</span>
-                      <span className="font-medium text-red-600">{formatCurrency(amount)}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{category}</span>
+                      <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -397,24 +397,24 @@ const RevenueExpenses: React.FC = () => {
             </div>
 
             {/* Additional Metrics */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Metrics</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Additional Metrics</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">{summary.profitMargin.toFixed(1)}%</p>
-                  <p className="text-sm text-gray-500">Profit Margin</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.profitMargin.toFixed(1)}%</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Profit Margin</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-yellow-600">{formatCurrency(summary.pendingRevenue)}</p>
-                  <p className="text-sm text-gray-500">Pending Revenue</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{formatCurrency(summary.pendingRevenue)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending Revenue</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.pendingExpenses)}</p>
-                  <p className="text-sm text-gray-500">Pending Expenses</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(summary.pendingExpenses)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending Expenses</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(summary.merchantPaymentsTotal)}</p>
-                  <p className="text-sm text-gray-500">Mercado Pago</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.merchantPaymentsTotal)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Mercado Pago</p>
                 </div>
               </div>
             </div>
@@ -426,10 +426,10 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Revenue Header with Add Button */}
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Revenue Entries</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Revenue Entries</h2>
               <button
                 onClick={() => setShowRevenueForm(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
+                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <span className="mr-2">+</span>
                 Add Revenue
@@ -437,45 +437,45 @@ const RevenueExpenses: React.FC = () => {
             </div>
 
             {/* Revenue List */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {revenue.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-gray-50">
+                      <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{entry.description}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{entry.description}</div>
                           {entry.invoiceNumber && (
-                            <div className="text-sm text-gray-500">Invoice: {entry.invoiceNumber}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Invoice: {entry.invoiceNumber}</div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-600">{formatCurrency(entry.amount)}</div>
-                          <div className="text-sm text-gray-500">{entry.paymentMethod}</div>
+                          <div className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(entry.amount)}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{entry.paymentMethod}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{entry.category}</div>
+                          <div className="text-sm text-gray-900 dark:text-white">{entry.category}</div>
                           {entry.subcategory && (
-                            <div className="text-sm text-gray-500">{entry.subcategory}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{entry.subcategory}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {new Date(entry.revenueDate).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getStatusBadge(entry.status)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {entry.customerName || '-'}
                         </td>
                       </tr>
@@ -492,10 +492,10 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Expenses Header with Add Button */}
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Expense Entries</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Expense Entries</h2>
               <button
                 onClick={() => setShowExpenseForm(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center"
+                className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <span className="mr-2">+</span>
                 Add Expense
@@ -503,50 +503,50 @@ const RevenueExpenses: React.FC = () => {
             </div>
 
             {/* Expenses List */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendor</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {expenses.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-gray-50">
+                      <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{entry.description}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{entry.description}</div>
                           {entry.invoiceNumber && (
-                            <div className="text-sm text-gray-500">Invoice: {entry.invoiceNumber}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Invoice: {entry.invoiceNumber}</div>
                           )}
                           {entry.isRecurring && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
                               Recurring ({entry.recurringFrequency})
                             </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-red-600">{formatCurrency(entry.amount)}</div>
-                          <div className="text-sm text-gray-500">{entry.paymentMethod}</div>
+                          <div className="text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(entry.amount)}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{entry.paymentMethod}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{entry.category}</div>
+                          <div className="text-sm text-gray-900 dark:text-white">{entry.category}</div>
                           {entry.subcategory && (
-                            <div className="text-sm text-gray-500">{entry.subcategory}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{entry.subcategory}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {new Date(entry.expenseDate).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getStatusBadge(entry.status)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {entry.vendor || '-'}
                         </td>
                       </tr>
@@ -560,19 +560,19 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Revenue Form Modal */}
         {showRevenueForm && categories && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Add Revenue Entry</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Revenue Entry</h3>
                 <form onSubmit={handleCreateRevenue} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                     <input
                       type="text"
                       required
                       value={revenueForm.description}
                       onChange={(e) => setRevenueForm({...revenueForm, description: e.target.value})}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   
@@ -616,13 +616,13 @@ const RevenueExpenses: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowRevenueForm(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                     >
                       Create Revenue
                     </button>
@@ -635,10 +635,10 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Expense Form Modal */}
         {showExpenseForm && categories && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Add Expense Entry</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Expense Entry</h3>
                 <form onSubmit={handleCreateExpense} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
@@ -701,13 +701,13 @@ const RevenueExpenses: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowExpenseForm(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                     >
                       Create Expense
                     </button>
