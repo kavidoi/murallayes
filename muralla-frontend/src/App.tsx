@@ -11,6 +11,7 @@ import StaffFinances from './components/modules/people/StaffFinances'
 import MyFinances from './components/modules/people/MyFinances'
 import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
 import BankAccount from './components/modules/finance/BankAccount'
+import RevenueExpenses from './components/modules/finance/RevenueExpenses'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
@@ -133,7 +134,7 @@ function App() {
               <Route path="/finance" element={<FinanceDashboard />} />
               <Route path="/finance/bank" element={<BankAccount />} />
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
-              <Route path="/finance/transactions" element={<PlaceholderPage title="Revenue & Expenses" description="Real-time ledger of every transaction" icon="💳" />} />
+              <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" />} />
               <Route path="/finance/budgets" element={<PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" />} />
               <Route path="/finance/kpis" element={<PlaceholderPage title="KPI Dashboards" description="Surface financial metrics that matter at a glance" icon="📈" />} />

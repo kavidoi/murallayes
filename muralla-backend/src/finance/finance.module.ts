@@ -5,12 +5,13 @@ import { BankController } from '../modules/finance/controllers/bank.controller';
 import { PayrollController } from '../modules/finance/controllers/payroll.controller';
 import { StaffFinanceController } from '../modules/finance/controllers/staff-finance.controller';
 import { MyFinanceController } from '../modules/finance/controllers/my-finance.controller';
+import { RevenueExpenseController } from '../modules/finance/controllers/revenue-expense.controller';
 import { MercadoPagoService } from './mercado-pago.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
 
 @Module({
-  controllers: [FinanceController, BankController, PayrollController, StaffFinanceController, MyFinanceController],
+  controllers: [FinanceController, BankController, PayrollController, StaffFinanceController, MyFinanceController, RevenueExpenseController],
   providers: [
     FinanceService,
     MercadoPagoService,
