@@ -37,6 +37,10 @@ interface MyExpense {
   amount: number;
   category: string;
   expenseDate: string;
+  expenseType: 'COMPANY_BUSINESS' | 'PERSONAL' | 'MIXED';
+  paidBy: 'EMPLOYEE' | 'COMPANY' | 'PENDING';
+  settlementMethod?: 'REIMBURSEMENT' | 'PAYROLL_DEDUCTION' | 'DIRECT_PAYMENT';
+  settlementStatus: 'PENDING' | 'SETTLED' | 'PARTIALLY_SETTLED';
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REIMBURSED' | 'CANCELLED';
   submittedAt: string;
   receiptUrl?: string;
@@ -44,6 +48,8 @@ interface MyExpense {
   approvedBy?: string;
   approvedAt?: string;
   reimbursedAt?: string;
+  personalPortion?: number;
+  companyPortion?: number;
 }
 
 interface ExpenseFormData {
@@ -53,6 +59,20 @@ interface ExpenseFormData {
   expenseDate: string;
   notes: string;
   receipt?: File;
+  expenseType: 'COMPANY_BUSINESS' | 'PERSONAL' | 'MIXED';
+  paidBy: 'EMPLOYEE' | 'COMPANY' | 'PENDING';
+  settlementMethod: 'REIMBURSEMENT' | 'PAYROLL_DEDUCTION' | 'DIRECT_PAYMENT';
+  personalPortion?: string;
+  companyPortion?: string;
+}
+
+interface PaymentFormData {
+  paymentType: 'ADVANCE' | 'REIMBURSEMENT' | 'EXPENSE_SETTLEMENT';
+  amount: string;
+  direction: 'TO_EMPLOYEE' | 'TO_COMPANY';
+  description: string;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'PAYROLL' | 'PETTY_CASH';
+  notes: string;
 }
 
 const MyFinances: React.FC = () => {
@@ -71,6 +91,19 @@ const MyFinances: React.FC = () => {
     amount: '',
     category: 'Other',
     expenseDate: new Date().toISOString().split('T')[0],
+    notes: '',
+    expenseType: 'COMPANY_BUSINESS',
+    paidBy: 'EMPLOYEE',
+    settlementMethod: 'REIMBURSEMENT',
+  });
+  
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentForm, setPaymentForm] = useState<PaymentFormData>({
+    paymentType: 'ADVANCE',
+    amount: '',
+    direction: 'TO_EMPLOYEE',
+    description: '',
+    paymentMethod: 'BANK_TRANSFER',
     notes: '',
   });
 
@@ -178,6 +211,9 @@ const MyFinances: React.FC = () => {
         category: 'Other',
         expenseDate: new Date().toISOString().split('T')[0],
         notes: '',
+        expenseType: 'COMPANY_BUSINESS',
+        paidBy: 'EMPLOYEE',
+        settlementMethod: 'REIMBURSEMENT',
       });
       setShowExpenseForm(false);
       setEditingExpense(null);
@@ -196,6 +232,11 @@ const MyFinances: React.FC = () => {
       category: expense.category,
       expenseDate: expense.expenseDate.split('T')[0],
       notes: expense.notes || '',
+      expenseType: expense.expenseType || 'COMPANY_BUSINESS',
+      paidBy: expense.paidBy || 'EMPLOYEE',
+      settlementMethod: expense.settlementMethod || 'REIMBURSEMENT',
+      personalPortion: expense.personalPortion?.toString() || '',
+      companyPortion: expense.companyPortion?.toString() || '',
     });
     setShowExpenseForm(true);
   };
@@ -460,6 +501,9 @@ const MyFinances: React.FC = () => {
                       category: 'Other',
                       expenseDate: new Date().toISOString().split('T')[0],
                       notes: '',
+                      expenseType: 'COMPANY_BUSINESS',
+                      paidBy: 'EMPLOYEE',
+                      settlementMethod: 'REIMBURSEMENT',
                     });
                   }}
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
