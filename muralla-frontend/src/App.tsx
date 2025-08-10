@@ -12,6 +12,7 @@ import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
 import BankAccount from './components/modules/finance/BankAccount'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
+import MyFinances from './components/modules/people/MyFinances'
 import { AuthService } from './services/authService'
 
 function App() {
@@ -100,7 +101,7 @@ function App() {
               {/* My (user-centric) Routes */}
               <Route path="/me" element={<PlaceholderPage title="My Hub" description="Personal view: PTO, finances, shifts, sales, products, calendar" icon="🙋" />} />
               <Route path="/me/pto" element={<PTO />} />
-              <Route path="/me/finances" element={<PlaceholderPage title="My Finances" description="Commissions, payments owed, reimbursements" icon="💳" />} />
+              <Route path="/me/finances" element={<MyFinances />} />
               <Route path="/me/shifts" element={<PlaceholderPage title="My Shifts" description="Your scheduled and past shifts" icon="⏰" />} />
               <Route path="/me/data" element={<PlaceholderPage title="My Data" description="Personal data, profile, documents" icon="🪪" />} />
               <Route path="/me/sales" element={<PlaceholderPage title="My Sales" description="Your sales performance and history" icon="📈" />} />

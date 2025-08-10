@@ -61,6 +61,25 @@ const StaffFinances: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'payroll' | 'expenses'>('overview');
 
+  // Modals state
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+
+  // Payroll form
+  const [payPeriodStart, setPayPeriodStart] = useState<string>('');
+  const [payPeriodEnd, setPayPeriodEnd] = useState<string>('');
+  const [payrollNotes, setPayrollNotes] = useState<string>('');
+  const [submittingPayroll, setSubmittingPayroll] = useState(false);
+
+  // Expense form
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState<number | ''>('');
+  const [expenseCategory, setExpenseCategory] = useState('Other');
+  const [expenseDate, setExpenseDate] = useState<string>('');
+  const [expenseReceiptUrl, setExpenseReceiptUrl] = useState<string>('');
+  const [expenseNotes, setExpenseNotes] = useState<string>('');
+  const [submittingExpense, setSubmittingExpense] = useState(false);
+
   const fetchStaffFinanceData = async () => {
     try {
       setLoading(true);
@@ -91,14 +110,15 @@ const StaffFinances: React.FC = () => {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
+    return new Intl.NumberFormat('es-CL', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'CLP',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-AR', {
+    return new Date(dateString).toLocaleDateString('es-CL', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -119,17 +139,73 @@ const StaffFinances: React.FC = () => {
     return colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
   };
 
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'Travel': '🚗',
-      'Meals': '🍽️',
-      'Office Supplies': '📝',
-      'Software': '💻',
-      'Training': '📚',
-      'Equipment': '🖥️',
-      'Other': '📋'
-    };
-    return icons[category] || '📋';
+  // Handlers
+  const openRunPayroll = () => {
+    setPayPeriodStart(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10));
+    setPayPeriodEnd(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0,10));
+    setPayrollNotes('');
+    setShowPayrollModal(true);
+  };
+
+  const submitRunPayroll = async () => {
+    try {
+      setSubmittingPayroll(true);
+      await AuthService.apiCall('/api/payroll/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payPeriodStart: new Date(payPeriodStart).toISOString(),
+          payPeriodEnd: new Date(payPeriodEnd).toISOString(),
+          notes: payrollNotes,
+        }),
+      });
+      setShowPayrollModal(false);
+      await fetchStaffFinanceData();
+    } catch (e) {
+      console.error('Failed to create payroll run', e);
+      alert('Failed to create payroll run');
+    } finally {
+      setSubmittingPayroll(false);
+    }
+  };
+
+  const openNewExpense = () => {
+    setExpenseDescription('');
+    setExpenseAmount('');
+    setExpenseCategory('Other');
+    setExpenseDate(new Date().toISOString().slice(0,10));
+    setExpenseReceiptUrl('');
+    setExpenseNotes('');
+    setShowExpenseModal(true);
+  };
+
+  const submitNewExpense = async () => {
+    if (!expenseDescription || !expenseAmount || !expenseDate) {
+      alert('Please complete description, amount and date');
+      return;
+    }
+    try {
+      setSubmittingExpense(true);
+      await AuthService.apiCall('/api/staff-finance/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: expenseDescription,
+          amount: Number(expenseAmount),
+          category: expenseCategory,
+          expenseDate: new Date(expenseDate).toISOString(),
+          receiptUrl: expenseReceiptUrl,
+          notes: expenseNotes,
+        }),
+      });
+      setShowExpenseModal(false);
+      await fetchStaffFinanceData();
+    } catch (e) {
+      console.error('Failed to submit expense', e);
+      alert('Failed to submit expense');
+    } finally {
+      setSubmittingExpense(false);
+    }
   };
 
   if (loading) {
@@ -180,10 +256,10 @@ const StaffFinances: React.FC = () => {
           </p>
         </div>
         <div className="flex space-x-2">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button onClick={openRunPayroll} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             Run Payroll
           </button>
-          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button onClick={openNewExpense} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             New Expense
           </button>
         </div>
@@ -201,11 +277,6 @@ const StaffFinances: React.FC = () => {
                 </div>
                 <div className="text-3xl">👥</div>
               </div>
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Average salary: {formatCurrency(summary.averageSalary)}
-                </p>
-              </div>
             </CardContent>
           </Card>
 
@@ -220,7 +291,7 @@ const StaffFinances: React.FC = () => {
                 </div>
                 <div className="text-3xl">💰</div>
               </div>
-              <div className="mt-4">
+              <div className="mt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-500">
                   {summary.payrollVsRevenue.payrollPercentage}% of revenue
                 </p>
@@ -232,15 +303,10 @@ const StaffFinances: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Expenses</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.pendingExpenses}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Expenses (Company owes)</p>
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(summary.totalPendingExpenseAmount)}</p>
                 </div>
                 <div className="text-3xl">📋</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Total: {formatCurrency(summary.totalPendingExpenseAmount)}
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -255,11 +321,6 @@ const StaffFinances: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-3xl">📅</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Amount: {formatCurrency(summary.upcomingPayments.nextPayrollAmount)}
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -293,7 +354,7 @@ const StaffFinances: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'overview' && summary && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Payroll vs Revenue Chart */}
+          {/* Payroll vs Revenue */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -326,42 +387,55 @@ const StaffFinances: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Recent Activity */}
+          {/* Recent Expenses */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🔄 Recent Activity
+                🧾 Recent Expenses
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="text-green-600 dark:text-green-400">✅</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Payroll Processed</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">January payroll completed</p>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">2 days ago</span>
+              {expenses.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">📋</div>
+                  <p className="text-gray-500 dark:text-gray-400">No expenses found</p>
                 </div>
-                
-                <div className="flex items-center space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                  <div className="text-yellow-600 dark:text-yellow-400">⏳</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Expenses Pending</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">{summary.pendingExpenses} expenses awaiting approval</p>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">Today</span>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Employee</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Description</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Amount</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenses.map((expense) => (
+                        <tr key={expense.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
+                            {expense.employeeName}
+                          </td>
+                          <td className="py-3 px-4">{expense.description}</td>
+                          <td className="py-3 px-4 font-medium text-red-600 dark:text-red-400">
+                            {formatCurrency(expense.amount)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={getStatusColor(expense.status)}>
+                              {expense.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                            {formatDate(expense.expenseDate)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-blue-600 dark:text-blue-400">📈</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Salary Adjustments</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">{summary.recentSalaryAdjustments} recent adjustments</p>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">This month</span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -387,8 +461,8 @@ const StaffFinances: React.FC = () => {
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Period</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Gross Pay</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Net Pay</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Gross</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Net</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Run Date</th>
                     </tr>
                   </thead>
@@ -469,13 +543,8 @@ const StaffFinances: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-2">
-                            <span>{getCategoryIcon(expense.category)}</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">{expense.category}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
+                        <td className="py-3 px-4"><span className="text-sm text-gray-600 dark:text-gray-400">{expense.category}</span></td>
+                        <td className="py-3 px-4 font-medium text-red-600 dark:text-red-400">
                           {formatCurrency(expense.amount)}
                         </td>
                         <td className="py-3 px-4">
@@ -494,6 +563,76 @@ const StaffFinances: React.FC = () => {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Run Payroll Modal */}
+      {showPayrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">Run Payroll</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Pay period start</label>
+                <input type="date" className="input mt-1" value={payPeriodStart} onChange={e => setPayPeriodStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Pay period end</label>
+                <input type="date" className="input mt-1" value={payPeriodEnd} onChange={e => setPayPeriodEnd(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Notes</label>
+                <textarea className="input mt-1" value={payrollNotes} onChange={e => setPayrollNotes(e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200" onClick={() => setShowPayrollModal(false)}>Cancel</button>
+              <button disabled={submittingPayroll} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50" onClick={submitRunPayroll}>{submittingPayroll ? 'Running…' : 'Run payroll'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Expense Modal */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">New Expense</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Description</label>
+                <input className="input mt-1" value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Amount (CLP)</label>
+                <input type="number" className="input mt-1" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value === '' ? '' : Number(e.target.value))} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Category</label>
+                <select className="input mt-1" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)}>
+                  {['Travel','Meals','Office Supplies','Software','Training','Equipment','Other'].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Date</label>
+                <input type="date" className="input mt-1" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Receipt URL (optional)</label>
+                <input className="input mt-1" value={expenseReceiptUrl} onChange={e => setExpenseReceiptUrl(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-neutral-600 dark:text-neutral-300">Notes</label>
+                <textarea className="input mt-1" value={expenseNotes} onChange={e => setExpenseNotes(e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200" onClick={() => setShowExpenseModal(false)}>Cancel</button>
+              <button disabled={submittingExpense} className="px-4 py-2 rounded-lg bg-green-600 text-white disabled:opacity-50" onClick={submitNewExpense}>{submittingExpense ? 'Saving…' : 'Save expense'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
