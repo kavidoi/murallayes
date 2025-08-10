@@ -220,7 +220,7 @@ export class StaffFinanceController {
     }
   }
 
-  @Patch('expenses/:id/approve')
+  @Post('expenses/:id/approve')
   @Roles('admin', 'finance_manager', 'hr_manager')
   async approveExpense(@Param('id') id: string) {
     try {
@@ -238,7 +238,25 @@ export class StaffFinanceController {
     }
   }
 
-  @Patch('expenses/:id/reimburse')
+  @Post('expenses/:id/reject')
+  @Roles('admin', 'finance_manager', 'hr_manager')
+  async rejectExpense(@Param('id') id: string) {
+    try {
+      // TODO: Implement expense rejection in database
+      const expense = { id, status: 'REJECTED' };
+
+      return {
+        success: true,
+        expense,
+        message: 'Gasto rechazado'
+      };
+    } catch (error) {
+      console.error('Error rejecting expense:', error);
+      return { success: false, error: 'Error al rechazar gasto' };
+    }
+  }
+
+  @Post('expenses/:id/reimburse')
   @Roles('admin', 'finance_manager')
   async reimburseExpense(@Param('id') id: string) {
     try {
@@ -253,6 +271,28 @@ export class StaffFinanceController {
     } catch (error) {
       console.error('Error reimbursing expense:', error);
       return { success: false, error: 'Error al reembolsar gasto' };
+    }
+  }
+
+  @Post('expenses/:id')
+  @Roles('admin', 'finance_manager', 'hr_manager')
+  async updateEmployeeExpense(@Param('id') id: string, @Body() expenseData: any) {
+    try {
+      // TODO: Implement expense update in database
+      const updatedExpense = {
+        id,
+        ...expenseData,
+        updatedAt: new Date().toISOString()
+      };
+
+      return {
+        success: true,
+        expense: updatedExpense,
+        message: 'Gasto actualizado exitosamente'
+      };
+    } catch (error) {
+      console.error('Error updating employee expense:', error);
+      return { success: false, error: 'Error al actualizar gasto' };
     }
   }
 
