@@ -649,7 +649,6 @@ const RevenueExpenses: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 };

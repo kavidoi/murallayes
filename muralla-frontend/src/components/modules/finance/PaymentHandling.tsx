@@ -444,7 +444,6 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 };
