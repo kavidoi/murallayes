@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createMercadoPagoService } from '../../../services/mercadoPagoService';
 import MercadoPagoCheckout from './MercadoPagoCheckout';
+import PageHeader from '../../ui/PageHeader';
+import { Tabs } from '../../ui/Tabs';
 
 interface PaymentHandlingProps {
   onPaymentComplete?: (result: any) => void;
@@ -151,17 +153,12 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Payment Handling System
-          </h1>
-          <p className="text-gray-600">
-            MercadoPago integration for payment processing and transaction management
-          </p>
-        </div>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <PageHeader
+        title="Payment Handling System"
+        description="MercadoPago integration for payment processing and transaction management"
+      />
 
         {/* Configuration Status */}
         <div className="mb-6">
@@ -188,27 +185,14 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-3 py-2 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.name}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <Tabs
+        items={tabs.map(t => ({ id: t.id, label: t.name, icon: t.icon }))}
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+      />
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           {/* View Transactions Tab */}
           {activeTab === 'view' && (
             <div className="p-6">
