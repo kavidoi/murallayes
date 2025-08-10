@@ -14,7 +14,6 @@ import { InventoryModule } from './inventory/inventory.module';
 import { FinanceModule } from './finance/finance.module';
 import { PtoModule } from './pto/pto.module';
 import { WebsocketModule } from './websocket/websocket.module';
-import { ShiftsModule } from './shifts/shifts.module';
 import { QueueModule } from './queue/queue.module';
 import { HealthModule } from './health/health.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -73,7 +72,6 @@ class BootstrapService implements OnModuleInit {
     PtoModule,
     FinanceModule,
     WebsocketModule,
-    ShiftsModule, 
     QueueModule,
     HealthModule,
     CustomLoggerModule,

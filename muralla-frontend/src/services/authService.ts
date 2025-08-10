@@ -187,21 +187,6 @@ export class AuthService {
     }
   }
 
-  static async getCurrentUser(): Promise<any | null> {
-    try {
-      await this.ensureValidToken();
-      const res = await fetch(`${this.API_BASE_URL}/auth/me`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data?.user ?? null;
-    } catch (e) {
-      return null;
-    }
-  }
-  
   static debugToken(): void {
     const token = this.getToken();
     const refreshToken = this.getRefreshToken();
