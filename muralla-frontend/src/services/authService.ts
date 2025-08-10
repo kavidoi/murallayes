@@ -84,17 +84,31 @@ export class AuthService {
   }
 
   static async login(identifier: string, password: string): Promise<void> {
+    console.log('AuthService.login called with:', { identifier, hasPassword: !!password });
+    console.log('API_BASE_URL:', this.API_BASE_URL);
+    
     const res = await fetch(`${this.API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: identifier, password }),
     });
     
-    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    console.log('Login response status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Login failed response:', errorText);
+      throw new Error(`Login failed: ${res.status} - ${errorText}`);
+    }
     
     const data = await res.json();
+    console.log('Login response data:', { hasAccessToken: !!data?.access_token, hasRefreshToken: !!data?.refresh_token });
+    
     if (data?.access_token && data?.refresh_token) {
       this.setTokens(data.access_token, data.refresh_token);
+      console.log('Tokens set successfully');
+    } else {
+      throw new Error('Invalid response: missing tokens');
     }
   }
 

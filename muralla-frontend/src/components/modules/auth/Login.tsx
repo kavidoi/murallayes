@@ -13,11 +13,16 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
+    console.log('Login attempt:', { identifier, hasPassword: !!password });
+    
     try {
       await AuthService.login(identifier, password);
+      console.log('Login successful, navigating to dashboard');
       navigate('/');
     } catch (err: any) {
-      setError(err?.message || 'Login failed');
+      console.error('Login error:', err);
+      setError(err?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -29,14 +34,35 @@ export default function Login() {
         <h1 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Sign in</h1>
         <div className="space-y-1">
           <label className="text-sm text-neutral-600 dark:text-neutral-300">Email or Username</label>
-          <input className="input" value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="email or username" />
+          <input 
+            className="input" 
+            type="email"
+            autoComplete="username"
+            value={identifier} 
+            onChange={e => setIdentifier(e.target.value)} 
+            placeholder="email or username"
+            required
+          />
         </div>
         <div className="space-y-1">
           <label className="text-sm text-neutral-600 dark:text-neutral-300">Password</label>
-          <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="password" />
+          <input 
+            className="input" 
+            type="password" 
+            autoComplete="current-password"
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            placeholder="password"
+            required
+          />
         </div>
-        {error && <div className="text-sm text-red-600">{error}</div>}
-        <button disabled={loading} className="btn-primary w-full">{loading ? 'Signing in…' : 'Sign in'}</button>
+        {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</div>}
+        <button 
+          disabled={loading || !identifier || !password} 
+          className="btn-primary w-full disabled:opacity-50"
+        >
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
       </form>
     </div>
   );
