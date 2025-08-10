@@ -5,7 +5,7 @@
     "buildCommand": "pnpm install --prod=false && pnpm --filter muralla-frontend... build"
   },
   "deploy": {
-    "startCommand": "npx --yes serve -s muralla-frontend/dist -l $PORT",
+    "startCommand": "npx --yes serve -s dist -l $PORT",
     "healthcheckPath": "/",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
