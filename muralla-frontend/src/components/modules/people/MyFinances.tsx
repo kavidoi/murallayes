@@ -66,14 +66,15 @@ interface ExpenseFormData {
   companyPortion?: string;
 }
 
-interface PaymentFormData {
-  paymentType: 'ADVANCE' | 'REIMBURSEMENT' | 'EXPENSE_SETTLEMENT';
-  amount: string;
-  direction: 'TO_EMPLOYEE' | 'TO_COMPANY';
-  description: string;
-  paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'PAYROLL' | 'PETTY_CASH';
-  notes: string;
-}
+// PaymentFormData interface removed - will be implemented later if needed
+// interface PaymentFormData {
+//   paymentType: 'ADVANCE' | 'REIMBURSEMENT' | 'EXPENSE_SETTLEMENT';
+//   amount: string;
+//   direction: 'TO_EMPLOYEE' | 'TO_COMPANY';
+//   description: string;
+//   paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'PAYROLL' | 'PETTY_CASH';
+//   notes: string;
+// }
 
 const MyFinances: React.FC = () => {
   const [summary, setSummary] = useState<MyFinanceSummary | null>(null);
@@ -97,15 +98,16 @@ const MyFinances: React.FC = () => {
     settlementMethod: 'REIMBURSEMENT',
   });
   
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentForm, setPaymentForm] = useState<PaymentFormData>({
-    paymentType: 'ADVANCE',
-    amount: '',
-    direction: 'TO_EMPLOYEE',
-    description: '',
-    paymentMethod: 'BANK_TRANSFER',
-    notes: '',
-  });
+  // Payment form state removed - will be implemented later if needed
+  // const [showPaymentForm, setShowPaymentForm] = useState(false);
+  // const [paymentForm, setPaymentForm] = useState<PaymentFormData>({
+  //   paymentType: 'ADVANCE',
+  //   amount: '',
+  //   direction: 'TO_EMPLOYEE',
+  //   description: '',
+  //   paymentMethod: 'BANK_TRANSFER',
+  //   notes: '',
+  // });
 
   const categories = ['Travel', 'Meals', 'Office Supplies', 'Software', 'Training', 'Equipment', 'Other'];
 
