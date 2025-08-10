@@ -64,7 +64,6 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
-!muralla-backend/muralla-common-1.0.2.tgz
 
 # Yarn Integrity file
 .yarn-integrity
@@ -142,3 +141,9 @@ prisma/migrations/
 # Temp files
 *.tmp
 *.temp
+
+# Package manager lockfiles (enforce pnpm)
+package-lock.json
+**/package-lock.json
+yarn.lock
+**/yarn.lock

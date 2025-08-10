@@ -6,11 +6,11 @@
     "start:dev": "ts-node --transpile-only src/main.ts",
     "build": "tsc -p .",
     "start": "node dist/main.js",
-    "start:prod": "npm run build && npm run migrate:deploy && npm run start",
+    "start:prod": "pnpm run build && pnpm run migrate:deploy && pnpm run start",
     "seed": "ts-node prisma/seed.ts",
     "cli": "ts-node src/cli/seed.ts",
-    "bootstrap": "npm run cli bootstrap",
-    "reset-db": "npm run cli reset --confirm",
+    "bootstrap": "pnpm run cli bootstrap",
+    "reset-db": "pnpm run cli reset --confirm",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -30,10 +30,6 @@
   "engines": {
     "node": "^20.19.0",
     "pnpm": ">=8.0.0"
-  },
-  "config": {
-    "ADMIN_EMAIL": "contacto@murallacafe.cl",
-    "ADMIN_PASSWORD": "Muralla2025"
   },
   "description": "",
   "devDependencies": {

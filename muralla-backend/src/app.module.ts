@@ -37,12 +37,17 @@ import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 class BootstrapService implements OnModuleInit {
   constructor(private users: UsersService) {}
   async onModuleInit() {
-    const email = process.env.ADMIN_EMAIL || 'contacto@murallacafe.cl';
-    const password = process.env.ADMIN_PASSWORD || 'Muralla2025';
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
     try {
-      await this.users.findOrCreateAdmin(email, password);
-      // eslint-disable-next-line no-console
-      console.log(`Admin ensured: ${email}`);
+      if (email && password) {
+        await this.users.findOrCreateAdmin(email, password);
+        // eslint-disable-next-line no-console
+        console.log(`Admin ensured from env: ${email}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.warn('ADMIN_EMAIL/ADMIN_PASSWORD not set; skipping admin bootstrap');
+      }
     } catch (e) {
       console.error('Failed to ensure admin user', e);
     }

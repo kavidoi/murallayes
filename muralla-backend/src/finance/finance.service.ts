@@ -45,7 +45,7 @@ export class FinanceService {
   }
 
   async findBankAccount(id: string) {
-    const account = await this.prisma.bankAccount.findUnique({
+    const account = await this.prisma.bankAccount.findFirst({
       where: { id, isDeleted: false },
       include: {
         transactions: {
@@ -135,7 +135,7 @@ export class FinanceService {
   }
 
   async findTransaction(id: string) {
-    const transaction = await this.prisma.transaction.findUnique({
+    const transaction = await this.prisma.transaction.findFirst({
       where: { id, isDeleted: false },
       include: {
         account: true,
