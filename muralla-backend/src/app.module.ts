@@ -37,7 +37,7 @@ import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 class BootstrapService implements OnModuleInit {
   constructor(private users: UsersService) {}
   async onModuleInit() {
-    const email = process.env.ADMIN_EMAIL || 'contacto@murallayes.com';
+    const email = process.env.ADMIN_EMAIL || 'contacto@murallacafe.cl';
     const password = process.env.ADMIN_PASSWORD || 'Muralla2025';
     try {
       await this.users.findOrCreateAdmin(email, password);

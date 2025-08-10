@@ -52,7 +52,7 @@ async function bootstrap() {
     // Development origins (only in non-production)
     ...(isProd ? [] : ['http://localhost:5173', 'http://localhost:3000']),
     // Production HTTPS origins
-    process.env.ADMIN_APP_URL || 'https://admin.murallayes.com',
+    'https://admin.murallacafe.cl',
     // Railway automatic domains (HTTPS only)
     ...(process.env.RAILWAY_PUBLIC_DOMAIN ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`] : []),
   ];

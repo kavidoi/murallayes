@@ -34,7 +34,7 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
     amount: 5000,
     title: 'Test Payment',
     description: 'Testing MercadoPago integration compliance',
-    customerEmail: 'test@murallayes.com'
+    customerEmail: 'test@murallacafe.cl'
   });
 
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;

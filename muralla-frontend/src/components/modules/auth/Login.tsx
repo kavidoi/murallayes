@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthService } from '../../../services/authService';
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState('contacto@murallayes.com');
+  const [identifier, setIdentifier] = useState('contacto@murallacafe.cl');
   const [password, setPassword] = useState('Muralla2025');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

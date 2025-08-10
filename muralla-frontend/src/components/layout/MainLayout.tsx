@@ -107,7 +107,6 @@ interface MainLayoutProps {
 export default function MainLayout({ children, darkMode, toggleDarkMode }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const BRAND_NAME = (import.meta as any).env?.VITE_BRAND_NAME || 'murallayes';
 
   const navigationItems: NavigationItem[] = [
     { name: 'Home Hub', path: '/', icon: <HomeIcon /> },
@@ -271,7 +270,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-6 border-b border-neutral-200 dark:border-neutral-700">
             <span className="text-xl font-display font-semibold text-primary-600 dark:text-primary-400">
-              {BRAND_NAME}
+              Muralla Org
             </span>
           </div>
 

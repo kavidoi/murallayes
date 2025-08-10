@@ -28,11 +28,11 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": ">=18.17.0",
+    "node": "^20.19.0",
     "pnpm": ">=8.0.0"
   },
   "config": {
-    "ADMIN_EMAIL": "contacto@murallayes.com",
+    "ADMIN_EMAIL": "contacto@murallacafe.cl",
     "ADMIN_PASSWORD": "Muralla2025"
   },
   "description": "",

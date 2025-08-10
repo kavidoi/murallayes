@@ -54,3 +54,14 @@ Frontend also supports `VITE_ENABLE_DEMO=true` for a temporary demo token (dev/s
 | 401s from API | Missing JWT token | Authenticate (`/auth/login`) or enable demo flag |
 
 Happy shipping 🚀
+
+## 7 · Node version policy (must-read)
+
+To avoid EBADENGINE warnings and flaky builds, the repo is pinned to Node 20.19.0 across local, CI and Railway.
+
+- Root `.nvmrc` and `muralla-frontend/.nvmrc` are set to `20.19.0`.
+- Root `package.json` and each workspace `package.json` specify `"engines.node": "^20.19.0"`.
+- `muralla-frontend/nixpacks.toml` and `muralla-backend/nixpacks.toml` set `NODE_VERSION = "20.19.0"`.
+- Root `.npmrc` enables `engine-strict=true` to fail fast if a mismatched Node is used.
+
+If you need to bump Node, change all of the above in a single PR to keep environments unified.
