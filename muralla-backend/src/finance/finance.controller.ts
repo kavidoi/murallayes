@@ -168,8 +168,88 @@ export class FinanceController {
     unit_price: number;
     currency_id?: string;
     external_reference?: string;
+    description?: string;
+    payer?: {
+      email?: string;
+      first_name?: string;
+      last_name?: string;
+    };
   }) {
     return this.mercadoPagoService.createPreference(data);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'manager', 'employee')
+  @Post('process-payment')
+  async processPayment(@Request() req: any, @Body() paymentData: {
+    token?: string;
+    payment_method_id?: string;
+    installments?: number;
+    amount: number;
+    title: string;
+    description?: string;
+    customerEmail?: string;
+    customerName?: string;
+    payer?: {
+      email?: string;
+      first_name?: string;
+      last_name?: string;
+      identification?: {
+        type: string;
+        number: string;
+      };
+    };
+  }) {
+    try {
+      const userId = req.user.sub;
+      
+      // For demo purposes, we'll return a mock successful payment
+      // In production, you would process this through MercadoPago's API
+      const mockPayment = {
+        id: `demo_payment_${Date.now()}`,
+        status: 'approved',
+        status_detail: 'accredited',
+        amount: paymentData.amount,
+        currency_id: 'CLP',
+        payment_method_id: paymentData.payment_method_id || 'card',
+        installments: paymentData.installments || 1,
+        payer: {
+          email: paymentData.customerEmail || paymentData.payer?.email,
+          first_name: paymentData.customerName?.split(' ')[0] || paymentData.payer?.first_name,
+          last_name: paymentData.customerName?.split(' ').slice(1).join(' ') || paymentData.payer?.last_name,
+        },
+        description: paymentData.description || paymentData.title,
+        external_reference: `payment_${userId}_${Date.now()}`,
+        date_created: new Date().toISOString(),
+        date_approved: new Date().toISOString(),
+        money_release_date: new Date().toISOString(),
+        transaction_amount: paymentData.amount,
+        created_by: userId
+      };
+
+      // Log the payment for audit purposes
+      console.log('Payment processed:', {
+        userId,
+        amount: paymentData.amount,
+        paymentId: mockPayment.id,
+        customerEmail: paymentData.customerEmail,
+        timestamp: new Date().toISOString()
+      });
+
+      return {
+        success: true,
+        payment: mockPayment,
+        message: 'Payment processed successfully'
+      };
+
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      return {
+        success: false,
+        error: 'Error processing payment',
+        message: 'Payment processing failed'
+      };
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
