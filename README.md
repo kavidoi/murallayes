@@ -1,4 +1,4 @@
-# Muralla 4.0 Monorepo
+# murallayes Monorepo
 
 > NestJS • React • Prisma • BullMQ • PostgreSQL • Redis • Railway
 
@@ -7,7 +7,7 @@
 | Package / Folder | Description |
 |------------------|-------------|
 | `muralla-backend` | NestJS API, GraphQL, authentication, BullMQ queues, Prisma ORM |
-| `muralla-frontend` | React + Vite SPA served as static files |
+| `muralla-frontend` | React + Vite SPA served as static files (Brand: murallayes) |
 | `packages/common` | Shared TypeScript utilities & DTOs |
 | `scripts` | Bash helpers for Railway automation |
 

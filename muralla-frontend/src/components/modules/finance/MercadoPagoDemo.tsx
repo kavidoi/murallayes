@@ -9,7 +9,7 @@ const MercadoPagoDemo: React.FC = () => {
   const [demoSettings, setDemoSettings] = useState({
     amount: 200,
     title: 'Payment Demo - $200',
-    customerEmail: 'demo@murallacafe.cl',
+    customerEmail: 'demo@murallayes.com',
     customerName: 'Demo Customer',
     theme: 'default' as 'default' | 'dark' | 'bootstrap' | 'flat'
   });

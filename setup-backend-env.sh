@@ -7,7 +7,7 @@ echo "Setting up Backend Environment Variables..."
 echo "1. Link to backend service:"
 echo "railway link"
 echo "   -> Select: kavidoi's Projects"
-echo "   -> Select: murallayes" 
+echo "   -> Select: murallayes"
 echo "   -> Select: production"
 echo "   -> Select: Backend"
 
