@@ -9,7 +9,8 @@ interface PaymentStatusProps {
 
 const PaymentStatus: React.FC<PaymentStatusProps> = ({
   paymentId,
-  onStatusUpdate,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onStatusUpdate, // Used for status callbacks
   theme = 'default'
 }) => {
   const statusBrickRef = useRef<HTMLDivElement>(null);
@@ -62,6 +63,11 @@ const PaymentStatus: React.FC<PaymentStatusProps> = ({
       await service.createStatusBrick('status-brick-container', {
         paymentId
       });
+
+      // Call onStatusUpdate callback with initial load status
+      if (onStatusUpdate) {
+        onStatusUpdate('loaded');
+      }
 
       setIsLoading(false);
     } catch (error) {
