@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
@@ -31,6 +31,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UsersService } from './users/users.service';
+import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
@@ -108,4 +109,11 @@ class BootstrapService implements OnModuleInit {
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply HTTPS redirect middleware to all routes
+    consumer
+      .apply(HttpsRedirectMiddleware)
+      .forRoutes('*');
+  }
+}

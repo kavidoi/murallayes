@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AuthService } from '../../../services/authService';
+import PageHeader from '../../ui/PageHeader';
+import { Tabs } from '../../ui/Tabs';
+import { StatCard } from '../../ui/StatCard';
 
 // Interfaces matching backend
 interface RevenueEntry {
@@ -267,104 +270,33 @@ const RevenueExpenses: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Revenue & Expenses</h1>
-          <p className="text-gray-600 dark:text-gray-400">Comprehensive financial tracking and analysis</p>
-        </div>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <PageHeader
+        title="Revenue & Expenses"
+        description="Comprehensive financial tracking and analysis"
+      />
 
-        {/* Navigation Tabs */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
-            {[
-              { id: 'overview', label: 'Overview', icon: '📊' },
-              { id: 'revenue', label: 'Revenue', icon: '💰' },
-              { id: 'expenses', label: 'Expenses', icon: '💸' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center px-3 py-2 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      {/* Navigation Tabs */}
+      <Tabs
+        items={[
+          { id: 'overview', label: 'Overview', icon: '📊' },
+          { id: 'revenue', label: 'Revenue', icon: '💰' },
+          { id: 'expenses', label: 'Expenses', icon: '💸' },
+        ]}
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+      />
 
         {/* Overview Tab */}
         {activeTab === 'overview' && summary && (
           <div className="space-y-6">
-            {/* Financial Summary Cards */}
+            {/* Financial Summary Cards (Bank Account style) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-               <div className="flex items-center">
-                 <div className="flex-shrink-0">
-                   <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                     <span className="text-green-600 dark:text-green-400 text-lg">💰</span>
-                   </div>
-                 </div>
-                 <div className="ml-4">
-                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Revenue</p>
-                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalRevenue)}</p>
-                 </div>
-               </div>
-             </div>
-
-                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                 <div className="flex items-center">
-                   <div className="flex-shrink-0">
-                     <div className="w-8 h-8 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
-                       <span className="text-red-600 dark:text-red-400 text-lg">💸</span>
-                     </div>
-                   </div>
-                   <div className="ml-4">
-                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</p>
-                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalExpenses)}</p>
-                   </div>
-                 </div>
-               </div>
-
-                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                 <div className="flex items-center">
-                   <div className="flex-shrink-0">
-                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                       summary.netProfit >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
-                     }`}>
-                       <span className={`text-lg ${summary.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                         {summary.netProfit >= 0 ? '📈' : '📉'}
-                       </span>
-                     </div>
-                   </div>
-                   <div className="ml-4">
-                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Profit</p>
-                     <p className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                       {formatCurrency(summary.netProfit)}
-                     </p>
-                   </div>
-                 </div>
-               </div>
-
-                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                 <div className="flex items-center">
-                   <div className="flex-shrink-0">
-                     <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                       <span className="text-blue-600 dark:text-blue-400 text-lg">🏦</span>
-                     </div>
-                   </div>
-                   <div className="ml-4">
-                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Bank Balance</p>
-                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.bankBalance)}</p>
-                   </div>
-                 </div>
-               </div>
+              <StatCard title="Total Revenue" value={formatCurrency(summary.totalRevenue)} subtitle={summary.period} color="green" />
+              <StatCard title="Total Expenses" value={formatCurrency(summary.totalExpenses)} subtitle={summary.period} color="red" />
+              <StatCard title="Net Profit" value={formatCurrency(summary.netProfit)} subtitle={summary.period} color={summary.netProfit >= 0 ? 'green' : 'red'} />
+              <StatCard title="Bank Balance" value={formatCurrency(summary.bankBalance)} subtitle="Current" color="purple" />
             </div>
 
             {/* Category Breakdowns */}

@@ -1,8 +1,10 @@
+import { HttpsUtils } from '../utils/https';
+
 // Advanced auth service with automatic token refresh
 export class AuthService {
   private static readonly TOKEN_KEY = 'authToken';
   private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
-  private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  private static readonly API_BASE_URL = HttpsUtils.getApiBaseUrl();
   private static refreshPromise: Promise<void> | null = null;
 
   static getToken(): string {
