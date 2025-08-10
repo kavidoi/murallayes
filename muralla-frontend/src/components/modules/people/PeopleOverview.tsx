@@ -8,7 +8,7 @@ const PeopleOverview: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            People & Roles
+            Staff
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Organizational talent cockpit - manage your team, shifts, and performance

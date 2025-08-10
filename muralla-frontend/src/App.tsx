@@ -97,6 +97,16 @@ function App() {
             <Routes>
               <Route index element={<Dashboard />} />
               
+              {/* My (user-centric) Routes */}
+              <Route path="/me" element={<PlaceholderPage title="My Hub" description="Personal view: PTO, finances, shifts, sales, products, calendar" icon="🙋" />} />
+              <Route path="/me/pto" element={<PTO />} />
+              <Route path="/me/finances" element={<PlaceholderPage title="My Finances" description="Commissions, payments owed, reimbursements" icon="💳" />} />
+              <Route path="/me/shifts" element={<PlaceholderPage title="My Shifts" description="Your scheduled and past shifts" icon="⏰" />} />
+              <Route path="/me/data" element={<PlaceholderPage title="My Data" description="Personal data, profile, documents" icon="🪪" />} />
+              <Route path="/me/sales" element={<PlaceholderPage title="My Sales" description="Your sales performance and history" icon="📈" />} />
+              <Route path="/me/products" element={<PlaceholderPage title="My Products" description="Products managed or associated to you" icon="🏷️" />} />
+              <Route path="/me/calendar" element={<PlaceholderPage title="My Calendar" description="Your events and scheduling" icon="📅" />} />
+              
               {/* Knowledge Hub Routes */}
               <Route path="/knowledge" element={<KnowledgeOverview />} />
               <Route path="/knowledge/policies" element={<PlaceholderPage title="Policies & SOPs" description="Company policies, procedures, and compliance documentation" icon="📋" />} />
@@ -111,12 +121,12 @@ function App() {
               <Route path="/projects/backlog" element={<PlaceholderPage title="Backlog" description="Product backlog and sprint planning" icon="📝" />} />
               <Route path="/projects/goals" element={<PlaceholderPage title="Goal Tree" description="Hierarchical goal tracking and OKRs" icon="🎯" />} />
               
-              {/* People & Roles Routes */}
-              <Route path="/people" element={<PeopleOverview />} />
-              <Route path="/people/directory" element={<TeamDirectory />} />
-              <Route path="/people/shifts" element={<PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" />} />
-              <Route path="/people/pto" element={<PTO />} />
-              <Route path="/people/finances" element={<StaffFinances />} />
+              {/* Staff Routes (organization perspective) */}
+              <Route path="/staff" element={<PeopleOverview />} />
+              <Route path="/staff/directory" element={<TeamDirectory />} />
+              <Route path="/staff/shifts" element={<PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" />} />
+              <Route path="/staff/pto" element={<PlaceholderPage title="PTO / Time-Off" description="Overview of all staff time-off requests" icon="🏖️" />} />
+              <Route path="/staff/finances" element={<StaffFinances />} />
               
               {/* Finance & Analytics Routes */}
               <Route path="/finance" element={<FinanceDashboard />} />
