@@ -8,13 +8,11 @@ import FinanceDashboard from './components/modules/finance/FinanceDashboard'
 import PeopleOverview from './components/modules/people/PeopleOverview'
 import TeamDirectory from './components/modules/people/TeamDirectory'
 import StaffFinances from './components/modules/people/StaffFinances'
+import MyFinances from './components/modules/people/MyFinances'
 import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
 import BankAccount from './components/modules/finance/BankAccount'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
-import MyFinances from './components/modules/people/MyFinances'
-import MyShifts from './components/modules/people/MyShifts'
-import OrgShifts from './components/modules/people/OrgShifts'
 import { AuthService } from './services/authService'
 
 function App() {
@@ -104,7 +102,7 @@ function App() {
               <Route path="/me" element={<PlaceholderPage title="My Hub" description="Personal view: PTO, finances, shifts, sales, products, calendar" icon="🙋" />} />
               <Route path="/me/pto" element={<PTO />} />
               <Route path="/me/finances" element={<MyFinances />} />
-              <Route path="/me/shifts" element={<MyShifts />} />
+              <Route path="/me/shifts" element={<PlaceholderPage title="My Shifts" description="Your scheduled and past shifts" icon="⏰" />} />
               <Route path="/me/data" element={<PlaceholderPage title="My Data" description="Personal data, profile, documents" icon="🪪" />} />
               <Route path="/me/sales" element={<PlaceholderPage title="My Sales" description="Your sales performance and history" icon="📈" />} />
               <Route path="/me/products" element={<PlaceholderPage title="My Products" description="Products managed or associated to you" icon="🏷️" />} />
@@ -127,7 +125,7 @@ function App() {
               {/* Staff Routes (organization perspective) */}
               <Route path="/staff" element={<PeopleOverview />} />
               <Route path="/staff/directory" element={<TeamDirectory />} />
-              <Route path="/staff/shifts" element={<OrgShifts />} />
+              <Route path="/staff/shifts" element={<PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" />} />
               <Route path="/staff/pto" element={<PlaceholderPage title="PTO / Time-Off" description="Overview of all staff time-off requests" icon="🏖️" />} />
               <Route path="/staff/finances" element={<StaffFinances />} />
               
