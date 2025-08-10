@@ -4,6 +4,7 @@ import MainLayout from './components/layout/MainLayout'
 import Dashboard from './components/modules/dashboard/Dashboard'
 import Login from './components/modules/auth/Login'
 import PaymentBrick from './components/modules/finance/PaymentBrick'
+import PaymentHandling from './components/modules/finance/PaymentHandling'
 import FinanceDashboard from './components/modules/finance/FinanceDashboard'
 import PeopleOverview from './components/modules/people/PeopleOverview'
 import TeamDirectory from './components/modules/people/TeamDirectory'
@@ -134,6 +135,7 @@ function App() {
               <Route path="/finance" element={<FinanceDashboard />} />
               <Route path="/finance/bank" element={<BankAccount />} />
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
+              <Route path="/finance/payments" element={<PaymentHandling />} />
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" />} />
               <Route path="/finance/budgets" element={<PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" />} />

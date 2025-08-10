@@ -1,7 +1,9 @@
 /**
  * MercadoPago SDK V2 Service
- * Official integration with MercadoPago.js V2
+ * Official integration with MercadoPago.js V2 using the official npm package
  */
+
+import { loadMercadoPago } from '@mercadopago/sdk-js';
 
 interface MercadoPagoConfig {
   publicKey: string;
@@ -110,40 +112,21 @@ export class MercadoPagoService {
   }
 
   /**
-   * Load MercadoPago SDK V2
+   * Load MercadoPago SDK V2 using official npm package
    */
   async loadSDK(): Promise<void> {
     if (this.sdkLoaded && window.MercadoPago) {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
-      if (window.MercadoPago) {
-        this.sdkLoaded = true;
-        this.initializeMercadoPago();
-        return resolve();
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.async = true;
-      script.onload = () => {
-        this.sdkLoaded = true;
-        this.initializeMercadoPago();
-        resolve();
-      };
-      script.onerror = () => {
-        reject(new Error('Failed to load MercadoPago SDK V2'));
-      };
-
-      // Remove existing script if any
-      const existingScript = document.querySelector('script[src="https://sdk.mercadopago.com/js/v2"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-
-      document.head.appendChild(script);
-    });
+    try {
+      // Load using the official npm package
+      await loadMercadoPago();
+      this.sdkLoaded = true;
+      this.initializeMercadoPago();
+    } catch (error) {
+      throw new Error(`Failed to load MercadoPago SDK V2: ${error}`);
+    }
   }
 
   private initializeMercadoPago(): void {

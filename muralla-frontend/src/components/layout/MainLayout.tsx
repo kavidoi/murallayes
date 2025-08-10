@@ -163,6 +163,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       icon: <FinanceIcon />,
       children: [
         { name: 'Bank Account', path: '/finance/bank' },
+        { name: 'Payment Handling', path: '/finance/payments' },
         { name: 'Revenue & Expenses', path: '/finance/revenue-expenses' },
         { name: 'Taxes & VAT', path: '/finance/taxes' },
         { name: 'Budgets', path: '/finance/budgets' },
