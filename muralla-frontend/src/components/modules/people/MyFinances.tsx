@@ -123,7 +123,7 @@ const MyFinances: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Finances</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Reimbursements and expenses linked to your work</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Reimbursements and expenses linked to your work{user?.username ? ` — ${user.username}` : ''}</p>
         </div>
         <button onClick={openNewExpense} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">New Expense</button>
       </div>
