@@ -59,6 +59,15 @@ interface PayrollFormData {
   notes: string;
 }
 
+interface ExpenseFormData {
+  employeeId: string;
+  description: string;
+  amount: string;
+  category: string;
+  expenseDate: string;
+  notes: string;
+}
+
 const StaffFinances: React.FC = () => {
   const [summary, setSummary] = useState<StaffFinanceSummary | null>(null);
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
@@ -74,6 +83,14 @@ const StaffFinances: React.FC = () => {
   const [payrollForm, setPayrollForm] = useState<PayrollFormData>({
     payPeriodStart: '',
     payPeriodEnd: '',
+    notes: '',
+  });
+  const [expenseForm, setExpenseForm] = useState<ExpenseFormData>({
+    employeeId: '',
+    description: '',
+    amount: '',
+    category: 'Other',
+    expenseDate: new Date().toISOString().split('T')[0],
     notes: '',
   });
 
@@ -205,6 +222,54 @@ const StaffFinances: React.FC = () => {
       console.error('Error reimbursing expense:', err);
       setError(err instanceof Error ? err.message : 'Failed to reimburse expense');
     }
+  };
+
+  const handleSubmitExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingExpense) {
+        await AuthService.apiCall(`/api/staff-finance/expenses/${editingExpense.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(expenseForm),
+        });
+      } else {
+        await AuthService.apiCall('/api/staff-finance/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(expenseForm),
+        });
+      }
+
+      // Reset form and refresh data
+      setExpenseForm({
+        employeeId: '',
+        description: '',
+        amount: '',
+        category: 'Other',
+        expenseDate: new Date().toISOString().split('T')[0],
+        notes: '',
+      });
+      setShowExpenseForm(false);
+      setEditingExpense(null);
+      fetchStaffFinanceData();
+    } catch (err) {
+      console.error('Error saving expense:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save expense');
+    }
+  };
+
+  const handleEditExpense = (expense: EmployeeExpense) => {
+    setEditingExpense(expense);
+    setExpenseForm({
+      employeeId: expense.employeeId,
+      description: expense.description,
+      amount: expense.amount.toString(),
+      category: expense.category,
+      expenseDate: expense.expenseDate.split('T')[0],
+      notes: expense.notes || '',
+    });
+    setShowExpenseForm(true);
   };
 
   if (loading) {
@@ -399,6 +464,111 @@ const StaffFinances: React.FC = () => {
                     setPayrollForm({
                       payPeriodStart: '',
                       payPeriodEnd: '',
+                      notes: '',
+                    });
+                  }}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Expense Form Modal */}
+      {showExpenseForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              {editingExpense ? 'Edit Expense' : 'New Employee Expense'}
+            </h3>
+            <form onSubmit={handleSubmitExpense} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Employee ID</label>
+                <input
+                  type="text"
+                  required
+                  value={expenseForm.employeeId}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, employeeId: e.target.value })}
+                  className="input mt-1 w-full"
+                  placeholder="Employee ID"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                <input
+                  type="text"
+                  required
+                  value={expenseForm.description}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                  className="input mt-1 w-full"
+                  placeholder="Expense description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                  className="input mt-1 w-full"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                <select
+                  value={expenseForm.category}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                  className="input mt-1 w-full"
+                >
+                  {['Travel', 'Meals', 'Office Supplies', 'Software', 'Training', 'Equipment', 'Other'].map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={expenseForm.expenseDate}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })}
+                  className="input mt-1 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                <textarea
+                  value={expenseForm.notes}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })}
+                  className="input mt-1 w-full"
+                  rows={3}
+                  placeholder="Additional notes"
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-1"
+                >
+                  {editingExpense ? 'Update' : 'Create'} Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExpenseForm(false);
+                    setEditingExpense(null);
+                    setExpenseForm({
+                      employeeId: '',
+                      description: '',
+                      amount: '',
+                      category: 'Other',
+                      expenseDate: new Date().toISOString().split('T')[0],
                       notes: '',
                     });
                   }}
@@ -637,6 +807,12 @@ const StaffFinances: React.FC = () => {
                           <div className="flex space-x-2">
                             {expense.status === 'PENDING' && (
                               <>
+                                <button
+                                  onClick={() => handleEditExpense(expense)}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                >
+                                  Edit
+                                </button>
                                 <button
                                   onClick={() => handleApproveExpense(expense.id)}
                                   className="text-green-600 hover:text-green-800 text-sm font-medium"
