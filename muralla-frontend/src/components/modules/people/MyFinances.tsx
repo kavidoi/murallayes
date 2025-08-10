@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { AuthService } from '../../../services/authService';
+import PageHeader from '../../ui/PageHeader';
+import { Tabs } from '../../ui/Tabs';
+import { StatCard } from '../../ui/StatCard';
 
 // Types for My Finance API
 interface MyFinanceSummary {
@@ -295,123 +298,39 @@ const MyFinances: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Finances</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Personal view of earnings, commissions, and expenses
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <button 
+      <PageHeader
+        title="My Finances"
+        description="Personal view of earnings, commissions, and expenses"
+        actions={(
+          <button
             onClick={() => setShowExpenseForm(true)}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
           >
             New Expense
           </button>
-        </div>
-      </div>
+        )}
+      />
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Base Salary</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.monthlyBaseSalary)}</p>
-                </div>
-                <div className="text-3xl">💼</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Monthly base compensation
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">This Month</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(summary.totalEarningsThisMonth)}
-                  </p>
-                </div>
-                <div className="text-3xl">💰</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Total earnings this month
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Commissions</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(summary.commissionsPending)}</p>
-                </div>
-                <div className="text-3xl">🎯</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-green-600 dark:text-green-400">
-                  Owed to you
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Reimbursements</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(summary.reimbursementsPending)}
-                  </p>
-                </div>
-                <div className="text-3xl">🧾</div>
-              </div>
-              <div className="mt-4">
-                <p className="text-xs text-green-600 dark:text-green-400">
-                  Owed to you for expenses
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard title="Base Salary" value={formatCurrency(summary.monthlyBaseSalary)} subtitle="Monthly base compensation" color="blue" />
+          <StatCard title="This Month" value={formatCurrency(summary.totalEarningsThisMonth)} subtitle="Total earnings this month" color="green" />
+          <StatCard title="Pending Commissions" value={formatCurrency(summary.commissionsPending)} subtitle="Owed to you" color="green" />
+          <StatCard title="Pending Reimbursements" value={formatCurrency(summary.reimbursementsPending)} subtitle="Owed to you for expenses" color="purple" />
         </div>
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { id: 'overview', label: 'Overview', icon: '📊' },
-            { id: 'payroll', label: 'My Payments', icon: '💳' },
-            { id: 'expenses', label: 'My Expenses', icon: '🧾' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
+      <Tabs
+        items={[
+          { id: 'overview', label: 'Overview', icon: '📊' },
+          { id: 'payroll', label: 'My Payments', icon: '💳' },
+          { id: 'expenses', label: 'My Expenses', icon: '🧾' },
+        ]}
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+      />
 
       {/* Expense Form Modal */}
       {showExpenseForm && (
