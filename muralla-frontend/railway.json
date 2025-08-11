@@ -5,6 +5,7 @@
   },
   "deploy": {
     "startCommand": "npx --yes serve -s dist -l $PORT",
+    "preDeployCommand": "pnpm -C muralla-frontend run build",
     "healthcheckPath": "/",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",

@@ -1,0 +1,59 @@
+FROM node:20-alpine AS base
+
+# Install pnpm directly without corepack
+RUN npm install -g pnpm@8.15.5
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+# Copy root manifest and workspace layout
+COPY package.json pnpm-workspace.yaml ./
+COPY muralla-backend/package.json muralla-backend/
+COPY packages ./packages
+
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Install build-time tools
+RUN pnpm add -D prisma typescript
+
+# Generate Prisma client
+RUN pnpm --filter @muralla/common build && pnpm --filter muralla-backend exec prisma generate
+
+# Build the application
+RUN pnpm --filter muralla-backend run build
+
+# Production stage
+FROM node:20-alpine AS production
+
+# Install pnpm directly without corepack
+RUN npm install -g pnpm@8.15.5
+
+# Create app user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy production dependencies and build artifacts from base stage
+COPY --from=base --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/dist ./muralla-backend/dist
+COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/package.json ./muralla-backend/package.json
+
+# Switch to non-root user
+USER nestjs
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health/healthz', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start the application
+CMD ["node", "muralla-backend/dist/main.js"]

@@ -113,7 +113,8 @@ dist/
 .pnp.*
 
 # Docker
-Dockerfile*
+# Allow Dockerfiles to be committed for CI builds
+# (still ignore docker-compose overrides if desired)
 docker-compose*.yml
 
 # Environment files

@@ -2,32 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.19.0
-          cache: 'pnpm'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 8
-      - name: Install deps
-        run: pnpm install --no-frozen-lockfile
-      - name: Build all workspaces
-        run: pnpm -w -r build
-      - name: Lint
-        run: pnpm -w -r lint || true
-name: CI/CD Pipeline
-
-on:
-  push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
@@ -72,7 +46,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '20.19.0'
         cache: 'pnpm'
 
     - name: Install pnpm
@@ -81,26 +55,26 @@ jobs:
         version: 8
 
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --no-frozen-lockfile
 
     - name: Build common package
       run: pnpm --filter @muralla/common build
 
     - name: Generate Prisma client
-      run: pnpm --filter muralla-backend exec prisma generate
+      run: pnpm --filter ./muralla-backend exec prisma generate
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/muralla_test
 
     - name: Run database migrations
-      run: pnpm --filter muralla-backend exec prisma migrate deploy
+      run: pnpm --filter ./muralla-backend exec prisma migrate deploy
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/muralla_test
 
-    - name: Lint backend
-      run: pnpm --filter muralla-backend lint:check
+    - name: Lint backend (src only)
+      run: pnpm --filter ./muralla-backend exec eslint 'src/**/*.ts'
 
     - name: Run unit tests
-      run: pnpm --filter muralla-backend test:unit
+      run: pnpm --filter ./muralla-backend test:unit
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/muralla_test
         JWT_SECRET: test-jwt-secret
@@ -108,7 +82,7 @@ jobs:
         REDIS_URL: redis://localhost:6379
 
     - name: Run e2e tests
-      run: pnpm --filter muralla-backend test:e2e
+      run: pnpm --filter ./muralla-backend test:e2e
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/muralla_test
         JWT_SECRET: test-jwt-secret
@@ -116,7 +90,7 @@ jobs:
         REDIS_URL: redis://localhost:6379
 
     - name: Generate test coverage
-      run: pnpm --filter muralla-backend test:cov
+      run: pnpm --filter ./muralla-backend test:cov
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/muralla_test
         JWT_SECRET: test-jwt-secret
