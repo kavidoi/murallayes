@@ -4,8 +4,8 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "pnpm -C muralla-backend run start",
-    "preDeployCommand": "pnpm --filter @muralla/common build && pnpm -C muralla-backend run build && pnpm -C muralla-backend exec prisma generate && pnpm -C muralla-backend exec prisma migrate deploy",
+    "startCommand": "pnpm run start",
+    "preDeployCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm -C .. --filter @muralla/common build && pnpm run build && pnpm exec prisma generate && pnpm exec prisma migrate deploy",
     "healthcheckPath": "/health/healthz",
     "healthcheckTimeout": 300,
     "numReplicas": 1,

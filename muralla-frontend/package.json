@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "packageManager": "pnpm@8.15.0",
   "dependencies": {
     "@mercadopago/sdk-js": "^0.0.3",
     "react": "^19.1.0",
