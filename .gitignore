@@ -64,6 +64,8 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
+# Allow vendored tarballs for backend deploy
+!muralla-backend/vendor/*.tgz
 
 # Yarn Integrity file
 .yarn-integrity

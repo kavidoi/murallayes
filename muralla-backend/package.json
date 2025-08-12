@@ -64,7 +64,7 @@
     "@graphql-tools/load-files": "^7.0.1",
     "@graphql-tools/merge": "^9.1.1",
     "@graphql-tools/schema": "^10.0.25",
-    "@muralla/common": "workspace:*",
+    "@muralla/common": "file:vendor/muralla-common-1.0.2.tgz",
     "@nestjs/apollo": "^13.1.0",
     "@nestjs/bull": "^11.0.3",
     "@nestjs/common": "^11.1.5",

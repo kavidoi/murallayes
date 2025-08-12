@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "pnpm run start",
-    "preDeployCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm -C .. --filter @muralla/common build && pnpm run build && pnpm exec prisma generate && pnpm exec prisma migrate deploy",
+    "preDeployCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm run build && pnpm exec prisma generate && pnpm exec prisma migrate deploy",
     "healthcheckPath": "/health/healthz",
     "healthcheckTimeout": 300,
     "numReplicas": 1,
