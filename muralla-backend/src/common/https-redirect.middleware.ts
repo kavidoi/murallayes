@@ -9,6 +9,11 @@ export class HttpsRedirectMiddleware implements NestMiddleware {
       return next();
     }
 
+    // Allow health and metrics endpoints over HTTP (Railway healthcheck)
+    if (req.path.startsWith('/health') || req.path.startsWith('/metrics')) {
+      return next();
+    }
+
     // Check if request is not secure (not HTTPS)
     // Railway sets x-forwarded-proto header
     const isSecure = req.secure || 
