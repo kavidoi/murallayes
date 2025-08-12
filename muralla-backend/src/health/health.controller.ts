@@ -43,15 +43,7 @@ export class HealthController {
 
   @Public()
   @Get('healthz')
-  @HealthCheck()
   liveness() {
-    return this.health.check([
-      () => this.memoryHealth.checkHeap('memory_heap', 512 * 1024 * 1024),
-      () => this.memoryHealth.checkRSS('memory_rss', 512 * 1024 * 1024),
-      async () => {
-        // Basic application health check
-        return { application: { status: 'up', timestamp: new Date().toISOString() } };
-      },
-    ]);
+    return { status: 'up', timestamp: new Date().toISOString() };
   }
 }
