@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Head } from '@nestjs/common';
 import { HealthCheckService, HealthCheck, PrismaHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/public.decorator';
@@ -48,6 +48,18 @@ export class HealthController {
   @SkipThrottle()
   @Get('healthz')
   liveness() {
+    // eslint-disable-next-line no-console
+    console.log('[HEALTH] GET /health/healthz');
     return { status: 'up', timestamp: new Date().toISOString() };
+  }
+
+  // Some platforms issue HEAD requests for healthchecks
+  @Public()
+  @SkipThrottle()
+  @Head('healthz')
+  headLiveness(): void {
+    // eslint-disable-next-line no-console
+    console.log('[HEALTH] HEAD /health/healthz');
+    return;
   }
 }
