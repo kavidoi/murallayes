@@ -17,6 +17,7 @@ VITE_API_BASE_URL=http://localhost:4000 pnpm -C muralla-frontend dev
 | Variable | Description |
 |----------|-------------|
 | `VITE_API_BASE_URL` | Base URL of backend (default `http://localhost:3000`) |
+| `VITE_MP_PUBLIC_KEY` | MercadoPago public key for browser SDK (optional) |
 | `VITE_ENABLE_DEMO`  | `true` to preload a demo token in dev/staging |
 
 ## Production build
@@ -35,6 +36,8 @@ The Railway Frontend service serves the `dist` directory via Nixpacks’ static 
 Made with ❤️ and Vite.
 
 ## Production (Railway)
-- Set `VITE_API_BASE_URL` to `${{Backend.RAILWAY_PUBLIC_DOMAIN}}` in the Frontend service variables.
+- Set `VITE_API_BASE_URL` to `${{ Backend.RAILWAY_PUBLIC_DOMAIN }}` in the Frontend service variables.
+- If using MercadoPago widgets, set `VITE_MP_PUBLIC_KEY` to your public key.
 - Do NOT enable `VITE_ENABLE_DEMO` in production.
+- For consistent builds, set `NIXPACKS_NODE_VERSION=20.19.0` and `NODE_VERSION=20.19.0` on the Frontend service.
 - Redeploy the Frontend to apply changes.

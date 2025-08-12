@@ -18,6 +18,9 @@
 #   MP_PUBLIC_KEY          – MercadoPago public key
 #   MP_CLIENT_ID           – MercadoPago client ID
 #   MP_CLIENT_SECRET       – MercadoPago client secret
+#   VITE_MP_PUBLIC_KEY     – Frontend-only MercadoPago public key (for JS SDK)
+#   NIXPACKS_NODE_VERSION  – Node version pin for Nixpacks (default 20.19.0)
+#   NODE_VERSION           – Node version pin for build env (default 20.19.0)
 #
 # Notes:
 # - FRONTEND_URL and BACKEND_URL are set using Railway-provided domains via reference variables.
@@ -31,6 +34,8 @@ set -euo pipefail
 
 JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-60m}
 VITE_ENABLE_DEMO=${VITE_ENABLE_DEMO:-false}
+NIXPACKS_NODE_VERSION=${NIXPACKS_NODE_VERSION:-20.19.0}
+NODE_VERSION=${NODE_VERSION:-20.19.0}
 
 # Helper to run railway with project/env/service context
 rw() {
@@ -57,6 +62,10 @@ set_backend_vars() {
   rw variables --set "FRONTEND_URL=https://\$\{\{ Frontend.RAILWAY_PUBLIC_DOMAIN \}\}"
   rw variables --set "BACKEND_URL=https://\$\{\{ Backend.RAILWAY_PUBLIC_DOMAIN \}\}"
 
+  # Node version pins for Nixpacks/build
+  rw variables --set "NIXPACKS_NODE_VERSION=$NIXPACKS_NODE_VERSION"
+  rw variables --set "NODE_VERSION=$NODE_VERSION"
+
   # Database
   if [[ -n "${DATABASE_URL:-}" ]]; then
     rw variables --set "DATABASE_URL=$DATABASE_URL"
@@ -80,10 +89,6 @@ set_backend_vars() {
     rw variables --set "MP_ACCESS_TOKEN=$MP_ACCESS_TOKEN"
     echo "✓ MP_ACCESS_TOKEN set"
   fi
-  if [[ -n "${MP_PUBLIC_KEY:-}" ]]; then
-    rw variables --set "MP_PUBLIC_KEY=$MP_PUBLIC_KEY"
-    echo "✓ MP_PUBLIC_KEY set"
-  fi
   if [[ -n "${MP_CLIENT_ID:-}" ]]; then
     rw variables --set "MP_CLIENT_ID=$MP_CLIENT_ID"
     echo "✓ MP_CLIENT_ID set"
@@ -101,6 +106,20 @@ set_frontend_vars() {
   # Point frontend to backend public domain
   rw variables --set "VITE_API_BASE_URL=https://\$\{\{ Backend.RAILWAY_PUBLIC_DOMAIN \}\}"
   rw variables --set "VITE_ENABLE_DEMO=$VITE_ENABLE_DEMO"
+
+  # MercadoPago public key for browser SDK (optional)
+  if [[ -n "${VITE_MP_PUBLIC_KEY:-}" ]]; then
+    rw variables --set "VITE_MP_PUBLIC_KEY=$VITE_MP_PUBLIC_KEY"
+    echo "✓ VITE_MP_PUBLIC_KEY set"
+  elif [[ -n "${MP_PUBLIC_KEY:-}" ]]; then
+    # Backward-compat: allow MP_PUBLIC_KEY to feed VITE_MP_PUBLIC_KEY
+    rw variables --set "VITE_MP_PUBLIC_KEY=$MP_PUBLIC_KEY"
+    echo "✓ VITE_MP_PUBLIC_KEY set from MP_PUBLIC_KEY"
+  fi
+
+  # Node version pins for Nixpacks/build
+  rw variables --set "NIXPACKS_NODE_VERSION=$NIXPACKS_NODE_VERSION"
+  rw variables --set "NODE_VERSION=$NODE_VERSION"
 }
 
 main() {

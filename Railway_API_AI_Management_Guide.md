@@ -21,11 +21,9 @@ This guide documents how the Muralla 4.0 monorepo deploys on Railway and how CI 
 - Builder: Nixpacks
 - Deploy hooks:
   - preDeployCommand:
-    - `pnpm -C muralla-backend run build`
-    - `pnpm -C muralla-backend exec prisma generate`
-    - `pnpm -C muralla-backend exec prisma migrate deploy`
+    - `corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm run build && pnpm exec prisma generate && pnpm exec prisma migrate deploy`
   - startCommand:
-    - `pnpm -C muralla-backend run start` (runs `node dist/main.js`)
+    - `pnpm run start` (runs `node dist/main.js`)
 - Health check: `GET /health/healthz`
 
 Environment variables (configure in Railway):
@@ -33,6 +31,11 @@ Environment variables (configure in Railway):
 - `JWT_SECRET` (string)
 - `JWT_EXPIRES_IN` (e.g., `1h`)
 - `REDIS_URL` (e.g., `redis://<host>:6379`)
+- `FRONTEND_URL` (CORS allowlist; set to `https://{{ Frontend.RAILWAY_PUBLIC_DOMAIN }}`)
+- `BACKEND_URL` (public API base; set to `https://{{ Backend.RAILWAY_PUBLIC_DOMAIN }}`)
+- SMTP (optional, for email notifications): `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` (`true|false`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- MercadoPago (optional): `MP_ACCESS_TOKEN`, `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_CURRENCY` (e.g. `CLP`), `MP_STATEMENT_DESCRIPTOR`
+- Build-time pins for Nixpacks: `NIXPACKS_NODE_VERSION=20.19.0`, `NODE_VERSION=20.19.0`
 - Optional bootstrap (only for first-time admin creation):
   - `ADMIN_EMAIL`
   - `ADMIN_PASSWORD`
@@ -43,12 +46,16 @@ Notes: Prisma migrations are executed during pre-deploy; the app process itself 
 - Builder: Nixpacks
 - Deploy hooks:
   - preDeployCommand:
-    - `pnpm -C muralla-frontend run build` (produces `dist/`)
+    - `corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm run build` (produces `dist/`)
   - startCommand:
     - `npx --yes serve -s dist -l $PORT`
 - Health check: `GET /`
 
-No required environment variables unless build-time env is introduced.
+Environment variables:
+- `VITE_API_BASE_URL` set to `https://{{ Backend.RAILWAY_PUBLIC_DOMAIN }}`
+- `VITE_MP_PUBLIC_KEY` (if enabling client-side MercadoPago widgets)
+- `VITE_ENABLE_DEMO` = `false` in production (may be `true` in dev/staging)
+- Build-time pins: `NIXPACKS_NODE_VERSION=20.19.0`, `NODE_VERSION=20.19.0`
 
 ## CI/CD Workflow (`.github/workflows/ci.yml`)
 - Triggers: push/PR to `main` and `develop`
@@ -112,6 +119,27 @@ docker build -f muralla-backend/Dockerfile -t muralla-backend:local .
 - Use `ADMIN_EMAIL`/`ADMIN_PASSWORD` only for first run to bootstrap admin; remove afterwards.
 - If migrations fail, inspect the build logs; fix schema or connection and redeploy.
 - For CI DB collisions, use unique DB names per job or ensure clean migrations; current workflow uses a throwaway Postgres service per job.
+
+## Variable Checklist (Production)
+
+Backend service
+- [ ] DATABASE_URL (Railway Postgres or external)
+- [ ] JWT_SECRET (strong, random)
+- [ ] JWT_EXPIRES_IN (e.g., 24h)
+- [ ] FRONTEND_URL = https://{{ Frontend.RAILWAY_PUBLIC_DOMAIN }}
+- [ ] BACKEND_URL = https://{{ Backend.RAILWAY_PUBLIC_DOMAIN }}
+- [ ] REDIS_URL (if using queues)
+- [ ] SMTP_* (if sending emails)
+- [ ] MP_* (if using MercadoPago)
+- [ ] NIXPACKS_NODE_VERSION=20.19.0
+- [ ] NODE_VERSION=20.19.0
+
+Frontend service
+- [ ] VITE_API_BASE_URL = https://{{ Backend.RAILWAY_PUBLIC_DOMAIN }}
+- [ ] VITE_MP_PUBLIC_KEY (if using MercadoPago)
+- [ ] VITE_ENABLE_DEMO=false
+- [ ] NIXPACKS_NODE_VERSION=20.19.0
+- [ ] NODE_VERSION=20.19.0
 
 ## Next Steps
 - Remediate frontend lint errors and enable frontend lint step in CI.
