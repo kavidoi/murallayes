@@ -22,6 +22,7 @@ interface PaymentInitialization {
       type: string;
       number: string;
     };
+    entityType?: 'individual' | 'association';
   };
 }
 
@@ -115,9 +116,14 @@ export class MercadoPagoService {
    * Load MercadoPago SDK V2 using official npm package
    */
   async loadSDK(): Promise<void> {
-    if (this.sdkLoaded && window.MercadoPago) {
+    // If global already exists, don't try to reload the SDK
+    if (window.MercadoPago) {
+      this.sdkLoaded = true;
+      this.initializeMercadoPago();
       return Promise.resolve();
     }
+
+    if (this.sdkLoaded) return Promise.resolve();
 
     try {
       // Load using the official npm package
@@ -153,6 +159,21 @@ export class MercadoPagoService {
       throw new Error('MercadoPago Bricks not initialized');
     }
 
+    // Ensure payer.entityType is provided to satisfy Bricks validation
+    const providedEntity = initialization.payer?.entityType;
+    const entityTypeNormalized: 'individual' | 'association' =
+      providedEntity === 'association' || providedEntity === 'individual'
+        ? providedEntity
+        : 'individual';
+
+    const normalizedInitialization: PaymentInitialization = {
+      ...initialization,
+      payer: {
+        ...(initialization.payer || {}),
+        entityType: entityTypeNormalized
+      }
+    };
+
     const defaultCustomization: BrickCustomization = {
       visual: {
         style: {
@@ -162,7 +183,7 @@ export class MercadoPagoService {
     };
 
     const brickConfig = {
-      initialization,
+      initialization: normalizedInitialization,
       customization: { ...defaultCustomization, ...customization },
       callbacks: {
         onReady: () => {
