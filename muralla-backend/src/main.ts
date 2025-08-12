@@ -88,6 +88,9 @@ async function bootstrap() {
   });
   
   const port = process.env.PORT || 3000;
+  // Debug: log what port we bind to and the env PORT
+  // eslint-disable-next-line no-console
+  console.log(`[BOOT] process.env.PORT=${process.env.PORT} | binding port=${port}`);
   await app.listen(port, '0.0.0.0');
   
   const protocol = isProd ? 'https' : 'http';
