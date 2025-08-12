@@ -7,7 +7,7 @@
   "deploy": {
     "startCommand": "pnpm run start",
     "preDeployCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm run build && pnpm exec prisma generate && pnpm exec prisma migrate deploy",
-    "healthcheckPath": "/health/healthz",
+    "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
