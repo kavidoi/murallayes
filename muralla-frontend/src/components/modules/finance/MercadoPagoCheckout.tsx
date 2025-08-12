@@ -32,6 +32,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [mpService, setMpService] = useState<any>(null);
   const [brick, setBrick] = useState<any>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // Get MercadoPago public key from environment
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
@@ -46,20 +47,16 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     initializeMercadoPago();
 
     return () => {
-      // Cleanup on unmount
-      if (brick) {
-        try {
-          mpService?.destroyBrick('payment');
-        } catch (e) {
-          console.warn('Error destroying payment brick:', e);
-        }
-      }
+      mpService?.destroyBrick('payment');
     };
   }, [amount, preferenceId]);
 
   const initializeMercadoPago = async () => {
+    if (isInitializing) return;
+    setIsLoading(true);
+    setIsInitializing(true);
+
     try {
-      setIsLoading(true);
       setError(null);
 
       // Initialize MercadoPago service
@@ -73,6 +70,11 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
 
       // Wait for SDK to load
       await service.loadSDK();
+
+      // Unmount existing brick before creating a new one
+      if (brick) {
+        brick.unmount();
+      }
 
       // Prepare payer information
       const payer: any = {};
@@ -102,13 +104,11 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         {
           onReady: () => {
             console.log('Payment brick ready');
-            setIsLoading(false);
           },
           onError: (error) => {
             console.error('Payment brick error:', error);
             setError('Error loading payment form');
             onError?.(error);
-            setIsLoading(false);
           },
           onSubmit: async (formData) => {
             console.log('Payment form submitted:', formData);
@@ -161,6 +161,8 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     } catch (error) {
       console.error('Error initializing MercadoPago:', error);
       setError('Failed to initialize payment form');
+    } finally {
+      setIsInitializing(false);
       setIsLoading(false);
     }
   };
