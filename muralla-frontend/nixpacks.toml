@@ -3,12 +3,13 @@ NODE_VERSION = "20.19.0"
 
 [phases.install]
 cmds = [
-  "npm ci"
+  "corepack enable && corepack prepare pnpm@8.15.0 --activate",
+  "pnpm install --no-frozen-lockfile"
 ]
 
 [phases.build]
 cmds = [
-  "npm run build"
+  "pnpm run build"
 ]
 
 
