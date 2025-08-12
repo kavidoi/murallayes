@@ -88,14 +88,19 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       }
 
       // Initialize payment brick
-      const initialization: any = {
-        amount,
-        ...Object.keys(payer).length > 0 && { payer }
-      };
-
-      // If we have a preference ID, use it
+      let initialization: any;
       if (preferenceId) {
-        initialization.preferenceId = preferenceId;
+        // If a preferenceId is provided, it contains all the necessary information.
+        // Sending amount or payer alongside it can cause conflicts.
+        initialization = {
+          preferenceId,
+        };
+      } else {
+        // If no preferenceId, build the initialization object manually.
+        initialization = {
+          amount,
+          ...(Object.keys(payer).length > 0 && { payer })
+        };
       }
 
       const brickInstance = await service.createPaymentBrick(
