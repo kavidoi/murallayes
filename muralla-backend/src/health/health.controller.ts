@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { HealthCheckService, HealthCheck, PrismaHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/public.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller('health')
 export class HealthController {
@@ -13,6 +14,7 @@ export class HealthController {
   ) {}
 
   @Public()
+  @SkipThrottle()
   @Get()
   @HealthCheck()
   check() {
@@ -24,6 +26,7 @@ export class HealthController {
   }
 
   @Public()
+  @SkipThrottle()
   @Get('readyz')
   @HealthCheck()
   readiness() {
@@ -42,6 +45,7 @@ export class HealthController {
   }
 
   @Public()
+  @SkipThrottle()
   @Get('healthz')
   liveness() {
     return { status: 'up', timestamp: new Date().toISOString() };
