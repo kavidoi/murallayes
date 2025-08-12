@@ -3,6 +3,7 @@ NODE_VERSION = "20.19.0"
 
 [phases.install]
 cmds = [
+  "corepack enable && corepack prepare pnpm@8.15.0 --activate",
   "pnpm install --no-frozen-lockfile"
 ]
 
@@ -12,17 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "npm run start:prod"
-
-[phases.install]
-cmds = [
-  "pnpm install --no-frozen-lockfile"
-]
-
-[phases.build]
-cmds = [
-  "pnpm run build"
-]
-
-[start]
-cmd = "npm run start:prod" 
+cmd = "pnpm run start"
