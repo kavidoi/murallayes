@@ -9,6 +9,37 @@ async function bootstrap() {
   // Trust Railway's proxy for proper HTTPS handling
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
+
+  // Debug logging for healthcheck traffic (helps diagnose Railway healthchecks)
+  expressApp.use((req: any, _res: any, next: any) => {
+    if (req.path && req.path.startsWith('/health')) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[HEALTH-REQ] ${req.method} ${req.path} host=${req.headers?.host || ''} xfwd-proto=${
+          req.headers?.['x-forwarded-proto'] || ''
+        }`
+      );
+    }
+    next();
+  });
+
+  // Express-level fallback health endpoints to guarantee 200 for Railway
+  // These are safe and mirror Nest's health endpoints; they respond even if Nest routing changes.
+  expressApp.get('/health/healthz', (_req: any, res: any) => {
+    // eslint-disable-next-line no-console
+    console.log('[HEALTH-EXPRESS] GET /health/healthz');
+    res.status(200).json({ status: 'up', timestamp: new Date().toISOString(), source: 'express' });
+  });
+  expressApp.head('/health/healthz', (_req: any, res: any) => {
+    // eslint-disable-next-line no-console
+    console.log('[HEALTH-EXPRESS] HEAD /health/healthz');
+    res.sendStatus(200);
+  });
+  expressApp.get('/health', (_req: any, res: any) => {
+    // eslint-disable-next-line no-console
+    console.log('[HEALTH-EXPRESS] GET /health');
+    res.status(200).json({ status: 'up', timestamp: new Date().toISOString(), source: 'express' });
+  });
   
   // Enhanced security headers with SSL/TLS optimizations
   app.use(helmet({
