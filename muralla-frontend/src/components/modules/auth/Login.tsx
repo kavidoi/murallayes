@@ -18,8 +18,9 @@ export default function Login() {
     
     try {
       await AuthService.login(identifier, password);
-      console.log('Login successful, navigating to dashboard');
-      navigate('/');
+      console.log('Login successful, redirecting to dashboard');
+      // Use full reload so App.tsx re-runs auth check and renders protected routes
+      window.location.href = '/';
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err?.message || 'Login failed. Please check your credentials.');
