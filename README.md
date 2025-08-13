@@ -1,5 +1,7 @@
 # Muralla 4.0 Monorepo
 
+Repository: https://github.com/kavidoi/murallayes.git
+
 > NestJS • React • Prisma • BullMQ • PostgreSQL • Redis • Railway
 
 ## Contents
@@ -43,6 +45,10 @@ Backend health check: `https://api.<domain>/health/healthz`
 1. `POST /auth/login` returns `{access_token}`.  
 2. Store token in `localStorage` under key `authToken` (handled by `AuthService`).  
 3. Frontend attaches `Authorization: Bearer <token>` on each call.
+
+## Repository policy
+- Always use `origin = https://github.com/kavidoi/murallayes.git`.
+- Do not reference `admin.muralla.git` anywhere (historical repo).
 
 �� Have fun building! 
 

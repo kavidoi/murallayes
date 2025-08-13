@@ -1,5 +1,7 @@
 # Scripts
 
+Repository: https://github.com/kavidoi/murallayes.git
+
 ## set_railway_vars.sh
 Non-interactive helper to set required environment variables for Backend and Frontend services via the Railway CLI.
 
