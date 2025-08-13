@@ -179,6 +179,15 @@ export class MercadoPagoService {
         style: {
           theme: this.config.theme || 'default'
         }
+      },
+      // Ensure at least one payment method is enabled to avoid
+      // "No payment type was selected" initialization errors
+      paymentMethods: {
+        creditCard: 'all',
+        debitCard: 'all',
+        ticket: 'none',
+        bankTransfer: 'none',
+        atm: 'none'
       }
     };
 

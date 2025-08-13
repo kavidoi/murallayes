@@ -109,9 +109,19 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         {
           onReady: () => {
             console.log('Payment brick ready');
+            setIsLoading(false);
           },
           onError: (error) => {
-            console.error('Payment brick error:', error);
+            try {
+              const safe = {
+                type: (error && (error.type || error.name)) || 'unknown',
+                cause: error && error.cause,
+                message: error && (error.message || String(error))
+              };
+              console.error('Payment brick error:', safe);
+            } catch (_) {
+              console.error('Payment brick error (raw):', error);
+            }
             setError('Error loading payment form');
             onError?.(error);
           },
@@ -158,6 +168,14 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
                 borderRadiusMedium: '0.5rem'
               }
             }
+          },
+          // Explicitly allow card methods at the caller level too
+          paymentMethods: {
+            creditCard: 'all',
+            debitCard: 'all',
+            ticket: 'none',
+            bankTransfer: 'none',
+            atm: 'none'
           }
         }
       );
