@@ -171,8 +171,8 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
           },
           // Explicitly allow card methods at the caller level too
           paymentMethods: {
-            creditCard: 'all',
-            debitCard: 'all',
+            creditCard: ['visa', 'master', 'amex'],
+            debitCard: 'none',
             ticket: 'none',
             bankTransfer: 'none',
             atm: 'none'
@@ -193,7 +193,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const processPayment = async (formData: any) => {
     try {
       // Send payment data to backend for processing
-      const response = await AuthService.apiCall('/api/finance/process-payment', {
+      const response = await AuthService.apiCall('/finance/process-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
