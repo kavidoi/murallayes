@@ -33,6 +33,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const [mpService, setMpService] = useState<any>(null);
   const [brick, setBrick] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [prefId, setPrefId] = useState<string | undefined>(preferenceId);
 
   // Get MercadoPago public key from environment
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
@@ -50,6 +51,30 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       mpService?.destroyBrick('payment');
     };
   }, [amount, preferenceId]);
+
+  const createPreference = async () => {
+    try {
+      const data = {
+        title,
+        quantity: 1,
+        unit_price: amount,
+        description,
+        payer: customerEmail ? { email: customerEmail } : undefined,
+      } as any;
+
+      const resp = await AuthService.apiCall('/finance/mercadopago/preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (resp?.id) {
+        setPrefId(resp.id as string);
+        return resp.id as string;
+      }
+    } catch (err) {
+      console.error('Failed to create preference:', err);
+    }
+  };
 
   const initializeMercadoPago = async () => {
     if (isInitializing) return;
@@ -76,6 +101,11 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         brick.unmount();
       }
 
+      let effectivePreferenceId = prefId;
+      if (import.meta.env.PROD && !effectivePreferenceId) {
+        effectivePreferenceId = await createPreference();
+      }
+
       // Prepare payer information
       const payer: any = {};
       if (customerEmail) {
@@ -87,21 +117,20 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         payer.lastName = nameParts.slice(1).join(' ') || '';
       }
 
-      // Initialize payment brick
-      let initialization: any;
-      if (preferenceId) {
-        // If a preferenceId is provided, it contains all the necessary information.
-        // Sending amount or payer alongside it can cause conflicts.
-        initialization = {
-          preferenceId,
-        };
-      } else {
-        // If no preferenceId, build the initialization object manually.
-        initialization = {
-          amount,
-          ...(Object.keys(payer).length > 0 && { payer })
-        };
-      }
+      const initialization: any = effectivePreferenceId
+        ? { preferenceId: effectivePreferenceId }
+        : { amount, ...(Object.keys(payer).length ? { payer } : {}) };
+
+      const extraCustomization = import.meta.env.PROD
+        ? {} // let site/account settings decide allowed methods
+        : {
+            paymentMethods: {
+              creditCard: ['visa', 'master', 'amex'],
+              ticket: 'none',
+              bankTransfer: 'none',
+              atm: 'none',
+            },
+          };
 
       const brickInstance = await service.createPaymentBrick(
         'payment-brick-container',
@@ -112,41 +141,30 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
             setIsLoading(false);
           },
           onError: (error) => {
-            try {
-              const safe = {
-                type: (error && (error.type || error.name)) || 'unknown',
-                cause: error && error.cause,
-                message: error && (error.message || String(error))
-              };
-              console.error('Payment brick error:', safe);
-            } catch (_) {
-              console.error('Payment brick error (raw):', error);
-            }
-            setError('Error loading payment form');
+            console.error('Payment brick error:', error);
+            setError(error?.message || 'Error loading payment form');
             onError?.(error);
           },
           onSubmit: async (formData) => {
             console.log('Payment form submitted:', formData);
-            
+            // production flow expects MercadoPago redirect or OP
             try {
-              // Send payment data to backend
-              const paymentResult = await processPayment(formData);
-              
-              if (paymentResult.status === 'approved') {
-                onSuccess?.(paymentResult);
-              } else if (paymentResult.status === 'pending') {
-                onPending?.(paymentResult);
-              } else {
-                onError?.(paymentResult);
+              if (effectivePreferenceId) {
+                // Preference flow – Brick will handle redirect, just resolve.
+                return Promise.resolve();
               }
-              
+              // Dev flow – mock or call backend
+              const paymentResult = await processPayment(formData);
+              if (paymentResult.status === 'approved') onSuccess?.(paymentResult);
+              else if (paymentResult.status === 'pending') onPending?.(paymentResult);
+              else onError?.(paymentResult);
               return paymentResult;
-            } catch (error) {
-              console.error('Payment processing error:', error);
-              onError?.(error);
-              throw error;
+            } catch (err) {
+              console.error('Payment processing error:', err);
+              onError?.(err);
+              throw err;
             }
-          }
+          },
         },
         {
           visual: {
@@ -165,17 +183,11 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
                 outlinePrimaryColor: '#d1d5db',
                 outlineSecondaryColor: '#e5e7eb',
                 buttonTextColor: '#ffffff',
-                borderRadiusMedium: '0.5rem'
-              }
-            }
+                borderRadiusMedium: '0.5rem',
+              },
+            },
           },
-          // Explicitly allow card methods at the caller level too
-          paymentMethods: {
-            creditCard: ['visa', 'master', 'amex'],
-            ticket: 'none',
-            bankTransfer: 'none',
-            atm: 'none'
-          }
+          ...extraCustomization,
         }
       );
 
