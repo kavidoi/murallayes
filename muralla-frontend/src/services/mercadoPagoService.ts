@@ -185,7 +185,7 @@ export class MercadoPagoService {
       paymentMethods: {
         // Restrict to commonly allowed credit cards to avoid account-level rejections
         creditCard: ['visa', 'master', 'amex'],
-        debitCard: 'none',
+        // Removed debitCard property to avoid invalid "none" value
         ticket: 'none',
         bankTransfer: 'none',
         atm: 'none'

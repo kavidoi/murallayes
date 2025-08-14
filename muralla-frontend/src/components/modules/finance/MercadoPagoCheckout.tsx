@@ -172,7 +172,6 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
           // Explicitly allow card methods at the caller level too
           paymentMethods: {
             creditCard: ['visa', 'master', 'amex'],
-            debitCard: 'none',
             ticket: 'none',
             bankTransfer: 'none',
             atm: 'none'
