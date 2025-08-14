@@ -62,17 +62,25 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         payer: customerEmail ? { email: customerEmail } : undefined,
       } as any;
 
+      console.log('Creating preference with data:', data);
       const resp = await AuthService.apiCall('/finance/mercadopago/preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+      console.log('Preference response:', resp);
+      
       if (resp?.id) {
+        console.log('Preference created successfully:', resp.id);
         setPrefId(resp.id as string);
         return resp.id as string;
+      } else {
+        console.warn('Preference creation returned no ID:', resp);
+        return null;
       }
     } catch (err) {
       console.error('Failed to create preference:', err);
+      return null;
     }
   };
 
@@ -114,8 +122,12 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
 
       let effectivePreferenceId = prefId;
       if (import.meta.env.PROD && !effectivePreferenceId) {
+        console.log('Production mode: attempting to create preference');
         effectivePreferenceId = await createPreference();
       }
+
+      console.log('Effective preference ID:', effectivePreferenceId);
+      console.log('Amount:', amount);
 
       // Prepare payer information
       const payer: any = {};
@@ -129,12 +141,15 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       }
 
       // Always ensure we have either preferenceId OR amount
+      // In production, if preference creation fails, fallback to amount
       const initialization: any = effectivePreferenceId
         ? { preferenceId: effectivePreferenceId }
         : { 
             amount, 
             ...(Object.keys(payer).length ? { payer } : {}) 
           };
+
+      console.log('Final initialization object:', initialization);
 
       // Validate initialization has required properties
       if (!initialization.preferenceId && !initialization.amount) {
