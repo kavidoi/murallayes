@@ -33,7 +33,8 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const [mpService, setMpService] = useState<any>(null);
   const [brick, setBrick] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [prefId, setPrefId] = useState<string | undefined>(preferenceId);
+  // Preference flow reserved for Wallet/Checkout; unused in Payment Brick
+  // const [prefId, setPrefId] = useState<string | undefined>(preferenceId);
 
   // Get MercadoPago public key from environment
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
@@ -52,6 +53,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     };
   }, [amount, preferenceId]);
 
+  /*
   const createPreference = async (capturedAmount: number) => {
     try {
       const data = {
@@ -84,6 +86,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       return null;
     }
   };
+  */
 
   const initializeMercadoPago = async () => {
     if (isInitializing) return;
