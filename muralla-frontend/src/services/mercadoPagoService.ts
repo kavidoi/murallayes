@@ -193,6 +193,8 @@ export class MercadoPagoService {
     };
 
     const brickConfig = {
+      // Explicitly pass the MercadoPago instance when using preferenceId flow
+      mercadopago: this.mp,
       initialization: normalizedInitialization,
       customization: { ...defaultCustomization, ...customization },
       callbacks: {
