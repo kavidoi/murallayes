@@ -52,12 +52,13 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     };
   }, [amount, preferenceId]);
 
-  const createPreference = async () => {
+  const createPreference = async (capturedAmount: number) => {
     try {
       const data = {
         title,
         quantity: 1,
-        unit_price: amount,
+        unit_price: capturedAmount,
+        currency_id: 'CLP',
         description,
         payer: customerEmail ? { email: customerEmail } : undefined,
       } as any;
@@ -120,14 +121,16 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         }
       }
 
+      // Capture amount at the start to avoid mid-render changes
+      const capturedAmount = amount;
       let effectivePreferenceId = prefId;
       if (import.meta.env.PROD && !effectivePreferenceId) {
         console.log('Production mode: attempting to create preference');
-        effectivePreferenceId = await createPreference() || undefined;
+        effectivePreferenceId = await createPreference(capturedAmount) || undefined;
       }
 
       console.log('Effective preference ID:', effectivePreferenceId);
-      console.log('Amount:', amount);
+      console.log('Amount:', capturedAmount);
 
       // Prepare payer information
       const payer: any = {};
@@ -143,7 +146,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       // Always provide amount to satisfy Brick validation
       // Include preferenceId when available (prod), plus optional payer
       const initialization: any = {
-        amount,
+        amount: capturedAmount,
         ...(effectivePreferenceId ? { preferenceId: effectivePreferenceId } : {}),
         ...(Object.keys(payer).length ? { payer } : {})
       };
