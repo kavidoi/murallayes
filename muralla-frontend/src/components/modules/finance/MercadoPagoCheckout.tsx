@@ -51,7 +51,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     return () => {
       mpService?.destroyBrick('payment');
     };
-  }, [amount, preferenceId]);
+  }, []);
 
   /*
   const createPreference = async (capturedAmount: number) => {
