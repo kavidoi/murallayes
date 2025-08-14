@@ -123,7 +123,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       let effectivePreferenceId = prefId;
       if (import.meta.env.PROD && !effectivePreferenceId) {
         console.log('Production mode: attempting to create preference');
-        effectivePreferenceId = await createPreference();
+        effectivePreferenceId = await createPreference() || undefined;
       }
 
       console.log('Effective preference ID:', effectivePreferenceId);
