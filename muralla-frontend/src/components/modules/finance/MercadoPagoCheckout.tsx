@@ -24,7 +24,6 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   onSuccess,
   onError,
   onPending,
-  preferenceId,
   theme = 'default'
 }) => {
   const paymentBrickRef = useRef<HTMLDivElement>(null);
