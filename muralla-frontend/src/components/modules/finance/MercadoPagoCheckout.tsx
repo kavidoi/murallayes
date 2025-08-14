@@ -186,9 +186,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
             // production flow expects MercadoPago redirect or OP
             try {
               // Always process via backend route for Payment Brick
-              const paymentResult = await processPayment(formData);
-              if (paymentResult.status === 'approved') onSuccess?.(paymentResult);
-              else if (paymentResult.status === 'pending') onPending?.(paymentResult);
+              const paymentResult = await processPayment(formData, capturedAmount);
+              if (paymentResult?.status === 'approved' || paymentResult?.success) onSuccess?.(paymentResult);
+              else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
               else onError?.(paymentResult);
               return paymentResult;
             } catch (err) {
@@ -233,7 +233,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     }
   };
 
-  const processPayment = async (formData: any) => {
+  const processPayment = async (formData: any, useAmount?: number) => {
     try {
       // Send payment data to backend for processing
       const response = await AuthService.apiCall('/finance/process-payment', {
@@ -241,7 +241,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          amount,
+          amount: useAmount ?? amount,
           title,
           description,
           customerEmail,
