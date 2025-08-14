@@ -140,19 +140,18 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         payer.lastName = nameParts.slice(1).join(' ') || '';
       }
 
-      // Always ensure we have either preferenceId OR amount
-      // In production, if preference creation fails, fallback to amount
-      const initialization: any = effectivePreferenceId
-        ? { preferenceId: effectivePreferenceId }
-        : { 
-            amount, 
-            ...(Object.keys(payer).length ? { payer } : {}) 
-          };
+      // Always provide amount to satisfy Brick validation
+      // Include preferenceId when available (prod), plus optional payer
+      const initialization: any = {
+        amount,
+        ...(effectivePreferenceId ? { preferenceId: effectivePreferenceId } : {}),
+        ...(Object.keys(payer).length ? { payer } : {})
+      };
 
       console.log('Final initialization object:', initialization);
 
       // Validate initialization has required properties
-      if (!initialization.preferenceId && !initialization.amount) {
+      if (!initialization.amount) {
         throw new Error('Either preferenceId or amount must be provided');
       }
 
