@@ -96,9 +96,20 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       // Wait for SDK to load
       await service.loadSDK();
 
-      // Unmount existing brick before creating a new one
+      // Destroy existing brick completely before creating a new one
       if (brick) {
-        brick.unmount();
+        try {
+          await brick.unmount();
+        } catch (e) {
+          console.warn('Error unmounting brick:', e);
+        }
+      }
+      if (mpService) {
+        try {
+          mpService.destroyBrick('payment');
+        } catch (e) {
+          console.warn('Error destroying previous brick:', e);
+        }
       }
 
       let effectivePreferenceId = prefId;
@@ -117,9 +128,18 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         payer.lastName = nameParts.slice(1).join(' ') || '';
       }
 
+      // Always ensure we have either preferenceId OR amount
       const initialization: any = effectivePreferenceId
         ? { preferenceId: effectivePreferenceId }
-        : { amount, ...(Object.keys(payer).length ? { payer } : {}) };
+        : { 
+            amount, 
+            ...(Object.keys(payer).length ? { payer } : {}) 
+          };
+
+      // Validate initialization has required properties
+      if (!initialization.preferenceId && !initialization.amount) {
+        throw new Error('Either preferenceId or amount must be provided');
+      }
 
       const extraCustomization = import.meta.env.PROD
         ? {} // let site/account settings decide allowed methods
