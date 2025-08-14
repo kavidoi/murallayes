@@ -126,9 +126,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         : {
             paymentMethods: {
               creditCard: ['visa', 'master', 'amex'],
-              ticket: 'none',
-              bankTransfer: 'none',
-              atm: 'none',
+              ticket: 'none' as const,
+              bankTransfer: 'none' as const,
+              atm: 'none' as const,
             },
           };
 
