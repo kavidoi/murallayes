@@ -183,8 +183,9 @@ export class MercadoPagoService {
       // Ensure at least one payment method is enabled to avoid
       // "No payment type was selected" initialization errors
       paymentMethods: {
-        creditCard: 'all',
-        debitCard: 'all',
+        // Restrict to commonly allowed credit cards to avoid account-level rejections
+        creditCard: ['visa', 'master', 'amex'],
+        debitCard: 'none',
         ticket: 'none',
         bankTransfer: 'none',
         atm: 'none'
