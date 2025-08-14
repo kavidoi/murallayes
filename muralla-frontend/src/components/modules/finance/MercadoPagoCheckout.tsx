@@ -123,13 +123,10 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
 
       // Capture amount at the start to avoid mid-render changes
       const capturedAmount = amount;
-      let effectivePreferenceId = prefId;
-      if (import.meta.env.PROD && !effectivePreferenceId) {
-        console.log('Production mode: attempting to create preference');
-        effectivePreferenceId = await createPreference(capturedAmount) || undefined;
-      }
+      // For Payment Brick, do not use preferenceId to avoid SDK coupling issues
+      const effectivePreferenceId = undefined;
 
-      console.log('Effective preference ID:', effectivePreferenceId);
+      console.log('Effective preference ID (unused for Payment Brick):', effectivePreferenceId);
       console.log('Amount:', capturedAmount);
 
       // Prepare payer information
@@ -147,7 +144,6 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       // Include preferenceId when available (prod), plus optional payer
       const initialization: any = {
         amount: capturedAmount,
-        ...(effectivePreferenceId ? { preferenceId: effectivePreferenceId } : {}),
         ...(Object.keys(payer).length ? { payer } : {})
       };
 
@@ -186,11 +182,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
             console.log('Payment form submitted:', formData);
             // production flow expects MercadoPago redirect or OP
             try {
-              if (effectivePreferenceId) {
-                // Preference flow – Brick will handle redirect, just resolve.
-                return Promise.resolve();
-              }
-              // Dev flow – mock or call backend
+              // Always process via backend route for Payment Brick
               const paymentResult = await processPayment(formData);
               if (paymentResult.status === 'approved') onSuccess?.(paymentResult);
               else if (paymentResult.status === 'pending') onPending?.(paymentResult);
