@@ -16,6 +16,7 @@ import RevenueExpenses from './components/modules/finance/RevenueExpenses'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
+import TasksList from './components/modules/projects/TasksList'
 
 function App() {
   const [darkMode, setDarkMode] = useState(false)
@@ -118,6 +119,7 @@ function App() {
               
               {/* Projects & Tasks Routes */}
               <Route path="/projects" element={<PlaceholderPage title="Projects & Tasks" description="Project management with multiple views and collaboration tools" icon="📋" />} />
+              <Route path="/projects/tasks" element={<TasksList />} />
               <Route path="/projects/kanban" element={<PlaceholderPage title="Kanban Board" description="Visual task management with drag-and-drop functionality" icon="📊" />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title="Timeline View" description="Gantt-style project timeline and dependencies" icon="📅" />} />
               <Route path="/projects/calendar" element={<PlaceholderPage title="Calendar View" description="Calendar-based project and task scheduling" icon="🗓️" />} />

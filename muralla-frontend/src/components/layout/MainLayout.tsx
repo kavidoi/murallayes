@@ -139,6 +139,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       path: '/projects',
       icon: <ProjectsIcon />,
       children: [
+        { name: 'Tasks List', path: '/projects/tasks' },
         { name: 'Kanban Board', path: '/projects/kanban' },
         { name: 'Timeline View', path: '/projects/timeline' },
         { name: 'Calendar View', path: '/projects/calendar' },
