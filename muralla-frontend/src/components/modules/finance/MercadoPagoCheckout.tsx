@@ -32,6 +32,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const [mpService, setMpService] = useState<any>(null);
   const [brick, setBrick] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const prevAmountRef = useRef<number>(amount);
   // Preference flow reserved for Wallet/Checkout; unused in Payment Brick
   // const [prefId, setPrefId] = useState<string | undefined>(preferenceId);
 
@@ -56,6 +57,29 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       }
     };
   }, []);
+
+  // Reinitialize the Payment Brick when the amount changes externally
+  useEffect(() => {
+    const next = Number(amount ?? 0);
+    const prev = Number(prevAmountRef.current ?? 0);
+    if (!Number.isFinite(next) || next <= 0) return;
+    if (next === prev) return;
+    prevAmountRef.current = next;
+
+    (async () => {
+      if (isInitializing) return;
+      try {
+        setIsLoading(true);
+        setError(null);
+        try { await brick?.unmount?.(); } catch (e) { console.warn('Error unmounting on amount change:', e); }
+        try { mpService?.destroyBrick('payment'); } catch {}
+        if (paymentBrickRef.current) paymentBrickRef.current.innerHTML = '';
+        await initializeMercadoPago();
+      } finally {
+        // initializeMercadoPago manages flags
+      }
+    })();
+  }, [amount]);
 
   /*
   const createPreference = async (capturedAmount: number) => {
@@ -131,8 +155,8 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         paymentBrickRef.current.innerHTML = '';
       }
 
-      // Capture amount at the start to avoid mid-render changes
-      const capturedAmount = amount;
+      // Capture and coerce amount at the start to avoid mid-render changes
+      const capturedAmount = Number(amount);
       // For Payment Brick, do not use preferenceId to avoid SDK coupling issues
       const effectivePreferenceId = undefined;
 
@@ -189,12 +213,13 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
               setError(error?.message || 'Error loading payment form');
               onError?.(error);
             },
-            onSubmit: async (formData) => {
-              console.log('Payment form submitted:', formData);
+            onSubmit: async (data) => {
+              console.log('Payment form submitted:', data);
+              const submission = (data && (data as any).formData) ? (data as any).formData : data;
               // production flow expects MercadoPago redirect or OP
               try {
                 // Always process via backend route for Payment Brick
-                const paymentResult = await processPayment(formData, capturedAmount);
+                const paymentResult = await processPayment(submission, capturedAmount);
                 if (paymentResult?.status === 'approved') onSuccess?.(paymentResult);
                 else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
                 else onError?.(paymentResult);
@@ -266,7 +291,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          amount: useAmount ?? amount,
+          amount: Number(useAmount ?? amount),
           title,
           description,
           customerEmail,
