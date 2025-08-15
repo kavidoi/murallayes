@@ -1,4 +1,8 @@
 import React, { useMemo, useState } from 'react'
+import { DndContext } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // ——— Types ———
 interface User {
@@ -18,6 +22,7 @@ interface Subtask {
   inheritsDueDate: boolean
   assigneeId?: string | null
   dueDate?: string | null // YYYY-MM-DD
+  order: number
 }
 
 interface Task {
@@ -28,6 +33,7 @@ interface Task {
   dueDate?: string | null
   expanded?: boolean
   subtasks: Subtask[]
+  order: number
 }
 
 // ——— Mock data (local state for now) ———
@@ -117,10 +123,11 @@ export default function TasksList(){
     assigneeId: 'u1',
     dueDate: '2025-09-15',
     expanded: true,
+    order: 0,
     subtasks: [
-      { id: 's1', name: 'UI refresh for login screen', status: 'New', inheritsAssignee: true, inheritsDueDate: false, dueDate: '2025-09-01' },
-      { id: 's2', name: 'Improve copy + paste on mobile', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u3' },
-      { id: 's3', name: 'Update workspace setting icons', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u4', dueDate: '2025-09-10' },
+      { id: 's1', name: 'UI refresh for login screen', status: 'New', inheritsAssignee: true, inheritsDueDate: false, dueDate: '2025-09-01', order: 0 },
+      { id: 's2', name: 'Improve copy + paste on mobile', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u3', order: 1 },
+      { id: 's3', name: 'Update workspace setting icons', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u4', dueDate: '2025-09-10', order: 2 },
     ],
   },{
     id: 't2',
@@ -129,10 +136,11 @@ export default function TasksList(){
     assigneeId: 'u2',
     dueDate: '2025-09-30',
     expanded: true,
+    order: 1,
     subtasks: [
-      { id: 's4', name: 'Revamp user onboarding emails', status: 'In Progress', inheritsAssignee: true, inheritsDueDate: true },
-      { id: 's5', name: 'Homepage cleanup', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u3', dueDate: '2025-09-12' },
-      { id: 's6', name: 'Analyze onboarding email results', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u5' },
+      { id: 's4', name: 'Revamp user onboarding emails', status: 'In Progress', inheritsAssignee: true, inheritsDueDate: true, order: 0 },
+      { id: 's5', name: 'Homepage cleanup', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u3', dueDate: '2025-09-12', order: 1 },
+      { id: 's6', name: 'Analyze onboarding email results', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u5', order: 2 },
     ],
   }])
 
@@ -151,6 +159,7 @@ export default function TasksList(){
       assigneeId: null,
       dueDate: null,
       expanded: true,
+      order: tasks.length,
       subtasks: [],
     }
     setTasks(prev => [newTask, ...prev])
@@ -159,7 +168,7 @@ export default function TasksList(){
   const addSubtask = (taskId: string) => {
     setTasks(prev => prev.map(t => t.id===taskId ? {
       ...t,
-      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: 'New sub-item', status:'New', inheritsAssignee: true, inheritsDueDate: true }]
+      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: 'New sub-item', status:'New', inheritsAssignee: true, inheritsDueDate: true, order: t.subtasks.length }]
     } : t))
   }
 
@@ -186,6 +195,46 @@ export default function TasksList(){
       </button>
     </div>
   )
+
+  // ——— DnD helpers ———
+  const taskItemIds = useMemo(() => tasks
+    .slice()
+    .sort((a,b)=>a.order-b.order)
+    .map(t=>`task-${t.id}`), [tasks])
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const a = String(active.id)
+    const o = String(over.id)
+    if (a.startsWith('task-') && o.startsWith('task-')) {
+      const aid = a.replace('task-', '')
+      const oid = o.replace('task-', '')
+      const ordered = tasks.slice().sort((x,y)=>x.order-y.order)
+      const oldIndex = ordered.findIndex(t=>t.id===aid)
+      const newIndex = ordered.findIndex(t=>t.id===oid)
+      const moved = arrayMove(ordered, oldIndex, newIndex).map((t: Task, i: number)=>({ ...t, order: i }))
+      setTasks(moved)
+      return
+    }
+    if (a.startsWith('sub-') && o.startsWith('sub-')) {
+      const parse = (id: string) => {
+        const [, tid, sid] = id.split('-')
+        return { tid, sid }
+      }
+      const { tid: ta, sid: sa } = parse(a)
+      const { tid: to, sid: so } = parse(o)
+      if (ta !== to) return // cross-parent moves not supported in v1
+      setTasks(prev => prev.map(t => {
+        if (t.id !== ta) return t
+        const orderedSubs = t.subtasks.slice().sort((x,y)=>x.order-y.order)
+        const oldIndex = orderedSubs.findIndex(s=>s.id===sa)
+        const newIndex = orderedSubs.findIndex(s=>s.id===so)
+        const moved = arrayMove(orderedSubs, oldIndex, newIndex).map((s: Subtask, i: number)=>({ ...s, order: i }))
+        return { ...t, subtasks: moved }
+      }))
+    }
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -221,10 +270,14 @@ export default function TasksList(){
               <div className="col-span-1 text-right"> </div>
             </div>
           </div>
+          <DndContext onDragEnd={onDragEnd}>
+          <SortableContext items={taskItemIds} strategy={verticalListSortingStrategy}>
           <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
-          {tasks.map((t) => (
+          {tasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
             <div key={t.id} className="">
               {/* Parent row */}
+              <SortableTaskRow id={`task-${t.id}`}>
+              {({attributes, listeners}) => (
               <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 odd:bg-neutral-50/40 dark:odd:bg-neutral-800/20">
                 <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
                   <div className="col-span-5 flex items-center gap-2">
@@ -237,10 +290,21 @@ export default function TasksList(){
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
+                    <button
+                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-grab active:cursor-grabbing"
+                      aria-label="Drag task"
+                      {...attributes}
+                      {...listeners}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
+                        <path d="M10 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 18a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </button>
                     <input
-                      className="input py-1 text-sm flex-1"
+                      className="input py-1 text-sm flex-1 truncate"
                       value={t.name}
                       onChange={(e)=>updateTask(t.id,{ name: e.target.value })}
+                      title={t.name}
                     />
                   </div>
                   <div className="col-span-2">
@@ -299,11 +363,14 @@ export default function TasksList(){
                   </div>
                 </div>
               </div>
+              )}
+              </SortableTaskRow>
 
               {/* Subtasks */}
               {t.expanded && (
                 <div className="bg-neutral-50 dark:bg-neutral-900/20">
-                  {t.subtasks.map((s) => {
+                  <SortableContext items={t.subtasks.slice().sort((a,b)=>a.order-b.order).map(s=>`sub-${t.id}-${s.id}`)} strategy={verticalListSortingStrategy}>
+                  {t.subtasks.slice().sort((a,b)=>a.order-b.order).map((s) => {
                     const effectiveAssigneeId = s.inheritsAssignee ? (t.assigneeId ?? null) : (s.assigneeId ?? null)
                     const effectiveDueDate = s.inheritsDueDate ? (t.dueDate ?? null) : (s.dueDate ?? null)
                     const inheritedBadge = (cond: boolean) => (
@@ -312,12 +379,24 @@ export default function TasksList(){
                       </span>
                     )
                     return (
-                      <div key={s.id} className="px-2">
+                      <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
+                      {({attributes, listeners}) => (
+                      <div className="px-2">
                         <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
                           <div className="col-span-5 flex items-center gap-2 pl-6">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
                               <path fillRule="evenodd" d="M19.5 4.5a.75.75 0 01.75.75v13.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75zM4.5 12a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25A.75.75 0 014.5 12z" clipRule="evenodd" />
                             </svg>
+                            <button
+                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-grab active:cursor-grabbing"
+                              aria-label="Drag subtask"
+                              {...attributes}
+                              {...listeners}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
+                                <path d="M10 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 18a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                            </button>
                             <input
                               className="input py-1 text-sm flex-1"
                               value={s.name}
@@ -395,15 +474,39 @@ export default function TasksList(){
                           </div>
                         </div>
                       </div>
+                      )}
+                      </SortableSubtaskRow>
                     )
                   })}
+                  </SortableContext>
                 </div>
               )}
             </div>
           ))}
           </div>
+          </SortableContext>
+          </DndContext>
         </div>
       </div>
     </div>
   )
+}
+
+// ——— Sortable row wrappers ———
+function SortableTaskRow({ id, children }:{ id: string; children: (p:{attributes: any; listeners: any})=>React.ReactNode }){
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return <div ref={setNodeRef} style={style}>{children({attributes, listeners})}</div>
+}
+
+function SortableSubtaskRow({ id, children }:{ id: string; children: (p:{attributes: any; listeners: any})=>React.ReactNode }){
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return <div ref={setNodeRef} style={style}>{children({attributes, listeners})}</div>
 }
