@@ -11,7 +11,8 @@ export class MercadoPagoService {
   constructor(private prisma: PrismaService) {
     this.client = new MercadoPagoConfig({
       accessToken: process.env.MP_ACCESS_TOKEN || 'TEST_ACCESS_TOKEN',
-      options: { timeout: 5000, idempotencyKey: 'mp-key-' + Date.now() },
+      // IMPORTANT: Do NOT set a global idempotency key. Provide per-request keys instead.
+      options: { timeout: 5000 },
     });
   }
 
@@ -106,6 +107,92 @@ export class MercadoPagoService {
       this.logger.log(`Created transaction ${transaction.id} from Mercado Pago payment ${payment.id}`);
     } catch (error) {
       this.logger.error('Error creating transaction from payment:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a Mercado Pago payment using official SDK.
+   * If approved, it will also create a local transaction (idempotent by mpPaymentId).
+   */
+  async createPayment(
+    paymentData: {
+      token?: string;
+      payment_method_id?: string;
+      installments?: number;
+      amount: number;
+      title: string;
+      description?: string;
+      customerEmail?: string;
+      customerName?: string;
+      payer?: {
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        identification?: {
+          type: string;
+          number: string;
+        };
+      };
+    },
+    options?: { idempotencyKey?: string }
+  ): Promise<any> {
+    try {
+      const {
+        token,
+        payment_method_id,
+        installments,
+        amount,
+        title,
+        description,
+        customerEmail,
+        customerName,
+        payer,
+      } = paymentData;
+
+      const [firstName, ...restLast] = (customerName || '').split(' ').filter(Boolean);
+      const body: any = {
+        transaction_amount: amount,
+        description: description || title,
+        capture: true,
+        statement_descriptor: process.env.MP_STATEMENT_DESCRIPTOR || 'MURALLA',
+        // For card payments via Brick
+        token,
+        payment_method_id,
+        installments,
+        payer: {
+          email: customerEmail || payer?.email,
+          first_name: firstName || payer?.first_name,
+          last_name: restLast.join(' ') || payer?.last_name,
+          identification: payer?.identification,
+        },
+      };
+
+      // Clean undefined fields to avoid API validation errors
+      Object.keys(body).forEach((k) => body[k] === undefined && delete body[k]);
+      if (body.payer) {
+        Object.keys(body.payer).forEach((k) => body.payer[k] === undefined && delete body.payer[k]);
+      }
+
+      this.logger.log('Creating Mercado Pago payment');
+      const payment = await new Payment(this.client).create({
+        body,
+        requestOptions: options?.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined,
+      });
+
+      this.logger.log(`Mercado Pago payment created: ${payment.id} (${payment.status})`);
+
+      if (payment.status === 'approved') {
+        // Guard against duplicates even on immediate creation
+        const existing = await this.prisma.transaction.findFirst({ where: { mpPaymentId: payment.id.toString() } });
+        if (!existing) {
+          await this.createTransactionFromPayment(payment);
+        }
+      }
+
+      return payment;
+    } catch (error) {
+      this.logger.error('Error creating Mercado Pago payment:', error);
       throw error;
     }
   }
