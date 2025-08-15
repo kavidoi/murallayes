@@ -48,7 +48,12 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
     initializeMercadoPago();
 
     return () => {
-      mpService?.destroyBrick('payment');
+      try {
+        mpService?.destroyBrick('payment');
+      } catch {}
+      if (paymentBrickRef.current) {
+        paymentBrickRef.current.innerHTML = '';
+      }
     };
   }, []);
 
@@ -115,12 +120,15 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
           console.warn('Error unmounting brick:', e);
         }
       }
-      if (mpService) {
-        try {
-          mpService.destroyBrick('payment');
-        } catch (e) {
-          console.warn('Error destroying previous brick:', e);
-        }
+      try {
+        // Always use the local service instance to destroy, state may lag
+        service.destroyBrick('payment');
+      } catch (e) {
+        console.warn('Error destroying previous brick:', e);
+      }
+      // Clear container DOM to avoid already_initialized errors
+      if (paymentBrickRef.current) {
+        paymentBrickRef.current.innerHTML = '';
       }
 
       // Capture amount at the start to avoid mid-render changes
@@ -167,60 +175,78 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
             },
           };
 
-      const brickInstance = await service.createPaymentBrick(
-        'payment-brick-container',
-        initialization,
-        {
-          onReady: () => {
-            console.log('Payment brick ready');
-            setIsLoading(false);
-          },
-          onError: (error) => {
-            console.error('Payment brick error:', error);
-            setError(error?.message || 'Error loading payment form');
-            onError?.(error);
-          },
-          onSubmit: async (formData) => {
-            console.log('Payment form submitted:', formData);
-            // production flow expects MercadoPago redirect or OP
-            try {
-              // Always process via backend route for Payment Brick
-              const paymentResult = await processPayment(formData, capturedAmount);
-              if (paymentResult?.status === 'approved') onSuccess?.(paymentResult);
-              else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
-              else onError?.(paymentResult);
-              return paymentResult;
-            } catch (err) {
-              console.error('Payment processing error:', err);
-              onError?.(err);
-              throw err;
-            }
-          },
-        },
-        {
-          visual: {
-            style: {
-              theme,
-              customVariables: {
-                textPrimaryColor: '#1f2937',
-                textSecondaryColor: '#6b7280',
-                inputBackgroundColor: '#ffffff',
-                formBackgroundColor: '#ffffff',
-                baseColor: '#3b82f6',
-                baseColorFirstVariant: '#1d4ed8',
-                baseColorSecondVariant: '#60a5fa',
-                errorColor: '#ef4444',
-                successColor: '#10b981',
-                outlinePrimaryColor: '#d1d5db',
-                outlineSecondaryColor: '#e5e7eb',
-                buttonTextColor: '#ffffff',
-                borderRadiusMedium: '0.5rem',
-              },
+      const createBrick = async () =>
+        service.createPaymentBrick(
+          'payment-brick-container',
+          initialization,
+          {
+            onReady: () => {
+              console.log('Payment brick ready');
+              setIsLoading(false);
+            },
+            onError: (error) => {
+              console.error('Payment brick error:', error);
+              setError(error?.message || 'Error loading payment form');
+              onError?.(error);
+            },
+            onSubmit: async (formData) => {
+              console.log('Payment form submitted:', formData);
+              // production flow expects MercadoPago redirect or OP
+              try {
+                // Always process via backend route for Payment Brick
+                const paymentResult = await processPayment(formData, capturedAmount);
+                if (paymentResult?.status === 'approved') onSuccess?.(paymentResult);
+                else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
+                else onError?.(paymentResult);
+                return paymentResult;
+              } catch (err) {
+                console.error('Payment processing error:', err);
+                onError?.(err);
+                throw err;
+              }
             },
           },
-          ...extraCustomization,
+          {
+            visual: {
+              style: {
+                theme,
+                customVariables: {
+                  textPrimaryColor: '#1f2937',
+                  textSecondaryColor: '#6b7280',
+                  inputBackgroundColor: '#ffffff',
+                  formBackgroundColor: '#ffffff',
+                  baseColor: '#3b82f6',
+                  baseColorFirstVariant: '#1d4ed8',
+                  baseColorSecondVariant: '#60a5fa',
+                  errorColor: '#ef4444',
+                  successColor: '#10b981',
+                  outlinePrimaryColor: '#d1d5db',
+                  outlineSecondaryColor: '#e5e7eb',
+                  buttonTextColor: '#ffffff',
+                  borderRadiusMedium: '0.5rem',
+                },
+              },
+            },
+            ...extraCustomization,
+          }
+        );
+
+      let brickInstance: any;
+      try {
+        brickInstance = await createBrick();
+      } catch (err: any) {
+        const msg = String(err?.message || err || '');
+        if (msg.includes('already_initialized')) {
+          console.warn('Brick was already initialized; destroying and retrying');
+          try { service.destroyBrick('payment'); } catch {}
+          if (paymentBrickRef.current) {
+            paymentBrickRef.current.innerHTML = '';
+          }
+          brickInstance = await createBrick();
+        } else {
+          throw err;
         }
-      );
+      }
 
       setBrick(brickInstance);
     } catch (error) {
