@@ -79,6 +79,20 @@ function getDueTone(date?: string | null, isCompleted?: boolean) {
   return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100'
 }
 
+// ——— Derived status helpers ———
+function isDateOverdue(date?: string | null) {
+  if (!date) return false
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const d = new Date(date)
+  return !isNaN(d.getTime()) && d.getTime() < startOfToday.getTime()
+}
+
+function displayStatusFrom(status: Status, dueDate?: string | null): Status {
+  if (status === 'Completed') return status
+  return isDateOverdue(dueDate) ? 'Overdue' : status
+}
+
 function Avatar({ user, size = 28 }: { user?: User; size?: number }) {
   const style: React.CSSProperties = { width: size, height: size }
   if (!user) return <div style={style} className="rounded-full bg-neutral-200 dark:bg-neutral-700" />
@@ -106,11 +120,39 @@ function AssigneeSelect({ users, value, onChange, disabled }:{ users: User[]; va
 }
 
 function StatusSelect({ value, onChange }:{ value: Status; onChange: (s: Status)=>void }){
-  const options: Status[] = ['New','In Progress','Completed','Overdue']
+  // Overdue is auto-derived from due date; do not allow selecting it directly
+  const options: Status[] = ['New','In Progress','Completed']
+  const coercedValue = value === 'Overdue' ? 'In Progress' : value
   return (
-    <select className="input py-1 pr-8 text-sm" value={value} onChange={(e)=>onChange(e.target.value as Status)}>
+    <select className="input py-1 pr-8 text-sm" value={coercedValue} onChange={(e)=>onChange(e.target.value as Status)}>
       {options.map(o=> <option key={o} value={o}>{o}</option>)}
     </select>
+  )
+}
+
+function InheritToggle({ value, onChange, ariaLabel }: { value: boolean; onChange: (v: boolean) => void; ariaLabel?: string }){
+  return (
+    <div className="mt-1 inline-flex rounded-md overflow-hidden border border-neutral-200 dark:border-neutral-700" role="tablist" aria-label={ariaLabel}>
+      <button
+        type="button"
+        className={`px-2 py-0.5 text-[11px] transition-colors ${value ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100' : 'bg-transparent text-neutral-500 dark:text-neutral-400'}`}
+        onClick={()=>!value && onChange(true)}
+        aria-selected={value}
+        role="tab"
+      >
+        Inherited
+      </button>
+      <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
+      <button
+        type="button"
+        className={`px-2 py-0.5 text-[11px] transition-colors ${!value ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100' : 'bg-transparent text-neutral-500 dark:text-neutral-400'}`}
+        onClick={()=>value && onChange(false)}
+        aria-selected={!value}
+        role="tab"
+      >
+        Custom
+      </button>
+    </div>
   )
 }
 
@@ -240,7 +282,7 @@ export default function TasksList(){
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl">Tasks</h1>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">🌱 Tasks</h1>
           <p className="text-neutral-500 dark:text-neutral-400">Plan, track, and ship. Subtasks can inherit assignee and due date from their parent.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -330,13 +372,20 @@ export default function TasksList(){
                     {editingStatus === `task:${t.id}` ? (
                       <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} />
                     ) : (
-                      <button
-                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[t.status]}`}
-                        onClick={()=>setEditingStatus(`task:${t.id}`)}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[t.status]}`}></span>
-                        {t.status}
-                      </button>
+                      (()=>{
+                        const ds = displayStatusFrom(t.status, t.dueDate)
+                        const isAutoOverdue = ds === 'Overdue' && t.status !== 'Completed'
+                        return (
+                          <button
+                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
+                            onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
+                            title={isAutoOverdue ? 'Status is auto-set to Overdue based on due date' : 'Click to edit status'}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
+                            {ds}
+                          </button>
+                        )
+                      })()
                     )}
                   </div>
                   <div className="col-span-2">
@@ -373,11 +422,6 @@ export default function TasksList(){
                   {t.subtasks.slice().sort((a,b)=>a.order-b.order).map((s) => {
                     const effectiveAssigneeId = s.inheritsAssignee ? (t.assigneeId ?? null) : (s.assigneeId ?? null)
                     const effectiveDueDate = s.inheritsDueDate ? (t.dueDate ?? null) : (s.dueDate ?? null)
-                    const inheritedBadge = (cond: boolean) => (
-                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${cond? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'}`}>
-                        {cond? 'Inherited' : 'Custom'}
-                      </span>
-                    )
                     return (
                       <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
                       {({attributes, listeners}) => (
@@ -416,30 +460,44 @@ export default function TasksList(){
                                 />
                               ) : (
                                 <button
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')}`}
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60 cursor-not-allowed' : ''}`}
                                   onClick={()=>{ if (!s.inheritsDueDate) setEditingDue(`sub:${t.id}:${s.id}`) }}
+                                  title={s.inheritsDueDate ? 'Inherited from parent task' : 'Click to edit due date'}
                                 >
                                   {formatDate(effectiveDueDate)}
                                 </button>
                               )}
-                              {inheritedBadge(s.inheritsDueDate)}
                             </div>
-                            <label className="mt-1 inline-flex items-center gap-2 text-[11px] text-neutral-500">
-                              <input type="checkbox" className="rounded" checked={s.inheritsDueDate} onChange={(e)=>updateSubtask(t.id, s.id, { inheritsDueDate: e.target.checked, dueDate: e.target.checked ? null : (effectiveDueDate ?? null) })} />
-                              Inherit due date
-                            </label>
+                            <InheritToggle
+                              ariaLabel="Due date inheritance"
+                              value={s.inheritsDueDate}
+                              onChange={(toInherited)=>{
+                                if (toInherited) {
+                                  updateSubtask(t.id, s.id, { inheritsDueDate: true, dueDate: null })
+                                } else {
+                                  updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null })
+                                }
+                              }}
+                            />
                           </div>
                           <div className="col-span-2">
                             {editingStatus === `sub:${t.id}:${s.id}` ? (
                               <StatusSelect value={s.status} onChange={(st)=>{ updateSubtask(t.id,s.id,{ status: st }); setEditingStatus(null) }} />
                             ) : (
-                              <button
-                                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[s.status]}`}
-                                onClick={()=>setEditingStatus(`sub:${t.id}:${s.id}`)}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[s.status]}`}></span>
-                                {s.status}
-                              </button>
+                              (()=>{
+                                const ds = displayStatusFrom(s.status, effectiveDueDate)
+                                const isAutoOverdue = ds === 'Overdue' && s.status !== 'Completed'
+                                return (
+                                  <button
+                                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
+                                    onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`sub:${t.id}:${s.id}`) }}
+                                    title={isAutoOverdue ? 'Status is auto-set to Overdue based on due date' : 'Click to edit status'}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
+                                    {ds}
+                                  </button>
+                                )
+                              })()
                             )}
                           </div>
                           <div className="col-span-2">
@@ -453,9 +511,10 @@ export default function TasksList(){
                                 />
                               ) : (
                                 <button
-                                  className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
+                                  className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60 cursor-not-allowed' : ''}`}
                                   onClick={()=>{ if (!s.inheritsAssignee) setEditingAssignee(`sub:${t.id}:${s.id}`) }}
                                   disabled={s.inheritsAssignee}
+                                  title={s.inheritsAssignee ? 'Inherited from parent task' : 'Click to set assignee'}
                                 >
                                   <Avatar user={effectiveAssigneeId ? userById[effectiveAssigneeId] : undefined} />
                                   <span className="text-sm text-neutral-700 dark:text-neutral-200">
@@ -464,10 +523,17 @@ export default function TasksList(){
                                 </button>
                               )}
                             </div>
-                            <label className="mt-1 inline-flex items-center gap-2 text-[11px] text-neutral-500">
-                              <input type="checkbox" className="rounded" checked={s.inheritsAssignee} onChange={(e)=>updateSubtask(t.id, s.id, { inheritsAssignee: e.target.checked, assigneeId: e.target.checked ? null : (effectiveAssigneeId ?? null) })} />
-                              Inherit assignee
-                            </label>
+                            <InheritToggle
+                              ariaLabel="Assignee inheritance"
+                              value={s.inheritsAssignee}
+                              onChange={(toInherited)=>{
+                                if (toInherited) {
+                                  updateSubtask(t.id, s.id, { inheritsAssignee: true, assigneeId: null })
+                                } else {
+                                  updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeId: effectiveAssigneeId ?? null })
+                                }
+                              }}
+                            />
                           </div>
                           <div className="col-span-1 text-right">
                             <button className="text-neutral-500 hover:text-rose-500 text-xs" onClick={()=>removeSubtask(t.id, s.id)}>Remove</button>
