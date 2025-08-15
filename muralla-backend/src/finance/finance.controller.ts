@@ -190,6 +190,7 @@ export class FinanceController {
     description?: string;
     customerEmail?: string;
     customerName?: string;
+    idempotencyKey?: string;
     payer?: {
       email?: string;
       first_name?: string;
@@ -202,53 +203,31 @@ export class FinanceController {
   }) {
     try {
       const userId = req.user.sub;
-      
-      // For demo purposes, we'll return a mock successful payment
-      // In production, you would process this through MercadoPago's API
-      const mockPayment = {
-        id: `demo_payment_${Date.now()}`,
-        status: 'approved',
-        status_detail: 'accredited',
-        amount: paymentData.amount,
-        currency_id: 'CLP',
-        payment_method_id: paymentData.payment_method_id || 'card',
-        installments: paymentData.installments || 1,
-        payer: {
-          email: paymentData.customerEmail || paymentData.payer?.email,
-          first_name: paymentData.customerName?.split(' ')[0] || paymentData.payer?.first_name,
-          last_name: paymentData.customerName?.split(' ').slice(1).join(' ') || paymentData.payer?.last_name,
-        },
-        description: paymentData.description || paymentData.title,
-        external_reference: `payment_${userId}_${Date.now()}`,
-        date_created: new Date().toISOString(),
-        date_approved: new Date().toISOString(),
-        money_release_date: new Date().toISOString(),
-        transaction_amount: paymentData.amount,
-        created_by: userId
-      };
 
-      // Log the payment for audit purposes
-      console.log('Payment processed:', {
-        userId,
-        amount: paymentData.amount,
-        paymentId: mockPayment.id,
-        customerEmail: paymentData.customerEmail,
-        timestamp: new Date().toISOString()
-      });
+      // Build a per-request idempotency key (allow client-provided, fallback to server-generated)
+      const idempotencyKey = paymentData.idempotencyKey || `mp:${userId}:${paymentData.amount}:${Date.now()}`;
 
+      const payment = await this.mercadoPagoService.createPayment(paymentData, { idempotencyKey });
+
+      // Normalize minimal response for the frontend
       return {
-        success: true,
-        payment: mockPayment,
-        message: 'Payment processed successfully'
+        id: payment.id,
+        status: payment.status,
+        status_detail: payment.status_detail,
+        transaction_amount: payment.transaction_amount,
+        currency_id: payment.currency_id,
+        payment_method_id: payment.payment_method_id,
+        installments: payment.installments,
+        payer: payment.payer,
+        description: payment.description,
+        date_created: payment.date_created,
+        date_approved: payment.date_approved,
       };
 
     } catch (error) {
       console.error('Error processing payment:', error);
-      return {
-        success: false,
-        error: 'Error processing payment',
-        message: 'Payment processing failed'
-      };
+      // Surface MercadoPago error information when possible
+      throw error;
     }
   }
 

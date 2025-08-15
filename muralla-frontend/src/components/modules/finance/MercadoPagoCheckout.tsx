@@ -186,7 +186,7 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
             try {
               // Always process via backend route for Payment Brick
               const paymentResult = await processPayment(formData, capturedAmount);
-              if (paymentResult?.status === 'approved' || paymentResult?.success) onSuccess?.(paymentResult);
+              if (paymentResult?.status === 'approved') onSuccess?.(paymentResult);
               else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
               else onError?.(paymentResult);
               return paymentResult;
@@ -244,7 +244,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
           title,
           description,
           customerEmail,
-          customerName
+          customerName,
+          // Provide a client-side idempotency key to help backend protect against duplicates
+          idempotencyKey: `mp:${customerEmail || customerName || 'user'}:${useAmount ?? amount}:${Date.now()}`
         })
       });
 
