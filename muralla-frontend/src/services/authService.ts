@@ -35,11 +35,22 @@ export class AuthService {
   static isTokenExpired(token: string): boolean {
     if (!token) return true;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const [, payloadSeg] = token.split('.');
+      if (!payloadSeg) return true;
+
+      // Convert base64url -> base64 and pad
+      const base64 = payloadSeg.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const json = atob(padded);
+      const payload = JSON.parse(json);
+
+      if (!payload?.exp || typeof payload.exp !== 'number') return true;
+
       const currentTime = Math.floor(Date.now() / 1000);
-      // Check if token expires within next 5 minutes
-      return payload.exp < (currentTime + 300);
+      // Consider token expiring within next 5 minutes as expired
+      return payload.exp < currentTime + 300;
     } catch {
+      // If we cannot safely decode, assume expired to be safe
       return true;
     }
   }
