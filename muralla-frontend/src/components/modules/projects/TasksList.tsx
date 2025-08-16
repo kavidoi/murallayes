@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DndContext } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -60,10 +61,10 @@ const statusDotClasses: Record<Status, string> = {
   'Overdue': 'bg-rose-500',
 }
 
-function formatDate(date?: string | null) {
-  if (!date) return 'No date'
+function formatDate(date?: string | null, t?: (k: string) => string) {
+  if (!date) return t ? t('common.noDate') : 'No date'
   const d = new Date(date)
-  if (isNaN(d.getTime())) return 'No date'
+  if (isNaN(d.getTime())) return t ? t('common.noDate') : 'No date'
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
@@ -103,7 +104,7 @@ function Avatar({ user, size = 28 }: { user?: User; size?: number }) {
   )
 }
 
-function AssigneeSelect({ users, value, onChange, disabled }:{ users: User[]; value?: string | null; onChange: (v: string | null) => void; disabled?: boolean }){
+function AssigneeSelect({ users, value, onChange, disabled, unassignedLabel }:{ users: User[]; value?: string | null; onChange: (v: string | null) => void; disabled?: boolean; unassignedLabel: string }){
   return (
     <select
       className="input py-1 pr-8 text-sm"
@@ -111,7 +112,7 @@ function AssigneeSelect({ users, value, onChange, disabled }:{ users: User[]; va
       onChange={(e) => onChange(e.target.value || null)}
       disabled={disabled}
     >
-      <option value="">Unassigned</option>
+      <option value="">{unassignedLabel}</option>
       {users.map(u => (
         <option key={u.id} value={u.id}>{u.name}</option>
       ))}
@@ -119,44 +120,19 @@ function AssigneeSelect({ users, value, onChange, disabled }:{ users: User[]; va
   )
 }
 
-function StatusSelect({ value, onChange }:{ value: Status; onChange: (s: Status)=>void }){
+function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Status)=>void; t: (k: string) => string }){
   // Overdue is auto-derived from due date; do not allow selecting it directly
   const options: Status[] = ['New','In Progress','Completed']
   const coercedValue = value === 'Overdue' ? 'In Progress' : value
   return (
     <select className="input py-1 pr-8 text-sm" value={coercedValue} onChange={(e)=>onChange(e.target.value as Status)}>
-      {options.map(o=> <option key={o} value={o}>{o}</option>)}
+      {options.map(o=> <option key={o} value={o}>{t(`status.${o}`)}</option>)}
     </select>
   )
 }
 
-function InheritToggle({ value, onChange, ariaLabel }: { value: boolean; onChange: (v: boolean) => void; ariaLabel?: string }){
-  return (
-    <div className="mt-1 inline-flex rounded-md overflow-hidden border border-neutral-200 dark:border-neutral-700" role="tablist" aria-label={ariaLabel}>
-      <button
-        type="button"
-        className={`px-2 py-0.5 text-[11px] transition-colors ${value ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100' : 'bg-transparent text-neutral-500 dark:text-neutral-400'}`}
-        onClick={()=>!value && onChange(true)}
-        aria-selected={value}
-        role="tab"
-      >
-        Inherited
-      </button>
-      <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
-      <button
-        type="button"
-        className={`px-2 py-0.5 text-[11px] transition-colors ${!value ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100' : 'bg-transparent text-neutral-500 dark:text-neutral-400'}`}
-        onClick={()=>value && onChange(false)}
-        aria-selected={!value}
-        role="tab"
-      >
-        Custom
-      </button>
-    </div>
-  )
-}
-
 export default function TasksList(){
+  const { t: tr } = useTranslation()
   const [users] = useState<User[]>(initialUsers)
   const [tasks, setTasks] = useState<Task[]>([{
     id: 't1',
@@ -196,7 +172,7 @@ export default function TasksList(){
   const addTask = () => {
     const newTask: Task = {
       id: `t${Date.now()}`,
-      name: 'New task',
+      name: tr('pages.tasks.newTask'),
       status: 'New',
       assigneeId: null,
       dueDate: null,
@@ -210,7 +186,7 @@ export default function TasksList(){
   const addSubtask = (taskId: string) => {
     setTasks(prev => prev.map(t => t.id===taskId ? {
       ...t,
-      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: 'New sub-item', status:'New', inheritsAssignee: true, inheritsDueDate: true, order: t.subtasks.length }]
+      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: tr('pages.tasks.newSubtask'), status:'New', inheritsAssignee: true, inheritsDueDate: true, order: t.subtasks.length }]
     } : t))
   }
 
@@ -229,11 +205,11 @@ export default function TasksList(){
     setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
   }
 
-  const sectionHeader = (name: string) => (
+  const sectionHeader = (name: string, newLabel: string) => (
     <div className="flex items-center justify-between px-2 py-3">
       <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{name}</h2>
       <button className="btn-outline text-xs" onClick={addTask}>
-        <span className="mr-1">＋</span> New Task
+        <span className="mr-1">＋</span> {newLabel}
       </button>
     </div>
   )
@@ -282,33 +258,33 @@ export default function TasksList(){
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">🌱 Tasks</h1>
-          <p className="text-neutral-500 dark:text-neutral-400">Plan, track, and ship. Subtasks can inherit assignee and due date from their parent.</p>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
+          <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn-outline" onClick={addTask}>New</button>
-          <button className="btn-primary">Import</button>
+          <button className="btn-outline" onClick={addTask}>{tr('actions.new')}</button>
+          <button className="btn-primary">{tr('actions.import')}</button>
         </div>
       </div>
 
       <div className="card p-0 overflow-hidden">
-        {sectionHeader('All Tasks')}
+        {sectionHeader(tr('pages.tasks.sectionAll'), tr('pages.tasks.newTask'))}
         {/* Faux sub-navigation */}
         <div className="px-3 pb-2 text-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-4">
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium">All Tasks</button>
+          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium">{tr('pages.tasks.subnavAll')}</button>
           <span className="text-neutral-400">•</span>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">Timeline</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">By Status</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">3 more…</button>
+          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavTimeline')}</button>
+          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavByStatus')}</button>
+          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavMore')}</button>
         </div>
         <div className="max-h-[65vh] overflow-auto">
           {/* Sticky header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              <div className="col-span-5">Name</div>
-              <div className="col-span-2">Due Date</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-2">Assignee</div>
+              <div className="col-span-5">{tr('pages.tasks.columns.name')}</div>
+              <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
+              <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
+              <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
               <div className="col-span-1 text-right"> </div>
             </div>
           </div>
@@ -326,7 +302,7 @@ export default function TasksList(){
                     <button
                       className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
                       onClick={()=>updateTask(t.id, { expanded: !t.expanded })}
-                      aria-label={t.expanded ? 'Collapse' : 'Expand'}
+                      aria-label={t.expanded ? tr('tooltips.collapse') : tr('tooltips.expand')}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-4 h-4 transition-transform ${t.expanded ? 'rotate-90' : ''}`}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -334,7 +310,7 @@ export default function TasksList(){
                     </button>
                     <button
                       className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-grab active:cursor-grabbing"
-                      aria-label="Drag task"
+                      aria-label={tr('tooltips.dragTask')}
                       {...attributes}
                       {...listeners}
                     >
@@ -364,13 +340,13 @@ export default function TasksList(){
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
                         onClick={()=>setEditingDue(`task:${t.id}`)}
                       >
-                        {formatDate(t.dueDate)}
+                        {formatDate(t.dueDate, tr)}
                       </button>
                     )}
                   </div>
                   <div className="col-span-2">
                     {editingStatus === `task:${t.id}` ? (
-                      <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} />
+                      <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} t={tr} />
                     ) : (
                       (()=>{
                         const ds = displayStatusFrom(t.status, t.dueDate)
@@ -379,10 +355,10 @@ export default function TasksList(){
                           <button
                             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
                             onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
-                            title={isAutoOverdue ? 'Status is auto-set to Overdue based on due date' : 'Click to edit status'}
+                            title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
-                            {ds}
+                            {tr(`status.${ds}`)}
                           </button>
                         )
                       })()
@@ -394,6 +370,7 @@ export default function TasksList(){
                         users={users}
                         value={t.assigneeId ?? ''}
                         onChange={(v)=>{ updateTask(t.id,{ assigneeId: v }); setEditingAssignee(null) }}
+                        unassignedLabel={tr('common.unassigned')}
                       />
                     ) : (
                       <button
@@ -402,13 +379,13 @@ export default function TasksList(){
                       >
                         <Avatar user={t.assigneeId ? userById[t.assigneeId] : undefined} />
                         <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                          {t.assigneeId ? userById[t.assigneeId].name : 'Unassigned'}
+                          {t.assigneeId ? userById[t.assigneeId].name : tr('common.unassigned')}
                         </span>
                       </button>
                     )}
                   </div>
                   <div className="col-span-1 text-right">
-                    <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>+ Subtask</button>
+                    <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
                   </div>
                 </div>
               </div>
@@ -433,7 +410,7 @@ export default function TasksList(){
                             </svg>
                             <button
                               className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-grab active:cursor-grabbing"
-                              aria-label="Drag subtask"
+                              aria-label={tr('tooltips.dragSubtask')}
                               {...attributes}
                               {...listeners}
                             >
@@ -460,29 +437,24 @@ export default function TasksList(){
                                 />
                               ) : (
                                 <button
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                  onClick={()=>{ if (!s.inheritsDueDate) setEditingDue(`sub:${t.id}:${s.id}`) }}
-                                  title={s.inheritsDueDate ? 'Inherited from parent task' : 'Click to edit due date'}
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60' : ''}`}
+                                  onClick={()=>{
+                                    if (s.inheritsDueDate) {
+                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null })
+                                    }
+                                    setEditingDue(`sub:${t.id}:${s.id}`)
+                                  }}
+                                  title={s.inheritsDueDate ? tr('tooltips.customizeDueDate') : tr('tooltips.editDueDate')}
                                 >
-                                  {formatDate(effectiveDueDate)}
+                                  {formatDate(effectiveDueDate, tr)}
                                 </button>
                               )}
                             </div>
-                            <InheritToggle
-                              ariaLabel="Due date inheritance"
-                              value={s.inheritsDueDate}
-                              onChange={(toInherited)=>{
-                                if (toInherited) {
-                                  updateSubtask(t.id, s.id, { inheritsDueDate: true, dueDate: null })
-                                } else {
-                                  updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null })
-                                }
-                              }}
-                            />
+                            {/* Toggle hidden by request; click chip to convert to Custom */}
                           </div>
                           <div className="col-span-2">
                             {editingStatus === `sub:${t.id}:${s.id}` ? (
-                              <StatusSelect value={s.status} onChange={(st)=>{ updateSubtask(t.id,s.id,{ status: st }); setEditingStatus(null) }} />
+                              <StatusSelect value={s.status} onChange={(st)=>{ updateSubtask(t.id,s.id,{ status: st }); setEditingStatus(null) }} t={tr} />
                             ) : (
                               (()=>{
                                 const ds = displayStatusFrom(s.status, effectiveDueDate)
@@ -491,10 +463,10 @@ export default function TasksList(){
                                   <button
                                     className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
                                     onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`sub:${t.id}:${s.id}`) }}
-                                    title={isAutoOverdue ? 'Status is auto-set to Overdue based on due date' : 'Click to edit status'}
+                                    title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
                                   >
                                     <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
-                                    {ds}
+                                    {tr(`status.${ds}`)}
                                   </button>
                                 )
                               })()
@@ -508,35 +480,30 @@ export default function TasksList(){
                                   value={effectiveAssigneeId}
                                   onChange={(v)=>{ updateSubtask(t.id, s.id, { assigneeId: v, inheritsAssignee: false }); setEditingAssignee(null) }}
                                   disabled={s.inheritsAssignee}
+                                  unassignedLabel={tr('common.unassigned')}
                                 />
                               ) : (
                                 <button
-                                  className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                  onClick={()=>{ if (!s.inheritsAssignee) setEditingAssignee(`sub:${t.id}:${s.id}`) }}
-                                  disabled={s.inheritsAssignee}
-                                  title={s.inheritsAssignee ? 'Inherited from parent task' : 'Click to set assignee'}
+                                  className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60' : ''}`}
+                                  onClick={()=>{
+                                    if (s.inheritsAssignee) {
+                                      updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeId: effectiveAssigneeId ?? null })
+                                    }
+                                    setEditingAssignee(`sub:${t.id}:${s.id}`)
+                                  }}
+                                  title={s.inheritsAssignee ? tr('tooltips.customizeAssignee') : tr('tooltips.setAssignee')}
                                 >
                                   <Avatar user={effectiveAssigneeId ? userById[effectiveAssigneeId] : undefined} />
                                   <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                                    {effectiveAssigneeId ? userById[effectiveAssigneeId].name : 'Unassigned'}
+                                    {effectiveAssigneeId ? userById[effectiveAssigneeId].name : tr('common.unassigned')}
                                   </span>
                                 </button>
                               )}
                             </div>
-                            <InheritToggle
-                              ariaLabel="Assignee inheritance"
-                              value={s.inheritsAssignee}
-                              onChange={(toInherited)=>{
-                                if (toInherited) {
-                                  updateSubtask(t.id, s.id, { inheritsAssignee: true, assigneeId: null })
-                                } else {
-                                  updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeId: effectiveAssigneeId ?? null })
-                                }
-                              }}
-                            />
+                            {/* Toggle hidden by request; click chip to convert to Custom */}
                           </div>
                           <div className="col-span-1 text-right">
-                            <button className="text-neutral-500 hover:text-rose-500 text-xs" onClick={()=>removeSubtask(t.id, s.id)}>Remove</button>
+                            <button className="text-neutral-500 hover:text-rose-500 text-xs" onClick={()=>removeSubtask(t.id, s.id)}>{tr('actions.remove')}</button>
                           </div>
                         </div>
                       </div>
