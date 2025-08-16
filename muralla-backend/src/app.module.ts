@@ -33,6 +33,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UsersService } from './users/users.service';
 import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 import { CostsModule } from './costs/costs.module';
+import { ProductsModule } from './products/products.module';
+import { WorkOrdersModule } from './workorders/workorders.module';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
@@ -83,6 +85,8 @@ class BootstrapService implements OnModuleInit {
     HealthModule,
     CustomLoggerModule,
     CostsModule,
+    ProductsModule,
+    WorkOrdersModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
