@@ -42,6 +42,20 @@ export class PrismaService implements OnModuleInit {
   get bankAccount() { return this.prisma.bankAccount; }
   get magicToken() { return this.prisma.magicToken; }
 
+  // New product pipeline models
+  get company() { return this.prisma.company; }
+  get vendor() { return this.prisma.vendor; }
+  get cost() { return this.prisma.cost; }
+  get costLine() { return this.prisma.costLine; }
+  get costCategory() { return this.prisma.costCategory; }
+  get attachment() { return this.prisma.attachment; }
+  get location() { return this.prisma.location; }
+  get inventoryMove() { return this.prisma.inventoryMove; }
+  get bOM() { return this.prisma.bOM; }
+  get bOMItem() { return this.prisma.bOMItem; }
+  get workOrder() { return this.prisma.workOrder; }
+  get costTransactionLink() { return this.prisma.costTransactionLink; }
+
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): any {
     // @ts-ignore – not part of current PrismaClient but exists in some flavours; fallback to $queryRaw

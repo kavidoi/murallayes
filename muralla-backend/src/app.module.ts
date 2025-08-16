@@ -32,6 +32,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UsersService } from './users/users.service';
 import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
+import { CostsModule } from './costs/costs.module';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
@@ -81,6 +82,7 @@ class BootstrapService implements OnModuleInit {
     QueueModule,
     HealthModule,
     CustomLoggerModule,
+    CostsModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
