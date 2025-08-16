@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AuthService } from '../../services/authService';
 
+import { useTranslation } from 'react-i18next';
+
 // Icons (we would normally import from a library like heroicons)
 const HomeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -108,113 +110,115 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
+  const { t } = useTranslation();
+
   const navigationItems: NavigationItem[] = [
-    { name: 'Home Hub', path: '/', icon: <HomeIcon /> },
+    { name: t('nav.home'), path: '/', icon: <HomeIcon /> },
     {
-      name: 'My',
+      name: t('nav.my'),
       path: '/me',
-      icon: <PeopleIcon />, // reuse icon
+      icon: <PeopleIcon />,
       children: [
-        { name: 'My PTO / Time-Off', path: '/me/pto' },
-        { name: 'My Finances', path: '/me/finances' },
-        { name: 'My Shifts', path: '/me/shifts' },
-        { name: 'My Data', path: '/me/data' },
-        { name: 'My Sales', path: '/me/sales' },
-        { name: 'My Products', path: '/me/products' },
-        { name: 'My Calendar', path: '/me/calendar' },
+        { name: t('nav.myPto'), path: '/me/pto' },
+        { name: t('nav.myFinances'), path: '/me/finances' },
+        { name: t('nav.myShifts'), path: '/me/shifts' },
+        { name: t('nav.myData'), path: '/me/data' },
+        { name: t('nav.mySales'), path: '/me/sales' },
+        { name: t('nav.myProducts'), path: '/me/products' },
+        { name: t('nav.myCalendar'), path: '/me/calendar' },
       ],
     },
     {
-      name: 'Knowledge Hub',
+      name: t('nav.knowledge'),
       path: '/knowledge',
       icon: <KnowledgeIcon />,
       children: [
-        { name: 'Policies & SOPs', path: '/knowledge/policies' },
-        { name: 'Playbooks & Templates', path: '/knowledge/playbooks' },
-        { name: 'Institutional Memory', path: '/knowledge/wiki' },
+        { name: t('nav.policies'), path: '/knowledge/policies' },
+        { name: t('nav.playbooks'), path: '/knowledge/playbooks' },
+        { name: t('nav.wiki'), path: '/knowledge/wiki' },
       ]
     },
     {
-      name: 'Projects & Tasks',
+      name: t('nav.projects'),
       path: '/projects',
       icon: <ProjectsIcon />,
       children: [
-        { name: 'Tasks List', path: '/projects/tasks' },
-        { name: 'Kanban Board', path: '/projects/kanban' },
-        { name: 'Timeline View', path: '/projects/timeline' },
-        { name: 'Calendar View', path: '/projects/calendar' },
-        { name: 'Backlog', path: '/projects/backlog' },
-        { name: 'Goal Tree', path: '/projects/goals' },
+        { name: t('nav.tasksList'), path: '/projects/tasks' },
+        { name: t('nav.kanban'), path: '/projects/kanban' },
+        { name: t('nav.timeline'), path: '/projects/timeline' },
+        { name: t('nav.calendar'), path: '/projects/calendar' },
+        { name: t('nav.backlog'), path: '/projects/backlog' },
+        { name: t('nav.goals'), path: '/projects/goals' },
       ]
     },
     {
-      name: 'Staff',
+      name: t('nav.staff'),
       path: '/staff',
       icon: <PeopleIcon />,
       children: [
-        { name: 'Team Directory', path: '/staff/directory' },
-        { name: 'Shifts & Attendance', path: '/staff/shifts' },
-        { name: 'PTO / Time-Off', path: '/staff/pto' },
-        { name: 'Staff Finances', path: '/staff/finances' },
+        { name: t('nav.directory'), path: '/staff/directory' },
+        { name: t('nav.shifts'), path: '/staff/shifts' },
+        { name: t('nav.pto'), path: '/staff/pto' },
+        { name: t('nav.staffFinances'), path: '/staff/finances' },
       ]
     },
     {
-      name: 'Finance & Analytics',
+      name: t('nav.finance'),
       path: '/finance',
       icon: <FinanceIcon />,
       children: [
-        { name: 'Bank Account', path: '/finance/bank' },
-        { name: 'Payment Handling', path: '/finance/payments' },
-        { name: 'Revenue & Expenses', path: '/finance/revenue-expenses' },
-        { name: 'Taxes & VAT', path: '/finance/taxes' },
-        { name: 'Budgets', path: '/finance/budgets' },
-        { name: 'KPI Dashboards', path: '/finance/kpis' },
-        { name: 'Scenario Planning', path: '/finance/forecasts' },
+        { name: t('nav.bank'), path: '/finance/bank' },
+        { name: t('nav.payments'), path: '/finance/payments' },
+        { name: t('nav.revenueExpenses'), path: '/finance/revenue-expenses' },
+        { name: t('nav.taxes'), path: '/finance/taxes' },
+        { name: t('nav.budgets'), path: '/finance/budgets' },
+        { name: t('nav.kpis'), path: '/finance/kpis' },
+        { name: t('nav.forecasts'), path: '/finance/forecasts' },
       ]
     },
     {
-      name: 'Inventory & Sales',
+      name: t('nav.inventory'),
       path: '/inventory',
       icon: <InventoryIcon />,
       children: [
-        { name: 'Products', path: '/inventory/products' },
-        { name: 'Sales', path: '/inventory/sales' },
-        { name: 'Stock', path: '/inventory/stock' },
-        { name: 'Other Movements', path: '/inventory/movements' },
+        { name: t('nav.products'), path: '/inventory/products' },
+        { name: t('nav.sales'), path: '/inventory/sales' },
+        { name: t('nav.stock'), path: '/inventory/stock' },
+        { name: t('nav.movements'), path: '/inventory/movements' },
       ]
     },
     {
-      name: 'CRM & Community',
+      name: t('nav.crm'),
       path: '/crm',
       icon: <CrmIcon />,
       children: [
-        { name: 'Contacts', path: '/crm/contacts' },
-        { name: 'Segments', path: '/crm/segments' },
-        { name: 'Activity Logs', path: '/crm/logs' },
-        { name: 'Feedback', path: '/crm/feedback' },
+        { name: t('nav.contacts'), path: '/crm/contacts' },
+        { name: t('nav.segments'), path: '/crm/segments' },
+        { name: t('nav.activityLogs'), path: '/crm/logs' },
+        { name: t('nav.feedback'), path: '/crm/feedback' },
       ]
     },
     {
-      name: 'Events & Scheduling',
+      name: t('nav.events'),
       path: '/events',
       icon: <EventsIcon />,
       children: [
-        { name: 'Calendar', path: '/events/calendar' },
-        { name: 'Bookings', path: '/events/bookings' },
-        { name: 'Resource Allocation', path: '/events/resources' },
+        { name: t('routes.eventsCalendar.title'), path: '/events/calendar' },
+        { name: t('nav.bookings'), path: '/events/bookings' },
+        { name: t('nav.resources'), path: '/events/resources' },
       ]
     },
     {
-      name: 'Notifications',
+      name: t('nav.notifications'),
       path: '/notifications',
       icon: <NotificationsIcon />,
       children: [
-        { name: 'Alert Inbox', path: '/notifications/inbox' },
-        { name: 'Rules Engine', path: '/notifications/rules' },
-        { name: 'Templates', path: '/notifications/templates' },
+        { name: t('nav.inbox'), path: '/notifications/inbox' },
+        { name: t('nav.rules'), path: '/notifications/rules' },
+        { name: t('nav.templates'), path: '/notifications/templates' },
       ]
     },
-    { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+    { name: t('nav.settings'), path: '/settings', icon: <SettingsIcon /> },
   ];
   
   const allParents = navigationItems.filter(item => item.children).map(item => item.name);
@@ -347,7 +351,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
               <span className="mr-3">
                 <ThemeToggleIcon />
               </span>
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
+              {darkMode ? t('theme.light') : t('theme.dark')}
             </button>
             <button
               onClick={() => {
@@ -359,7 +363,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-6h12.75" />
               </svg>
-              Logout
+              {t('actions.logout')}
             </button>
           </div>
         </div>
@@ -383,7 +387,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
             <div className="relative max-w-md">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t('actions.searchPlaceholder')}
                 className="input pl-10"
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
@@ -401,7 +405,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Create
+              {t('actions.create')}
             </button>
 
             {/* Notifications */}

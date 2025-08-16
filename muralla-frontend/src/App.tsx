@@ -17,8 +17,11 @@ import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
 import TasksList from './components/modules/projects/TasksList'
+import Settings from './components/modules/settings/Settings'
+import { useTranslation } from 'react-i18next'
 
 function App() {
+  const { t } = useTranslation()
   const [darkMode, setDarkMode] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, false = not auth, true = auth
   const [isLoading, setIsLoading] = useState(true)
@@ -73,7 +76,7 @@ function App() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Verificando autenticación...</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('common.loadingAuth')}</p>
         </div>
       </div>
     )
@@ -102,35 +105,35 @@ function App() {
               <Route index element={<Dashboard />} />
               
               {/* My (user-centric) Routes */}
-              <Route path="/me" element={<PlaceholderPage title="My Hub" description="Personal view: PTO, finances, shifts, sales, products, calendar" icon="🙋" />} />
+              <Route path="/me" element={<PlaceholderPage title={t('routes.me.title')} description={t('routes.me.description')} icon="🙋" />} />
               <Route path="/me/pto" element={<PTO />} />
               <Route path="/me/finances" element={<MyFinances />} />
-              <Route path="/me/shifts" element={<PlaceholderPage title="My Shifts" description="Your scheduled and past shifts" icon="⏰" />} />
-              <Route path="/me/data" element={<PlaceholderPage title="My Data" description="Personal data, profile, documents" icon="🪪" />} />
-              <Route path="/me/sales" element={<PlaceholderPage title="My Sales" description="Your sales performance and history" icon="📈" />} />
-              <Route path="/me/products" element={<PlaceholderPage title="My Products" description="Products managed or associated to you" icon="🏷️" />} />
-              <Route path="/me/calendar" element={<PlaceholderPage title="My Calendar" description="Your events and scheduling" icon="📅" />} />
+              <Route path="/me/shifts" element={<PlaceholderPage title={t('routes.meShifts.title')} description={t('routes.meShifts.description')} icon="⏰" />} />
+              <Route path="/me/data" element={<PlaceholderPage title={t('routes.meData.title')} description={t('routes.meData.description')} icon="🪪" />} />
+              <Route path="/me/sales" element={<PlaceholderPage title={t('routes.meSales.title')} description={t('routes.meSales.description')} icon="📈" />} />
+              <Route path="/me/products" element={<PlaceholderPage title={t('routes.meProducts.title')} description={t('routes.meProducts.description')} icon="🏷️" />} />
+              <Route path="/me/calendar" element={<PlaceholderPage title={t('routes.meCalendar.title')} description={t('routes.meCalendar.description')} icon="📅" />} />
               
               {/* Knowledge Hub Routes */}
               <Route path="/knowledge" element={<KnowledgeOverview />} />
-              <Route path="/knowledge/policies" element={<PlaceholderPage title="Policies & SOPs" description="Company policies, procedures, and compliance documentation" icon="📋" />} />
-              <Route path="/knowledge/playbooks" element={<PlaceholderPage title="Playbooks & Templates" description="Reusable frameworks and templates for common scenarios" icon="📖" />} />
-              <Route path="/knowledge/wiki" element={<PlaceholderPage title="Institutional Memory" description="Wiki pages, lessons learned, and organizational knowledge" icon="🧠" />} />
+              <Route path="/knowledge/policies" element={<PlaceholderPage title={t('routes.policies.title')} description={t('routes.policies.description')} icon="📋" />} />
+              <Route path="/knowledge/playbooks" element={<PlaceholderPage title={t('routes.playbooks.title')} description={t('routes.playbooks.description')} icon="📖" />} />
+              <Route path="/knowledge/wiki" element={<PlaceholderPage title={t('routes.wiki.title')} description={t('routes.wiki.description')} icon="🧠" />} />
               
               {/* Projects & Tasks Routes */}
-              <Route path="/projects" element={<PlaceholderPage title="Projects & Tasks" description="Project management with multiple views and collaboration tools" icon="📋" />} />
+              <Route path="/projects" element={<PlaceholderPage title={t('routes.projects.title')} description={t('routes.projects.description')} icon="📋" />} />
               <Route path="/projects/tasks" element={<TasksList />} />
-              <Route path="/projects/kanban" element={<PlaceholderPage title="Kanban Board" description="Visual task management with drag-and-drop functionality" icon="📊" />} />
-              <Route path="/projects/timeline" element={<PlaceholderPage title="Timeline View" description="Gantt-style project timeline and dependencies" icon="📅" />} />
-              <Route path="/projects/calendar" element={<PlaceholderPage title="Calendar View" description="Calendar-based project and task scheduling" icon="🗓️" />} />
-              <Route path="/projects/backlog" element={<PlaceholderPage title="Backlog" description="Product backlog and sprint planning" icon="📝" />} />
-              <Route path="/projects/goals" element={<PlaceholderPage title="Goal Tree" description="Hierarchical goal tracking and OKRs" icon="🎯" />} />
+              <Route path="/projects/kanban" element={<PlaceholderPage title={t('routes.kanban.title')} description={t('routes.kanban.description')} icon="📊" />} />
+              <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
+              <Route path="/projects/calendar" element={<PlaceholderPage title={t('routes.calendar.title')} description={t('routes.calendar.description')} icon="🗓️" />} />
+              <Route path="/projects/backlog" element={<PlaceholderPage title={t('routes.backlog.title')} description={t('routes.backlog.description')} icon="📝" />} />
+              <Route path="/projects/goals" element={<PlaceholderPage title={t('routes.goals.title')} description={t('routes.goals.description')} icon="🎯" />} />
               
               {/* Staff Routes (organization perspective) */}
               <Route path="/staff" element={<PeopleOverview />} />
               <Route path="/staff/directory" element={<TeamDirectory />} />
-              <Route path="/staff/shifts" element={<PlaceholderPage title="Shifts & Attendance" description="Real-time visibility into who is on the clock" icon="⏰" />} />
-              <Route path="/staff/pto" element={<PlaceholderPage title="PTO / Time-Off" description="Overview of all staff time-off requests" icon="🏖️" />} />
+              <Route path="/staff/shifts" element={<PlaceholderPage title={t('routes.staffShifts.title')} description={t('routes.staffShifts.description')} icon="⏰" />} />
+              <Route path="/staff/pto" element={<PlaceholderPage title={t('routes.staffPto.title')} description={t('routes.staffPto.description')} icon="🏖️" />} />
               <Route path="/staff/finances" element={<StaffFinances />} />
               
               {/* Finance & Analytics Routes */}
@@ -139,39 +142,39 @@ function App() {
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
               <Route path="/finance/payments" element={<PaymentHandling />} />
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
-              <Route path="/finance/taxes" element={<PlaceholderPage title="Taxes & VAT" description="Keep the business compliant with tax management" icon="🧾" />} />
-              <Route path="/finance/budgets" element={<PlaceholderPage title="Budgets" description="Set spending guardrails and monitor variances" icon="📊" />} />
-              <Route path="/finance/kpis" element={<PlaceholderPage title="KPI Dashboards" description="Surface financial metrics that matter at a glance" icon="📈" />} />
-              <Route path="/finance/forecasts" element={<PlaceholderPage title="Scenario Planning" description="Model alternative futures and prepare decisions" icon="🔮" />} />
+              <Route path="/finance/taxes" element={<PlaceholderPage title={t('routes.taxes.title')} description={t('routes.taxes.description')} icon="🧾" />} />
+              <Route path="/finance/budgets" element={<PlaceholderPage title={t('routes.budgets.title')} description={t('routes.budgets.description')} icon="📊" />} />
+              <Route path="/finance/kpis" element={<PlaceholderPage title={t('routes.kpis.title')} description={t('routes.kpis.description')} icon="📈" />} />
+              <Route path="/finance/forecasts" element={<PlaceholderPage title={t('routes.forecasts.title')} description={t('routes.forecasts.description')} icon="🔮" />} />
               
               {/* Inventory & Sales Routes */}
-              <Route path="/inventory" element={<PlaceholderPage title="Inventory & Sales" description="Track products, sales, and stock movements" icon="📦" />} />
-              <Route path="/inventory/products" element={<PlaceholderPage title="Products" description="Authoritative catalog for every item or service" icon="🏷️" />} />
-              <Route path="/inventory/sales" element={<PlaceholderPage title="Sales" description="Record revenue events and inventory deductions" icon="💰" />} />
-              <Route path="/inventory/stock" element={<PlaceholderPage title="Stock" description="Location-based snapshot of on-hand quantities" icon="📊" />} />
-              <Route path="/inventory/movements" element={<PlaceholderPage title="Other Movements" description="Non-sales inventory changes and adjustments" icon="🔄" />} />
+              <Route path="/inventory" element={<PlaceholderPage title={t('routes.inventory.title')} description={t('routes.inventory.description')} icon="📦" />} />
+              <Route path="/inventory/products" element={<PlaceholderPage title={t('routes.products.title')} description={t('routes.products.description')} icon="🏷️" />} />
+              <Route path="/inventory/sales" element={<PlaceholderPage title={t('routes.sales.title')} description={t('routes.sales.description')} icon="💰" />} />
+              <Route path="/inventory/stock" element={<PlaceholderPage title={t('routes.stock.title')} description={t('routes.stock.description')} icon="📊" />} />
+              <Route path="/inventory/movements" element={<PlaceholderPage title={t('routes.movements.title')} description={t('routes.movements.description')} icon="🔄" />} />
               
               {/* CRM & Community Routes */}
-              <Route path="/crm" element={<PlaceholderPage title="CRM & Community" description="Customer relationship management and community engagement" icon="👥" />} />
-              <Route path="/crm/contacts" element={<PlaceholderPage title="Contacts" description="Customer and prospect contact management" icon="📞" />} />
-              <Route path="/crm/segments" element={<PlaceholderPage title="Segments" description="Customer segmentation and targeting" icon="🎯" />} />
-              <Route path="/crm/logs" element={<PlaceholderPage title="Activity Logs" description="Track customer interactions and touchpoints" icon="📝" />} />
-              <Route path="/crm/feedback" element={<PlaceholderPage title="Feedback" description="Collect and manage customer feedback" icon="💬" />} />
+              <Route path="/crm" element={<PlaceholderPage title={t('routes.crm.title')} description={t('routes.crm.description')} icon="👥" />} />
+              <Route path="/crm/contacts" element={<PlaceholderPage title={t('routes.contacts.title')} description={t('routes.contacts.description')} icon="📞" />} />
+              <Route path="/crm/segments" element={<PlaceholderPage title={t('routes.segments.title')} description={t('routes.segments.description')} icon="🎯" />} />
+              <Route path="/crm/logs" element={<PlaceholderPage title={t('routes.activityLogs.title')} description={t('routes.activityLogs.description')} icon="📝" />} />
+              <Route path="/crm/feedback" element={<PlaceholderPage title={t('routes.feedback.title')} description={t('routes.feedback.description')} icon="💬" />} />
               
               {/* Events & Scheduling Routes */}
-              <Route path="/events" element={<PlaceholderPage title="Events & Scheduling" description="Event management and resource scheduling" icon="🎉" />} />
-              <Route path="/events/calendar" element={<PlaceholderPage title="Calendar" description="Event calendar and scheduling interface" icon="📅" />} />
-              <Route path="/events/bookings" element={<PlaceholderPage title="Bookings" description="Event bookings and reservation management" icon="🎫" />} />
-              <Route path="/events/resources" element={<PlaceholderPage title="Resource Allocation" description="Manage event resources and equipment" icon="🛠️" />} />
+              <Route path="/events" element={<PlaceholderPage title={t('routes.events.title')} description={t('routes.events.description')} icon="🎉" />} />
+              <Route path="/events/calendar" element={<PlaceholderPage title={t('routes.eventsCalendar.title')} description={t('routes.eventsCalendar.description')} icon="📅" />} />
+              <Route path="/events/bookings" element={<PlaceholderPage title={t('routes.bookings.title')} description={t('routes.bookings.description')} icon="🎫" />} />
+              <Route path="/events/resources" element={<PlaceholderPage title={t('routes.resources.title')} description={t('routes.resources.description')} icon="🛠️" />} />
               
               {/* Notifications Routes */}
-              <Route path="/notifications" element={<PlaceholderPage title="Notifications" description="Alert management and automation rules" icon="🔔" />} />
-              <Route path="/notifications/inbox" element={<PlaceholderPage title="Alert Inbox" description="Centralized notification management" icon="📥" />} />
-              <Route path="/notifications/rules" element={<PlaceholderPage title="Rules Engine" description="Create automated notification rules" icon="⚙️" />} />
-              <Route path="/notifications/templates" element={<PlaceholderPage title="Templates" description="Manage notification templates" icon="📄" />} />
+              <Route path="/notifications" element={<PlaceholderPage title={t('routes.notifications.title')} description={t('routes.notifications.description')} icon="🔔" />} />
+              <Route path="/notifications/inbox" element={<PlaceholderPage title={t('routes.inbox.title')} description={t('routes.inbox.description')} icon="📥" />} />
+              <Route path="/notifications/rules" element={<PlaceholderPage title={t('routes.rules.title')} description={t('routes.rules.description')} icon="⚙️" />} />
+              <Route path="/notifications/templates" element={<PlaceholderPage title={t('routes.templates.title')} description={t('routes.templates.description')} icon="📄" />} />
               
               {/* Settings */}
-              <Route path="/settings" element={<PlaceholderPage title="Settings" description="System configuration and preferences" icon="⚙️" />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </MainLayout>

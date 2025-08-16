@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface PlaceholderPageProps {
   title: string;
@@ -7,6 +8,7 @@ interface PlaceholderPageProps {
 }
 
 const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description, icon = "🚧" }) => {
+  const { t } = useTranslation();
   return (
     <div className="p-6">
       <div className="text-center py-12">
@@ -19,7 +21,7 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description, i
         </p>
         <div className="mt-6">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            Coming Soon
+            {t('pages.placeholders.comingSoon')}
           </span>
         </div>
       </div>
