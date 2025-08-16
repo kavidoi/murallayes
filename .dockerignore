@@ -167,9 +167,41 @@ tests/
 **/*.spec.ts
 
 # Build artifacts (keep only dist for production)
-src/
-tsconfig.json
 jest.config.js
 .eslintrc*
 .prettierrc*
 .husky/
+
+# Monorepo context optimization for backend Docker builds
+# Exclude large, irrelevant directories from root context (backend image)
+muralla-frontend/
+railway-docs/
+docs/
+.history/
+scripts/
+mercadopago-sdks/
+
+# Ignore host build outputs and caches (we build inside container)
+**/dist
+**/.next
+**/.nuxt
+**/.turbo
+**/.cache
+**/.vite
+
+# Environment files in all packages/apps
+**/.env*
+
+# Local uploads and artifacts
+muralla-backend/uploads/
+
+# Ensure backend static assets and Prisma files are included
+!muralla-backend/public/**
+!muralla-backend/prisma/**
+
+# Keep lock/workspace files available to Docker build
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+
+# Misc repo artifacts
+ts-errors.txt

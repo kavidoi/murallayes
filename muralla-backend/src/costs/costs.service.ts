@@ -41,59 +41,43 @@ export class CostsService {
         staffId: dto.staffId ?? null,
         bankAccountId: dto.bankAccountId ?? null,
         description: dto.description ?? null,
-        status: dto.status ?? 'draft',
+        // Only set status if valid; otherwise let Prisma default (PENDING)
+        status: ['PENDING','APPROVED','PAID','CANCELLED'].includes(dto.status) ? dto.status : undefined,
+        createdBy: dto.createdBy ?? null,
         attachments: attachments.length
           ? {
               create: attachments.map((a: any) => ({
+                fileName: a.fileName ?? null,
                 fileUrl: a.fileUrl,
-                fileType: a.fileType ?? null,
-                ocrJson: a.ocrJson ?? null,
+                fileType: a.fileType ?? 'application/octet-stream',
+                fileSize: a.fileSize ?? null,
+                ocrData: a.ocrData ?? a.ocrJson ?? null,
                 uploadedBy: a.uploadedBy ?? null,
               })),
             }
           : undefined,
         lines: lines.length
           ? {
-              create: lines.map((l: any) => ({
-                productId: l.productId ?? null,
-                isInventory: !!l.isInventory,
-                qty: l.qty !== undefined && l.qty !== null ? toDecimal(l.qty) : null,
-                unitCost:
-                  l.unitCost !== undefined && l.unitCost !== null
-                    ? toDecimal(l.unitCost)
-                    : null,
-                locationId: l.locationId ?? null,
-                notes: l.notes ?? null,
-              })),
+              create: lines.map((l: any) => {
+                const quantity = l.qty !== undefined && l.qty !== null ? toDecimal(l.qty) : null;
+                const unitCost = l.unitCost !== undefined && l.unitCost !== null ? toDecimal(l.unitCost) : null;
+                const totalCost = quantity && unitCost ? (quantity as any).mul ? (quantity as any).mul(unitCost as any) : toDecimal(Number(quantity) * Number(unitCost)) : toDecimal(0);
+                return {
+                  productId: l.productId ?? null,
+                  isInventory: !!l.isInventory,
+                  quantity,
+                  unitCost,
+                  totalCost: totalCost!,
+                  locationId: l.locationId ?? null,
+                  description: l.notes ?? l.description ?? null,
+                };
+              }),
             }
           : undefined,
       },
       include: { lines: true, attachments: true },
     });
-
-    // Auto-crear movimientos de inventario para líneas de insumo
-    // TODO: Enable after database migration is complete
-    // for (const line of created.lines) {
-    //   if (
-    //     line.isInventory &&
-    //     line.productId &&
-    //     line.quantity &&
-    //     line.locationId
-    //   ) {
-    //     await this.prisma.inventoryMove.create({
-    //       data: {
-    //         type: 'ENTRADA_COMPRA',
-    //         productId: line.productId,
-    //         toLocationId: line.locationId!,
-    //         quantity: line.quantity as any,
-    //         unitCost: (line.unitCost as any) ?? toDecimal(0),
-    //         reason: `Cost ${created.id}`,
-    //         refId: created.id,
-    //       },
-    //     });
-    //   }
-    // }
-
+    
     return created;
   }
 

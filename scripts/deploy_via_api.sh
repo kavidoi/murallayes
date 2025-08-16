@@ -13,7 +13,7 @@
 #
 set -euo pipefail
 
-GRAPHQL_ENDPOINT="https://backboard.railway.com/graphql/v2"
+GRAPHQL_ENDPOINT="https://backboard.railway.app/graphql/v2"
 PROJECT_NAME=${RAILWAY_PROJECT_NAME:-murallayes}
 ENVIRONMENT_NAME=${RAILWAY_ENVIRONMENT:-production}
 SERVICES_TO_DEPLOY=${SERVICES:-"Backend Frontend"}
