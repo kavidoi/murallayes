@@ -138,9 +138,16 @@ model Product {
   id          String   @id @default(cuid())
   name        String
   description String?
+  // Commercial fields (kept for compatibility with existing Sales)
   price       Float
   stock       Int      @default(0)
   category    String?
+
+  // Production/Inventory fields
+  sku         String?  @unique
+  type        ProductType @default(TERMINADO)
+  uom         String   @default("UN") // Unidad de medida
+  active      Boolean  @default(true)
   tenantId    String?  // For future multi-tenant support
   isDeleted   Boolean  @default(false)
   deletedAt   DateTime?
@@ -148,6 +155,12 @@ model Product {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  // Relations to pipeline
+  costLines   CostLine[]       @relation("ProductCostLines")
+  inventoryMoves InventoryMove[] @relation("ProductInventoryMoves")
+  bom         BOM?             @relation("ProductBOM")
+  bomAsIngredient BOMItem[]    @relation("ProductBOMItems")
+  workOrders  WorkOrder[]      @relation("ProductWorkOrders")
   sales       Sale[]
 
   @@map("products")
@@ -203,6 +216,9 @@ model BankAccount {
   currency      String   @default("ARS")
   currentBalance Float   @default(0)
   isActive      Boolean  @default(true)
+  // Company linkage (multi-empresa)
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id])
   tenantId      String?  // For future multi-tenant support
   isDeleted     Boolean  @default(false)
   deletedAt     DateTime?
@@ -213,6 +229,8 @@ model BankAccount {
   
   transactions  Transaction[]
   balanceHistory BankBalance[]
+  // Costs linked to this bank account
+  costs         Cost[] @relation("CostBankAccount")
 
   @@map("bank_accounts")
 }
@@ -277,6 +295,8 @@ model Transaction {
   updatedAt       DateTime            @updatedAt
   
   creator         User?               @relation(fields: [createdBy], references: [id])
+  // Cost links
+  costLinks      CostTransactionLink[] @relation("CostTransactionTransaction")
   
   // Staff Finances Relations
   payrollId       String?
@@ -342,6 +362,8 @@ model User {
   salaryAdjustmentsApproved SalaryAdjustment[] @relation("SalaryAdjustmentApprover")
   employeeExpenses EmployeeExpense[] @relation("EmployeeExpenseEmployee")
   expenseReviews EmployeeExpense[] @relation("ExpenseReviewer")
+  // Costs where this user is the staff payer
+  costsAsStaff Cost[] @relation("CostStaff")
   
   // PTO / Time-Off Relations
   ptoRequests PTORequest[] @relation("PTOEmployee")
@@ -511,6 +533,264 @@ model Notification {
   @@index([recipientId, status])
   @@index([scheduledAt])
   @@index([entityType, entityId])
+}
+
+// =========================
+// Product Pipeline Models
+// =========================
+
+// Multi-empresa (Muralla Spa, Murallita MEF)
+model Company {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  taxId        String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  bankAccounts BankAccount[]
+  costs        Cost[]
+
+  @@map("companies")
+}
+
+// Proveedores
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  taxId     String?
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  costs     Cost[]
+
+  @@map("vendors")
+}
+
+// Categorías de costo (permite marcar si impacta inventario)
+model CostCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  isInventory Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  costs       Cost[]
+
+  @@map("cost_categories")
+}
+
+// Costos/Compras/Gastos
+model Cost {
+  id             String      @id @default(cuid())
+  companyId      String
+  company        Company     @relation(fields: [companyId], references: [id])
+  categoryId     String
+  category       CostCategory @relation(fields: [categoryId], references: [id])
+  vendorId       String?
+  vendor         Vendor?     @relation(fields: [vendorId], references: [id])
+  docType        DocumentKind
+  docNumber      String?
+  date           DateTime
+  total          Decimal     @db.Decimal(12, 2)
+  currency       String      @default("CLP")
+  payerType      PayerType   @default(COMPANY)
+  payerCompanyId String?
+  staffId        String?
+  staff          User?       @relation("CostStaff", fields: [staffId], references: [id])
+  bankAccountId  String?
+  bankAccount    BankAccount? @relation("CostBankAccount", fields: [bankAccountId], references: [id])
+  description    String?
+  status         String?     // draft, posted, reimbursed
+  attachments    Attachment[]
+  lines          CostLine[]
+  links          CostTransactionLink[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("costs")
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([vendorId])
+  @@index([date])
+}
+
+model CostLine {
+  id          String   @id @default(cuid())
+  costId      String
+  cost        Cost     @relation(fields: [costId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation("ProductCostLines", fields: [productId], references: [id])
+  isInventory Boolean  @default(false)
+  qty         Decimal? @db.Decimal(12, 3)
+  unitCost    Decimal? @db.Decimal(12, 4)
+  locationId  String?
+  location    Location? @relation("CostLineLocation", fields: [locationId], references: [id])
+  notes       String?
+
+  @@map("cost_lines")
+  @@index([costId])
+  @@index([productId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  costId     String
+  cost       Cost     @relation(fields: [costId], references: [id], onDelete: Cascade)
+  fileUrl    String
+  fileType   String?
+  ocrJson    Json?
+  uploadedBy String?
+  uploadedAt DateTime @default(now())
+
+  @@map("attachments")
+  @@index([costId])
+}
+
+// Localizaciones de inventario
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  type      String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movesFrom InventoryMove[] @relation("MoveFrom")
+  movesTo   InventoryMove[] @relation("MoveTo")
+  costLines CostLine[]      @relation("CostLineLocation")
+  workOrders WorkOrder[]    @relation("WorkOrderLocation")
+
+  @@map("locations")
+}
+
+// Movimientos de inventario (entrada/salida/traslado/merma)
+model InventoryMove {
+  id             String            @id @default(cuid())
+  type           InventoryMoveType
+  productId      String
+  product        Product           @relation("ProductInventoryMoves", fields: [productId], references: [id])
+  fromLocationId String?
+  fromLocation   Location?         @relation("MoveFrom", fields: [fromLocationId], references: [id])
+  toLocationId   String?
+  toLocation     Location?         @relation("MoveTo", fields: [toLocationId], references: [id])
+  qty            Decimal           @db.Decimal(12, 3)
+  unitCost       Decimal?          @db.Decimal(12, 4)
+  reason         String?
+  refId          String?
+  occurredAt     DateTime          @default(now())
+
+  @@map("inventory_moves")
+  @@index([productId])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([occurredAt])
+}
+
+// BOM / Formulación
+model BOM {
+  id          String    @id @default(cuid())
+  productId   String    // Producto terminado
+  product     Product   @relation("ProductBOM", fields: [productId], references: [id])
+  items       BOMItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("boms")
+  @@unique([productId])
+}
+
+model BOMItem {
+  id         String   @id @default(cuid())
+  bomId      String
+  bom        BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  insumoId   String
+  insumo     Product  @relation("ProductBOMItems", fields: [insumoId], references: [id])
+  qty        Decimal  @db.Decimal(12, 3)
+  uom        String   @default("UN")
+
+  @@map("bom_items")
+  @@index([bomId])
+  @@index([insumoId])
+}
+
+// Ordenes de producción
+model WorkOrder {
+  id           String          @id @default(cuid())
+  productId    String
+  product      Product         @relation("ProductWorkOrders", fields: [productId], references: [id])
+  qtyPlanned   Decimal         @db.Decimal(12, 3)
+  qtyProduced  Decimal?        @db.Decimal(12, 3)
+  locationId   String
+  location     Location        @relation("WorkOrderLocation", fields: [locationId], references: [id])
+  status       WorkOrderStatus @default(DRAFT)
+  lotCode      String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  yieldPct     Decimal?        @db.Decimal(5, 2)
+  scrapQty     Decimal?        @db.Decimal(12, 3)
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("work_orders")
+  @@index([productId])
+  @@index([locationId])
+  @@index([status])
+}
+
+// Enlace bidireccional Costo ⇄ Transacción
+model CostTransactionLink {
+  costId        String
+  cost          Cost        @relation(fields: [costId], references: [id], onDelete: Cascade)
+  transactionId String
+  transaction   Transaction @relation("CostTransactionTransaction", fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("cost_transaction_links")
+  @@id([costId, transactionId])
+  @@index([transactionId])
+}
+
+// ===== Enums del Pipeline =====
+enum ProductType {
+  INSUMO
+  TERMINADO
+}
+
+enum InventoryMoveType {
+  ENTRADA_COMPRA
+  ENTRADA_PRODUCCION
+  SALIDA_PRODUCCION
+  SALIDA_VENTA
+  TRASLADO
+  AJUSTE
+  MERMA
+  DEVOLUCION
+}
+
+enum DocumentKind {
+  FACTURA
+  BOLETA
+  OTRO
+}
+
+enum PayerType {
+  COMPANY
+  STAFF
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  IN_PROGRESS
+  DONE
+  CANCELLED
 }
 
 // Staff Finances Models

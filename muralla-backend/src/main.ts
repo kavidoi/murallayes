@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -40,6 +41,14 @@ async function bootstrap() {
     console.log('[HEALTH-EXPRESS] GET /health');
     res.status(200).json({ status: 'up', timestamp: new Date().toISOString(), source: 'express' });
   });
+  
+  // Global validation & transformation for DTOs
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    transformOptions: { enableImplicitConversion: true },
+    forbidNonWhitelisted: false,
+  }));
   
   // Enhanced security headers with SSL/TLS optimizations
   app.use(helmet({
