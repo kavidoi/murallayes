@@ -18,6 +18,11 @@ import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
 import TasksList from './components/modules/projects/TasksList'
 import Settings from './components/modules/settings/Settings'
+import ProductCatalog from './components/modules/pipeline/ProductCatalog'
+import InventoryDashboard from './components/modules/pipeline/InventoryDashboard'
+import CostsPurchases from './components/modules/pipeline/CostsPurchases'
+import ProductionWorkOrders from './components/modules/pipeline/ProductionWorkOrders'
+import BankingTransactions from './components/modules/pipeline/BankingTransactions'
 import { useTranslation } from 'react-i18next'
 
 function App() {
@@ -147,12 +152,20 @@ function App() {
               <Route path="/finance/kpis" element={<PlaceholderPage title={t('routes.kpis.title')} description={t('routes.kpis.description')} icon="📈" />} />
               <Route path="/finance/forecasts" element={<PlaceholderPage title={t('routes.forecasts.title')} description={t('routes.forecasts.description')} icon="🔮" />} />
               
-              {/* Inventory & Sales Routes */}
-              <Route path="/inventory" element={<PlaceholderPage title={t('routes.inventory.title')} description={t('routes.inventory.description')} icon="📦" />} />
-              <Route path="/inventory/products" element={<PlaceholderPage title={t('routes.products.title')} description={t('routes.products.description')} icon="🏷️" />} />
+              {/* Product Pipeline Routes */}
+              <Route path="/pipeline" element={<ProductCatalog />} />
+              <Route path="/pipeline/products" element={<ProductCatalog />} />
+              <Route path="/pipeline/inventory" element={<InventoryDashboard />} />
+              <Route path="/pipeline/costs" element={<CostsPurchases />} />
+              <Route path="/pipeline/production" element={<ProductionWorkOrders />} />
+              <Route path="/pipeline/banking" element={<BankingTransactions />} />
+              
+              {/* Legacy Inventory & Sales Routes (redirect to pipeline) */}
+              <Route path="/inventory" element={<InventoryDashboard />} />
+              <Route path="/inventory/products" element={<ProductCatalog />} />
               <Route path="/inventory/sales" element={<PlaceholderPage title={t('routes.sales.title')} description={t('routes.sales.description')} icon="💰" />} />
-              <Route path="/inventory/stock" element={<PlaceholderPage title={t('routes.stock.title')} description={t('routes.stock.description')} icon="📊" />} />
-              <Route path="/inventory/movements" element={<PlaceholderPage title={t('routes.movements.title')} description={t('routes.movements.description')} icon="🔄" />} />
+              <Route path="/inventory/stock" element={<InventoryDashboard />} />
+              <Route path="/inventory/movements" element={<InventoryDashboard />} />
               
               {/* CRM & Community Routes */}
               <Route path="/crm" element={<PlaceholderPage title={t('routes.crm.title')} description={t('routes.crm.description')} icon="👥" />} />
