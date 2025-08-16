@@ -136,18 +136,20 @@ model DocumentRevision {
 
 model Product {
   id          String   @id @default(cuid())
+  sku         String   @unique
   name        String
   description String?
-  // Commercial fields (kept for compatibility with existing Sales)
-  price       Float
-  stock       Int      @default(0)
-  category    String?
-
-  // Production/Inventory fields
-  sku         String?  @unique
   type        ProductType @default(TERMINADO)
   uom         String   @default("UN") // Unidad de medida
-  active      Boolean  @default(true)
+  categoryId  String?
+  category    ProductCategory? @relation("ProductCategoryProducts", fields: [categoryId], references: [id])
+  unitCost    Decimal? @db.Decimal(10,4)
+  
+  // Commercial fields (kept for compatibility with existing Sales)
+  price       Float?
+  stock       Int      @default(0)
+  
+  isActive    Boolean  @default(true)
   tenantId    String?  // For future multi-tenant support
   isDeleted   Boolean  @default(false)
   deletedAt   DateTime?
@@ -155,13 +157,15 @@ model Product {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
   // Relations to pipeline
-  costLines   CostLine[]       @relation("ProductCostLines")
-  inventoryMoves InventoryMove[] @relation("ProductInventoryMoves")
-  bom         BOM?             @relation("ProductBOM")
-  bomAsIngredient BOMItem[]    @relation("ProductBOMItems")
-  workOrders  WorkOrder[]      @relation("ProductWorkOrders")
-  sales       Sale[]
+  costLines      CostLine[]       @relation("ProductCostLines")
+  inventoryMoves InventoryMove[]  @relation("ProductInventoryMoves")
+  bomComponents  BOMComponent[]   @relation("ProductBOM")
+  bomUsedIn      BOMComponent[]   @relation("ComponentProduct")
+  workOrders     WorkOrder[]      @relation("ProductWorkOrders")
+  workOrderComponents WorkOrderComponent[]
+  sales          Sale[]
 
   @@map("products")
 }
@@ -270,6 +274,8 @@ model Transaction {
   account         BankAccount         @relation(fields: [accountId], references: [id])
   categoryId      String?
   category        TransactionCategory? @relation(fields: [categoryId], references: [id])
+  companyId       String?
+  company         Company?            @relation(fields: [companyId], references: [id])
   
   // Additional metadata
   customerName    String?
@@ -364,6 +370,11 @@ model User {
   expenseReviews EmployeeExpense[] @relation("ExpenseReviewer")
   // Costs where this user is the staff payer
   costsAsStaff Cost[] @relation("CostStaff")
+  costsCreated Cost[] @relation("CostCreator")
+  attachmentsUploaded Attachment[] @relation("AttachmentUploader")
+  inventoryMovesCreated InventoryMove[] @relation("InventoryMoveCreator")
+  workOrdersCreated WorkOrder[] @relation("WorkOrderCreator")
+  costTransactionLinksCreated CostTransactionLink[] @relation("CostTransactionLinkCreator")
   
   // PTO / Time-Off Relations
   ptoRequests PTORequest[] @relation("PTOEmployee")
@@ -544,75 +555,95 @@ model Company {
   id           String        @id @default(cuid())
   name         String        @unique
   taxId        String?
+  address      String?
+  phone        String?
+  email        String?
   isActive     Boolean       @default(true)
+  tenantId     String?       // For future multi-tenant support
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   bankAccounts BankAccount[]
   costs        Cost[]
+  locations    Location[]
+  workOrders   WorkOrder[]
+  transactions Transaction[]
 
   @@map("companies")
 }
 
 // Proveedores
 model Vendor {
-  id        String   @id @default(cuid())
-  name      String
-  taxId     String?
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  taxId        String?
+  phone        String?
+  email        String?
+  address      String?
+  contactName  String?
+  paymentTerms String?
+  isActive     Boolean  @default(true)
+  tenantId     String?  // For future multi-tenant support
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  costs     Cost[]
+  costs        Cost[]
 
   @@map("vendors")
 }
 
-// Categorías de costo (permite marcar si impacta inventario)
-model CostCategory {
+// Categorías de productos y costos
+model ProductCategory {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
   color       String?
   isInventory Boolean  @default(false)
+  parentId    String?
+  parent      ProductCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ProductCategory[] @relation("CategoryHierarchy")
   isActive    Boolean  @default(true)
+  tenantId    String?  // For future multi-tenant support
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  products    Product[] @relation("ProductCategoryProducts")
   costs       Cost[]
 
-  @@map("cost_categories")
+  @@map("product_categories")
 }
 
 // Costos/Compras/Gastos
 model Cost {
-  id             String      @id @default(cuid())
-  companyId      String
-  company        Company     @relation(fields: [companyId], references: [id])
-  categoryId     String
-  category       CostCategory @relation(fields: [categoryId], references: [id])
-  vendorId       String?
-  vendor         Vendor?     @relation(fields: [vendorId], references: [id])
-  docType        DocumentKind
-  docNumber      String?
-  date           DateTime
-  total          Decimal     @db.Decimal(12, 2)
-  currency       String      @default("CLP")
-  payerType      PayerType   @default(COMPANY)
-  payerCompanyId String?
-  staffId        String?
-  staff          User?       @relation("CostStaff", fields: [staffId], references: [id])
-  bankAccountId  String?
-  bankAccount    BankAccount? @relation("CostBankAccount", fields: [bankAccountId], references: [id])
-  description    String?
-  status         String?     // draft, posted, reimbursed
-  attachments    Attachment[]
-  lines          CostLine[]
-  links          CostTransactionLink[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                  String           @id @default(cuid())
+  companyId           String
+  company             Company          @relation(fields: [companyId], references: [id])
+  categoryId          String?
+  category            ProductCategory? @relation(fields: [categoryId], references: [id])
+  vendorId            String?
+  vendor              Vendor?          @relation(fields: [vendorId], references: [id])
+  docType             DocumentKind
+  docNumber           String?
+  date                DateTime
+  total               Decimal          @db.Decimal(12, 2)
+  currency            String           @default("CLP")
+  payerType           PayerType        @default(COMPANY)
+  payerCompanyId      String?
+  staffId             String?
+  staff               User?            @relation("CostStaff", fields: [staffId], references: [id])
+  bankAccountId       String?
+  bankAccount         BankAccount?     @relation("CostBankAccount", fields: [bankAccountId], references: [id])
+  description         String?
+  status              CostStatus       @default(PENDING)
+  reimbursementStatus ReimbursementStatus?
+  tenantId            String?          // For future multi-tenant support
+  createdBy           String?
+  creator             User?            @relation("CostCreator", fields: [createdBy], references: [id])
+  attachments         Attachment[]
+  lines               CostLine[]
+  links               CostTransactionLink[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@map("costs")
   @@index([companyId])
@@ -628,11 +659,13 @@ model CostLine {
   productId   String?
   product     Product? @relation("ProductCostLines", fields: [productId], references: [id])
   isInventory Boolean  @default(false)
-  qty         Decimal? @db.Decimal(12, 3)
+  quantity    Decimal? @db.Decimal(12, 3)
   unitCost    Decimal? @db.Decimal(12, 4)
+  totalCost   Decimal  @db.Decimal(12, 2)
   locationId  String?
   location    Location? @relation("CostLineLocation", fields: [locationId], references: [id])
-  notes       String?
+  description String?
+  createdAt   DateTime @default(now())
 
   @@map("cost_lines")
   @@index([costId])
@@ -643,10 +676,13 @@ model Attachment {
   id         String   @id @default(cuid())
   costId     String
   cost       Cost     @relation(fields: [costId], references: [id], onDelete: Cascade)
+  fileName   String
   fileUrl    String
-  fileType   String?
-  ocrJson    Json?
-  uploadedBy String?
+  fileType   String
+  fileSize   Int?
+  ocrData    Json?
+  uploadedBy String
+  uploader   User     @relation("AttachmentUploader", fields: [uploadedBy], references: [id])
   uploadedAt DateTime @default(now())
 
   @@map("attachments")
@@ -655,90 +691,100 @@ model Attachment {
 
 // Localizaciones de inventario
 model Location {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   name      String
-  type      String?
+  type      LocationType // WAREHOUSE, STORE, PRODUCTION, OFFICE
   address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  companyId String
+  company   Company      @relation(fields: [companyId], references: [id])
+  isActive  Boolean      @default(true)
+  tenantId  String?      // For future multi-tenant support
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  movesFrom InventoryMove[] @relation("MoveFrom")
-  movesTo   InventoryMove[] @relation("MoveTo")
-  costLines CostLine[]      @relation("CostLineLocation")
-  workOrders WorkOrder[]    @relation("WorkOrderLocation")
+  inventoryMovesFrom InventoryMove[] @relation("MoveFromLocation")
+  inventoryMovesTo   InventoryMove[] @relation("MoveToLocation")
+  costLines          CostLine[]      @relation("CostLineLocation")
+  workOrders         WorkOrder[]     @relation("WorkOrderLocation")
 
   @@map("locations")
 }
 
 // Movimientos de inventario (entrada/salida/traslado/merma)
 model InventoryMove {
-  id             String            @id @default(cuid())
-  type           InventoryMoveType
-  productId      String
-  product        Product           @relation("ProductInventoryMoves", fields: [productId], references: [id])
-  fromLocationId String?
-  fromLocation   Location?         @relation("MoveFrom", fields: [fromLocationId], references: [id])
-  toLocationId   String?
-  toLocation     Location?         @relation("MoveTo", fields: [toLocationId], references: [id])
-  qty            Decimal           @db.Decimal(12, 3)
-  unitCost       Decimal?          @db.Decimal(12, 4)
-  reason         String?
-  refId          String?
-  occurredAt     DateTime          @default(now())
+  id              String            @id @default(cuid())
+  type            InventoryMoveType
+  productId       String
+  product         Product           @relation("ProductInventoryMoves", fields: [productId], references: [id])
+  fromLocationId  String?
+  fromLocation    Location?         @relation("MoveFromLocation", fields: [fromLocationId], references: [id])
+  toLocationId    String?
+  toLocation      Location?         @relation("MoveToLocation", fields: [toLocationId], references: [id])
+  quantity        Decimal           @db.Decimal(12, 3)
+  unitCost        Decimal?          @db.Decimal(12, 4)
+  totalCost       Decimal?          @db.Decimal(12, 2)
+  reason          String?
+  referenceType   String?           // Cost, WorkOrder, Sale, etc.
+  referenceId     String?
+  lotCode         String?
+  expiryDate      DateTime?
+  createdBy       String
+  creator         User              @relation("InventoryMoveCreator", fields: [createdBy], references: [id])
+  createdAt       DateTime          @default(now())
 
   @@map("inventory_moves")
   @@index([productId])
   @@index([fromLocationId])
   @@index([toLocationId])
-  @@index([occurredAt])
+  @@index([createdAt])
 }
 
 // BOM / Formulación
-model BOM {
-  id          String    @id @default(cuid())
-  productId   String    // Producto terminado
-  product     Product   @relation("ProductBOM", fields: [productId], references: [id])
-  items       BOMItem[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("boms")
-  @@unique([productId])
-}
-
-model BOMItem {
-  id         String   @id @default(cuid())
-  bomId      String
-  bom        BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
-  insumoId   String
-  insumo     Product  @relation("ProductBOMItems", fields: [insumoId], references: [id])
-  qty        Decimal  @db.Decimal(12, 3)
-  uom        String   @default("UN")
-
-  @@map("bom_items")
-  @@index([bomId])
-  @@index([insumoId])
+model BOMComponent {
+  id          String   @id @default(cuid())
+  productId   String   // Producto terminado
+  componentId String   // Insumo/componente
+  quantity    Decimal  @db.Decimal(12, 3)
+  uom         String
+  unitCost    Decimal? @db.Decimal(12, 4)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  product     Product  @relation("ProductBOM", fields: [productId], references: [id])
+  component   Product  @relation("ComponentProduct", fields: [componentId], references: [id])
+  
+  @@unique([productId, componentId])
+  @@map("bom_components")
 }
 
 // Ordenes de producción
 model WorkOrder {
-  id           String          @id @default(cuid())
-  productId    String
-  product      Product         @relation("ProductWorkOrders", fields: [productId], references: [id])
-  qtyPlanned   Decimal         @db.Decimal(12, 3)
-  qtyProduced  Decimal?        @db.Decimal(12, 3)
-  locationId   String
-  location     Location        @relation("WorkOrderLocation", fields: [locationId], references: [id])
-  status       WorkOrderStatus @default(DRAFT)
-  lotCode      String?
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  yieldPct     Decimal?        @db.Decimal(5, 2)
-  scrapQty     Decimal?        @db.Decimal(12, 3)
-  notes        String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id])
+  productId       String
+  product         Product         @relation("ProductWorkOrders", fields: [productId], references: [id])
+  locationId      String
+  location        Location        @relation("WorkOrderLocation", fields: [locationId], references: [id])
+  qtyPlanned      Decimal         @db.Decimal(12, 3)
+  qtyProduced     Decimal?        @db.Decimal(12, 3)
+  qtyScrap        Decimal?        @db.Decimal(12, 3)
+  lotCode         String?
+  status          WorkOrderStatus @default(PLANNED)
+  plannedCost     Decimal?        @db.Decimal(12, 2)
+  actualCost      Decimal?        @db.Decimal(12, 2)
+  yieldPercent    Decimal?        @db.Decimal(5, 2)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  notes           String?
+  createdBy       String
+  creator         User            @relation("WorkOrderCreator", fields: [createdBy], references: [id])
+  components      WorkOrderComponent[]
+  tenantId        String?         // For future multi-tenant support
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@map("work_orders")
   @@index([productId])
@@ -746,22 +792,50 @@ model WorkOrder {
   @@index([status])
 }
 
+model WorkOrderComponent {
+  id              String    @id @default(cuid())
+  workOrderId     String
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id])
+  qtyPlanned      Decimal   @db.Decimal(12, 3)
+  qtyConsumed     Decimal?  @db.Decimal(12, 3)
+  unitCost        Decimal?  @db.Decimal(12, 4)
+  totalCost       Decimal?  @db.Decimal(12, 2)
+  createdAt       DateTime  @default(now())
+  
+  @@map("work_order_components")
+}
+
 // Enlace bidireccional Costo ⇄ Transacción
 model CostTransactionLink {
+  id            String      @id @default(cuid())
   costId        String
   cost          Cost        @relation(fields: [costId], references: [id], onDelete: Cascade)
   transactionId String
   transaction   Transaction @relation("CostTransactionTransaction", fields: [transactionId], references: [id], onDelete: Cascade)
+  amount        Decimal?    @db.Decimal(12, 2)
+  createdBy     String
+  creator       User        @relation("CostTransactionLinkCreator", fields: [createdBy], references: [id])
+  createdAt     DateTime    @default(now())
 
+  @@unique([costId, transactionId])
   @@map("cost_transaction_links")
-  @@id([costId, transactionId])
   @@index([transactionId])
 }
 
 // ===== Enums del Pipeline =====
+enum LocationType {
+  WAREHOUSE
+  STORE
+  PRODUCTION
+  OFFICE
+}
+
 enum ProductType {
   INSUMO
   TERMINADO
+  SERVICIO
 }
 
 enum InventoryMoveType {
@@ -778,6 +852,7 @@ enum InventoryMoveType {
 enum DocumentKind {
   FACTURA
   BOLETA
+  RECIBO
   OTRO
 }
 
@@ -786,10 +861,23 @@ enum PayerType {
   STAFF
 }
 
+enum CostStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  PAID
+}
+
 enum WorkOrderStatus {
-  DRAFT
+  PLANNED
   IN_PROGRESS
-  DONE
+  COMPLETED
   CANCELLED
 }
 

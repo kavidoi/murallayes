@@ -72,26 +72,27 @@ export class CostsService {
     });
 
     // Auto-crear movimientos de inventario para líneas de insumo
-    for (const line of created.lines) {
-      if (
-        line.isInventory &&
-        line.productId &&
-        line.qty &&
-        line.locationId
-      ) {
-        await this.prisma.inventoryMove.create({
-          data: {
-            type: 'ENTRADA_COMPRA',
-            productId: line.productId,
-            toLocationId: line.locationId!,
-            qty: line.qty as any,
-            unitCost: (line.unitCost as any) ?? toDecimal(0),
-            reason: `Cost ${created.id}`,
-            refId: created.id,
-          },
-        });
-      }
-    }
+    // TODO: Enable after database migration is complete
+    // for (const line of created.lines) {
+    //   if (
+    //     line.isInventory &&
+    //     line.productId &&
+    //     line.quantity &&
+    //     line.locationId
+    //   ) {
+    //     await this.prisma.inventoryMove.create({
+    //       data: {
+    //         type: 'ENTRADA_COMPRA',
+    //         productId: line.productId,
+    //         toLocationId: line.locationId!,
+    //         quantity: line.quantity as any,
+    //         unitCost: (line.unitCost as any) ?? toDecimal(0),
+    //         reason: `Cost ${created.id}`,
+    //         refId: created.id,
+    //       },
+    //     });
+    //   }
+    // }
 
     return created;
   }
@@ -147,16 +148,16 @@ export class CostsService {
   }
 
   async linkTransaction(costId: string, transactionId: string) {
-    try {
-      return await this.prisma.costTransactionLink.create({
-        data: { costId, transactionId },
-      });
-    } catch (e) {
-      if ((e as any)?.code === 'P2002') {
-        // Duplicate
-        return { costId, transactionId };
-      }
-      throw e;
-    }
+    // TODO: Enable after database migration is complete
+    // try {
+    //   return await this.prisma.costTransactionLink.create({
+    //     data: { costId, transactionId },
+    //   });
+    // } catch (e) {
+    //   if ((e as any)?.code === 'P2002') {
+    //     // Duplicate
+    //     return { costId, transactionId };
+    //   }
+    throw new Error('Cost transaction linking will be available after database migration');
   }
 }
