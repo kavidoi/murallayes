@@ -3,6 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -126,6 +129,13 @@ async function bootstrap() {
     // Expose custom headers if needed
     exposedHeaders: ['X-Total-Count'],
   });
+  
+  // Serve static uploads (for receipts/images)
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+  expressApp.use('/uploads', express.static(uploadsDir));
   
   const port = process.env.PORT || 3000;
   // Debug: log what port we bind to and the env PORT

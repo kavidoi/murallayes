@@ -25,6 +25,7 @@ import ProductionWorkOrders from './components/modules/pipeline/ProductionWorkOr
 import BankingTransactions from './components/modules/pipeline/BankingTransactions'
 import ReportsAnalytics from './components/modules/pipeline/ReportsAnalytics'
 import { useTranslation } from 'react-i18next'
+import CeluReceipt from './components/modules/mobile/CeluReceipt'
 
 function App() {
   const { t } = useTranslation()
@@ -161,6 +162,9 @@ function App() {
               <Route path="/pipeline/production" element={<ProductionWorkOrders />} />
               <Route path="/pipeline/banking" element={<BankingTransactions />} />
               <Route path="/pipeline/reports" element={<ReportsAnalytics />} />
+
+              {/* Mobile quick upload route */}
+              <Route path="/celu" element={<CeluReceipt />} />
               
               {/* Legacy Inventory & Sales Routes (redirect to pipeline) */}
               <Route path="/inventory" element={<InventoryDashboard />} />

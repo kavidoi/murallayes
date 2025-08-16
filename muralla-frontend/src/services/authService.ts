@@ -177,6 +177,26 @@ export class AuthService {
     return (await response.json()) as T;
   }
 
+  // Multipart/form-data upload helper (do not set Content-Type so browser sets boundary)
+  static async upload<T = any>(endpoint: string, formData: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+    await this.ensureValidToken();
+    const url = `${this.API_BASE_URL}${endpoint}`;
+    const token = this.getToken();
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+    }
+
+    return (await res.json()) as T;
+  }
+
   static async isAuthenticated(): Promise<boolean> {
     const token = this.getToken();
     if (!token) return false;

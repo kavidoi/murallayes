@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsISO8601, IsIn, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 // Local enum mirrors for validation (Prisma enums are types-only at runtime)
-export const DocumentKindValues = ['FACTURA', 'BOLETA', 'OTRO'] as const;
+export const DocumentKindValues = ['FACTURA', 'BOLETA', 'RECIBO', 'OTRO'] as const;
 export type DocumentKindDto = typeof DocumentKindValues[number];
 
 export const PayerTypeValues = ['COMPANY', 'STAFF'] as const;
@@ -15,11 +15,25 @@ export class AttachmentDto {
 
   @IsOptional()
   @IsString()
+  fileName?: string;
+
+  @IsOptional()
+  @IsString()
   fileType?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  fileSize?: number;
 
   @IsOptional()
   @IsObject()
   ocrJson?: Record<string, any>;
+
+  // New preferred name matching Prisma schema (kept optional for compatibility)
+  @IsOptional()
+  @IsObject()
+  ocrData?: Record<string, any>;
 
   @IsOptional()
   @IsString()

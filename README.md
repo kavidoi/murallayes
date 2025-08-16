@@ -27,10 +27,27 @@ pnpm -C muralla-frontend run dev
 ```
 
 ### Environment
-Create `.env` in `muralla-backend` if you need local DB creds, or spin up Postgres/Redis with Docker.
+Railway is the source of truth for variables. Prefer running locally with Railway-injected vars:
+
+```sh
+# Backend (uses Railway vars, no local files written)
+railway run -s Backend -e <environment> -- pnpm -C muralla-backend start:dev
+# Frontend
+railway run -s Frontend -e <environment> -- pnpm -C muralla-frontend dev
+```
+
+Optionally mirror Railway vars to local dotenv files for temporary dev:
+
+```sh
+RAILWAY_PROJECT_NAME=<project> RAILWAY_ENVIRONMENT=<environment> \
+  ./scripts/pull_railway_vars.sh
+# Writes muralla-backend/.env.railway and muralla-frontend/.env.railway (gitignored)
+```
+
+Full reference: see `docs/reference/env-vars.md`.
 
 ## Deployment (Railway)
-See `Railway_API_AI_Management_Guide.md` for the full guide.
+See `docs/platform/railway-api.md` for the full guide.
 
 TL;DR:
 ```bash
@@ -53,6 +70,8 @@ Backend health check: `https://api.<domain>/health/healthz`
 �� Have fun building! 
 
 ## Environment variables
+
+See `docs/reference/env-vars.md` for the canonical list and details. Summary below:
 
 ### Backend service
 | Variable | Purpose | Example / Note |
@@ -78,6 +97,11 @@ Backend health check: `https://api.<domain>/health/healthz`
 | `MP_STATEMENT_DESCRIPTOR` | MP statement descriptor | e.g., `MURALLA` |
 | `NIXPACKS_NODE_VERSION` | Node pin for Nixpacks | `20.19.0` |
 | `NODE_VERSION` | Node pin for build env | `20.19.0` |
+
+## Docs
+- Railway deployment and CI: `docs/platform/railway-api.md`
+- SSL/TLS setup: `docs/security/ssl-tls.md`
+- MercadoPago integration: `docs/integrations/mercadopago.md`
 
 ### Frontend service
 | Variable | Purpose | Example / Note |

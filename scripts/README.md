@@ -2,6 +2,22 @@
 
 Repository: https://github.com/kavidoi/murallayes.git
 
+## pull_railway_vars.sh
+Export Railway service variables to local dotenv files for development. Railway remains the source of truth.
+
+Usage:
+```bash
+RAILWAY_PROJECT_NAME=<project> RAILWAY_ENVIRONMENT=<environment> \
+  ./scripts/pull_railway_vars.sh
+# Writes muralla-backend/.env.railway and muralla-frontend/.env.railway (gitignored)
+```
+
+Tip: You can also avoid writing files and run with Railway-injected vars:
+```bash
+railway run -s Backend -e <environment> -- pnpm -C muralla-backend start:dev
+railway run -s Frontend -e <environment> -- pnpm -C muralla-frontend dev
+```
+
 ## set_railway_vars.sh
 Non-interactive helper to set required environment variables for Backend and Frontend services via the Railway CLI.
 
