@@ -49,13 +49,23 @@ RUN adduser -S nestjs -u 1001
 # Set working directory
 WORKDIR /app
 
-# Copy production dependencies and build artifacts from base stage
-COPY --from=base --chown=nestjs:nodejs /app/node_modules ./node_modules
+# Copy workspace manifests for install
+COPY --from=base --chown=nestjs:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=base --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=base --chown=nestjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# Copy build artifacts and app files
 COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/dist ./muralla-backend/dist
 COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/package.json ./muralla-backend/package.json
 COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/prisma ./muralla-backend/prisma
 COPY --from=base --chown=nestjs:nodejs /app/packages/common/dist ./packages/common/dist
 COPY --from=base --chown=nestjs:nodejs /app/packages/common/package.json ./packages/common/package.json
+COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/vendor ./muralla-backend/vendor
+
+# Install only production dependencies for backend
+RUN pnpm -C muralla-backend install --prod --frozen-lockfile --ignore-scripts
+# Ensure Prisma client exists in runtime node_modules
+RUN pnpm -C muralla-backend exec prisma generate
 
 # Switch to non-root user
 USER nestjs
