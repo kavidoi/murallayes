@@ -1,5 +1,4 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 
 interface TeamMember {
   id: string;
@@ -14,7 +13,6 @@ interface TeamMember {
 }
 
 const TeamDirectory: React.FC = () => {
-  const { t } = useTranslation();
 
   const teamMembers: TeamMember[] = [
     {
