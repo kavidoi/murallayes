@@ -43,6 +43,8 @@ interface Task {
   expanded?: boolean
   subtasks: Subtask[]
   order: number
+  // Multi-assignee support (only userId needed for avatar/name lookup)
+  assignees?: { userId: string }[]
 }
 
 // ——— Helper functions ———
@@ -347,7 +349,6 @@ function DateTimePicker({
   onClose: () => void;
   autoFocus?: boolean;
 }) {
-  const [showCalendar, setShowCalendar] = useState(false)
   const [tempDate, setTempDate] = useState(date || getTodayDate())
   const [tempTime, setTempTime] = useState(time || '')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -365,7 +366,6 @@ function DateTimePicker({
   const handleDateSelect = (selectedDate: string) => {
     setTempDate(selectedDate)
     onDateChange(selectedDate)
-    setShowCalendar(false)
   }
 
   const handleTimeChange = (selectedTime: string) => {
@@ -507,7 +507,6 @@ export default function TasksList(){
   // inline-edit states for pill/chip UX
   const [editingStatus, setEditingStatus] = useState<string | null>(null)
   const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
-  const [editingDue, setEditingDue] = useState<string | null>(null)
   const [editingPriority, setEditingPriority] = useState<string | null>(null)
   const [showAdvancedDatePicker, setShowAdvancedDatePicker] = useState<string | null>(null)
   const [showMultiAssigneeSelect, setShowMultiAssigneeSelect] = useState<string | null>(null)
@@ -877,7 +876,7 @@ export default function TasksList(){
                     {showMultiAssigneeSelect === `task:${t.id}` ? (
                       <MultiAssigneeSelect
                         users={users}
-                        selectedUserIds={t.assignees?.map(a => a.userId) || []}
+                        selectedUserIds={t.assignees?.map((a: { userId: string }) => a.userId) || []}
                         onChange={(userIds) => updateTaskAssignees(t.id, userIds)}
                         onClose={() => setShowMultiAssigneeSelect(null)}
                       />
@@ -889,7 +888,7 @@ export default function TasksList(){
                         {t.assignees && t.assignees.length > 0 ? (
                           <>
                             <div className="flex -space-x-1">
-                              {t.assignees.slice(0, 3).map((assignee) => (
+                              {t.assignees.slice(0, 3).map((assignee: { userId: string }) => (
                                 <Avatar key={assignee.userId} user={userById[assignee.userId]} size={20} />
                               ))}
                               {t.assignees.length > 3 && (
