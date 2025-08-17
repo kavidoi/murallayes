@@ -62,12 +62,17 @@ class BootstrapService implements OnModuleInit {
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       typePaths: ['./**/*.graphql'],
-      definitions: {
-        path: join(process.cwd(), 'src/graphql.ts'),
-        outputAs: 'class',
-      },
+      // In production, avoid writing generated definitions to disk (read-only fs)
+      ...(process.env.NODE_ENV === 'production'
+        ? {}
+        : {
+            definitions: {
+              path: join(process.cwd(), 'src/graphql.ts'),
+              outputAs: 'class',
+            },
+          }),
       sortSchema: true,
-      playground: true,
+      playground: process.env.NODE_ENV !== 'production',
       installSubscriptionHandlers: true,
     }),
     UsersModule,
