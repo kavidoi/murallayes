@@ -6,7 +6,7 @@
     "start:dev": "ts-node --transpile-only src/main.ts",
     "build": "tsc -p .",
     "start": "node dist/main.js",
-    "start:prod": "pnpm run resolve-migration && pnpm run migrate:deploy && pnpm run start",
+    "start:prod": "pnpm run migrate:deploy && pnpm run start",
     "seed": "ts-node prisma/seed.ts",
     "cli": "ts-node src/cli/seed.ts",
     "bootstrap": "pnpm run cli bootstrap",
@@ -22,8 +22,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "pre-commit": "lint-staged",
     "postinstall": "prisma generate",
-    "migrate:deploy": "prisma migrate deploy",
-    "resolve-migration": "node scripts/resolve-migration.js"
+    "migrate:deploy": "prisma migrate resolve --applied 20250816084144_add_product_pipeline || true && prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
