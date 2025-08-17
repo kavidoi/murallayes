@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { HttpsUtils } from '../utils/https';
+import { AuthService } from './authService';
 
 const API_BASE_URL = HttpsUtils.getApiBaseUrl();
 
@@ -18,15 +19,12 @@ export interface CreateProjectDto {
 
 class ProjectsService {
   private getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+    return AuthService.getAuthHeaders() as Record<string, string>;
   }
 
   async getAllProjects(): Promise<Project[]> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/projects`, {
         headers: this.getAuthHeaders(),
       });
@@ -39,6 +37,7 @@ class ProjectsService {
 
   async getProject(id: string): Promise<Project> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/projects/${id}`, {
         headers: this.getAuthHeaders(),
       });
@@ -51,6 +50,7 @@ class ProjectsService {
 
   async createProject(project: CreateProjectDto): Promise<Project> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.post(`${API_BASE_URL}/projects`, project, {
         headers: this.getAuthHeaders(),
       });
