@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { HttpsUtils } from '../utils/https';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = HttpsUtils.getApiBaseUrl();
 
 export interface User {
   id: string;
