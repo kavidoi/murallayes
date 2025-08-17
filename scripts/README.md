@@ -1,5 +1,11 @@
 # Scripts
 
+## Render API automation
+
+This repo now includes example references from Render's public API examples in `scripts/render-api-examples` (source: https://github.com/render-examples/render-api-examples).
+
+We'll add an automation script `scripts/render_deploy.sh` to create/update services via the Render API.
+
 Repository: https://github.com/kavidoi/murallayes.git
 
 ## pull_railway_vars.sh
