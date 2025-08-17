@@ -18,8 +18,8 @@ COPY muralla-backend/vendor muralla-backend/vendor
 # Include workspace packages manifests (some deps resolve workspaces)
 COPY packages ./packages
 
-# Install dependencies
-RUN pnpm install --no-frozen-lockfile
+# Install dependencies (skip postinstall scripts until sources are copied)
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Copy source code
 COPY . .
@@ -27,8 +27,11 @@ COPY . .
 # Build common package first
 RUN pnpm --filter @muralla/common build
 
-# Generate Prisma client
+# Generate Prisma client (now sources exist)
 RUN pnpm --filter muralla-backend exec prisma generate
+
+# Re-run install to run any postinstall scripts safely after sources copied
+RUN pnpm install --no-frozen-lockfile
 
 # Build the application
 RUN pnpm --filter muralla-backend run build
