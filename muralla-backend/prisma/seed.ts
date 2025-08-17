@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  const adminPasswordHash = await bcrypt.hash('Muralla2025', 10);
 
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
@@ -50,7 +50,8 @@ async function main() {
       firstName: 'Darwin',
       lastName: 'Bruna',
       username: 'darwin',
-      role: { connect: { id: staffRole.id } },
+      role: { connect: { id: adminRole.id } },
+      password: adminPasswordHash,
       isActive: true,
     },
     create: {
@@ -58,8 +59,8 @@ async function main() {
       username: 'darwin',
       firstName: 'Darwin',
       lastName: 'Bruna',
-      password: staffPasswordHash,
-      role: { connect: { id: staffRole.id } },
+      password: adminPasswordHash,
+      role: { connect: { id: adminRole.id } },
       isActive: true,
     },
   });
@@ -70,7 +71,8 @@ async function main() {
       firstName: 'Kaví',
       lastName: 'Doi',
       username: 'kavi',
-      role: { connect: { id: staffRole.id } },
+      role: { connect: { id: adminRole.id } },
+      password: adminPasswordHash,
       isActive: true,
     },
     create: {
@@ -78,21 +80,30 @@ async function main() {
       username: 'kavi',
       firstName: 'Kaví',
       lastName: 'Doi',
-      password: staffPasswordHash,
-      role: { connect: { id: staffRole.id } },
+      password: adminPasswordHash,
+      role: { connect: { id: adminRole.id } },
       isActive: true,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'contacto@murallacafe.cl' },
-    update: {},
+    update: {
+      username: 'admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      password: adminPasswordHash,
+      role: {
+        connect: { id: adminRole.id },
+      },
+      isActive: true,
+    },
     create: {
       email: 'contacto@murallacafe.cl',
       username: 'admin',
       firstName: 'Admin',
       lastName: 'User',
-      password: passwordHash,
+      password: adminPasswordHash,
       role: {
         connect: { id: adminRole.id },
       },
