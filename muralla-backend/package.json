@@ -22,7 +22,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "pre-commit": "lint-staged",
     "postinstall": "prisma generate",
-    "migrate:deploy": "prisma migrate resolve --applied 20250816084144_add_product_pipeline || true && prisma migrate deploy"
+    "migrate:deploy": "bash scripts/fix-migration.sh && prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
