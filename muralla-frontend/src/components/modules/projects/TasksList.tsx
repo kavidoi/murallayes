@@ -18,6 +18,7 @@ interface User {
 
 type Status = 'New' | 'In Progress' | 'Completed' | 'Overdue'
 type APIStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE'
+type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 
 interface Subtask {
   id: string
@@ -34,6 +35,7 @@ interface Task {
   id: string
   name: string
   status: Status
+  priority: Priority
   assigneeId?: string | null
   dueDate?: string | null
   expanded?: boolean
@@ -94,12 +96,44 @@ const convertAPITaskToTask = (apiTask: APITask, order: number): Task => ({
   id: apiTask.id,
   name: apiTask.title,
   status: convertAPIStatusToStatus(apiTask.status),
+  priority: apiTask.priority || 'MEDIUM',
   assigneeId: apiTask.assigneeId || null,
   dueDate: null, // TODO: Add dueDate to backend schema
   expanded: false,
   subtasks: [], // TODO: Add subtasks support to backend
   order,
 });
+
+// ——— Priority helpers ———
+const getPriorityEmoji = (priority: Priority): string => {
+  switch (priority) {
+    case 'LOW':
+      return '🟢'; // Green circle
+    case 'MEDIUM':
+      return '🟡'; // Yellow circle
+    case 'HIGH':
+      return '🟠'; // Orange circle
+    case 'URGENT':
+      return '🔴'; // Red circle
+    default:
+      return '🟡';
+  }
+};
+
+const getPriorityLabel = (priority: Priority): string => {
+  switch (priority) {
+    case 'LOW':
+      return 'Low';
+    case 'MEDIUM':
+      return 'Medium';
+    case 'HIGH':
+      return 'High';
+    case 'URGENT':
+      return 'Urgent';
+    default:
+      return 'Medium';
+  }
+};
 
 // ——— UI helpers ———
 const statusPillClasses: Record<Status, string> = {
@@ -186,6 +220,25 @@ function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Stat
   )
 }
 
+function PrioritySelect({ value, onChange }: { value: Priority; onChange: (p: Priority) => void }) {
+  const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+  
+  return (
+    <select 
+      className="input py-1 pr-8 text-sm min-w-0" 
+      value={value} 
+      onChange={(e) => onChange(e.target.value as Priority)}
+      style={{ width: 'auto' }}
+    >
+      {priorities.map(p => (
+        <option key={p} value={p}>
+          {getPriorityEmoji(p)} {getPriorityLabel(p)}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function TasksList(){
   const { t: tr } = useTranslation()
   const [users, setUsers] = useState<User[]>([])
@@ -230,6 +283,7 @@ export default function TasksList(){
   const [editingStatus, setEditingStatus] = useState<string | null>(null)
   const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
   const [editingDue, setEditingDue] = useState<string | null>(null)
+  const [editingPriority, setEditingPriority] = useState<string | null>(null)
 
   const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
 
@@ -244,6 +298,7 @@ export default function TasksList(){
         title: tr('pages.tasks.newTask'),
         description: '',
         status: 'PENDING' as APIStatus,
+        priority: 'MEDIUM' as Priority,
         projectId: defaultProject.id,
       }
       
@@ -274,6 +329,7 @@ export default function TasksList(){
       const apiPatch: any = {}
       if (patch.name) apiPatch.title = patch.name
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
+      if (patch.priority) apiPatch.priority = patch.priority
       if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
       
       await tasksService.updateTask(taskId, apiPatch)
@@ -421,7 +477,8 @@ export default function TasksList(){
           {/* Sticky header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              <div className="col-span-5">{tr('pages.tasks.columns.name')}</div>
+              <div className="col-span-4">{tr('pages.tasks.columns.name')}</div>
+              <div className="col-span-1">Priority</div>
               <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
@@ -438,7 +495,7 @@ export default function TasksList(){
               {({attributes, listeners}) => (
               <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 odd:bg-neutral-50/40 dark:odd:bg-neutral-800/20">
                 <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                  <div className="col-span-5 flex items-center gap-2">
+                  <div className="col-span-4 flex items-center gap-2">
                     <button
                       className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
                       onClick={()=>updateTask(t.id, { expanded: !t.expanded })}
@@ -464,6 +521,22 @@ export default function TasksList(){
                       onChange={(e)=>updateTask(t.id,{ name: e.target.value })}
                       title={t.name}
                     />
+                  </div>
+                  <div className="col-span-1">
+                    {editingPriority === `task:${t.id}` ? (
+                      <PrioritySelect
+                        value={t.priority}
+                        onChange={(p) => { updateTask(t.id, { priority: p }); setEditingPriority(null) }}
+                      />
+                    ) : (
+                      <button
+                        className="text-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 py-0.5 rounded"
+                        onClick={() => setEditingPriority(`task:${t.id}`)}
+                        title={`${getPriorityLabel(t.priority)} Priority`}
+                      >
+                        {getPriorityEmoji(t.priority)}
+                      </button>
+                    )}
                   </div>
                   <div className="col-span-2">
                     {editingDue === `task:${t.id}` ? (
@@ -544,7 +617,7 @@ export default function TasksList(){
                       {({attributes, listeners}) => (
                       <div className="px-2">
                         <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                          <div className="col-span-5 flex items-center gap-2 pl-6">
+                          <div className="col-span-4 flex items-center gap-2 pl-6">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
                               <path fillRule="evenodd" d="M19.5 4.5a.75.75 0 01.75.75v13.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75zM4.5 12a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25A.75.75 0 014.5 12z" clipRule="evenodd" />
                             </svg>
@@ -563,6 +636,9 @@ export default function TasksList(){
                               value={s.name}
                               onChange={(e)=>updateSubtask(t.id, s.id, { name: e.target.value })}
                             />
+                          </div>
+                          <div className="col-span-1">
+                            {/* Empty priority column for subtasks to maintain alignment */}
                           </div>
                           <div className="col-span-2">
                             <div className="flex items-center">

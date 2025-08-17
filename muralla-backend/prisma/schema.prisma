@@ -48,10 +48,11 @@ model Project {
 }
 
 model Task {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
   description String?
-  status      TaskStatus @default(PENDING)
+  status      TaskStatus  @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
   assigneeId  String?
@@ -71,6 +72,13 @@ enum TaskStatus {
   PENDING
   IN_PROGRESS
   DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum DocumentType {

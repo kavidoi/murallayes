@@ -27,6 +27,7 @@ export interface Task {
   title: string;
   description?: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   projectId: string;
   project: Project;
   assigneeId?: string;
@@ -39,6 +40,7 @@ export interface CreateTaskDto {
   title: string;
   description?: string;
   status?: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   projectId: string;
   assigneeId?: string;
 }
@@ -47,6 +49,7 @@ export interface UpdateTaskDto {
   title?: string;
   description?: string;
   status?: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   projectId?: string;
   assigneeId?: string;
 }
