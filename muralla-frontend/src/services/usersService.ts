@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { HttpsUtils } from '../utils/https';
+import { AuthService } from './authService';
 
 const API_BASE_URL = HttpsUtils.getApiBaseUrl();
 
@@ -19,15 +20,12 @@ export interface User {
 
 class UsersService {
   private getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+    return AuthService.getAuthHeaders() as Record<string, string>;
   }
 
   async getAllUsers(): Promise<User[]> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/users`, {
         headers: this.getAuthHeaders(),
       });
@@ -40,6 +38,7 @@ class UsersService {
 
   async getUser(id: string): Promise<User> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/users/${id}`, {
         headers: this.getAuthHeaders(),
       });

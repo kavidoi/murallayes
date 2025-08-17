@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { HttpsUtils } from '../utils/https';
+import { AuthService } from './authService';
 
 const API_BASE_URL = HttpsUtils.getApiBaseUrl();
 
@@ -57,15 +58,12 @@ export interface UpdateTaskDto {
 
 class TasksService {
   private getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+    return AuthService.getAuthHeaders() as Record<string, string>;
   }
 
   async getAllTasks(): Promise<Task[]> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/tasks`, {
         headers: this.getAuthHeaders(),
       });
@@ -78,6 +76,7 @@ class TasksService {
 
   async getTasksByProject(projectId: string): Promise<Task[]> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/tasks?projectId=${projectId}`, {
         headers: this.getAuthHeaders(),
       });
@@ -90,6 +89,7 @@ class TasksService {
 
   async getTasksByAssignee(assigneeId: string): Promise<Task[]> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/tasks?assigneeId=${assigneeId}`, {
         headers: this.getAuthHeaders(),
       });
@@ -102,6 +102,7 @@ class TasksService {
 
   async getTask(id: string): Promise<Task> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.get(`${API_BASE_URL}/tasks/${id}`, {
         headers: this.getAuthHeaders(),
       });
@@ -114,6 +115,7 @@ class TasksService {
 
   async createTask(task: CreateTaskDto): Promise<Task> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.post(`${API_BASE_URL}/tasks`, task, {
         headers: this.getAuthHeaders(),
       });
@@ -126,6 +128,7 @@ class TasksService {
 
   async updateTask(id: string, updates: UpdateTaskDto): Promise<Task> {
     try {
+      await AuthService.ensureValidToken();
       const response = await axios.patch(`${API_BASE_URL}/tasks/${id}`, updates, {
         headers: this.getAuthHeaders(),
       });
@@ -138,6 +141,7 @@ class TasksService {
 
   async deleteTask(id: string): Promise<void> {
     try {
+      await AuthService.ensureValidToken();
       await axios.delete(`${API_BASE_URL}/tasks/${id}`, {
         headers: this.getAuthHeaders(),
       });
