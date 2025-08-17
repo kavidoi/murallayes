@@ -198,6 +198,8 @@ muralla-backend/uploads/
 # Ensure backend static assets and Prisma files are included
 !muralla-backend/public/**
 !muralla-backend/prisma/**
+# Include vendored tarballs needed for backend install
+!muralla-backend/vendor/*.tgz
 
 # Keep lock/workspace files available to Docker build
 !pnpm-workspace.yaml

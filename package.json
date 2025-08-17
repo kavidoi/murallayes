@@ -8,6 +8,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
+    "start": "pnpm --filter muralla-backend start:prod",
     "bootstrap": "pnpm --filter muralla-backend bootstrap",
     "reset-db": "pnpm --filter muralla-backend reset-db"
   },
