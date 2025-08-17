@@ -78,4 +78,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health/healthz', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
+# Ensure writable uploads directory and start app
+RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
 CMD ["node", "muralla-backend/dist/main.js"]
