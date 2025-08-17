@@ -19,7 +19,15 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([
-      () => this.prismaHealth.pingCheck('database', this.prisma),
+      async () => {
+        // Use direct Prisma query instead of pingCheck
+        try {
+          await this.prisma.$queryRaw`SELECT 1`;
+          return { database: { status: 'up' } };
+        } catch (error) {
+          throw new Error('Database connection failed');
+        }
+      },
       () => this.memoryHealth.checkHeap('memory_heap', 150 * 1024 * 1024),
       () => this.memoryHealth.checkRSS('memory_rss', 512 * 1024 * 1024),
     ]);
@@ -31,7 +39,15 @@ export class HealthController {
   @HealthCheck()
   readiness() {
     return this.health.check([
-      () => this.prismaHealth.pingCheck('database', this.prisma),
+      async () => {
+        // Use direct Prisma query instead of pingCheck
+        try {
+          await this.prisma.$queryRaw`SELECT 1`;
+          return { database: { status: 'up' } };
+        } catch (error) {
+          throw new Error('Database connection failed');
+        }
+      },
       async () => {
         // Check if we can perform basic database operations
         try {
