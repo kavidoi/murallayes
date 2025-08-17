@@ -19,11 +19,15 @@ import { BOMComponentDto } from './dto/bom-component.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post()
   @Roles('admin', 'manager')
@@ -73,5 +77,26 @@ export class ProductsController {
   @Get(':id/stock')
   getInventoryStock(@Param('id') id: string) {
     return this.productsService.getInventoryStock(id);
+  }
+
+  // --- Categories ---
+  @Get('categories/all')
+  findAllCategories() {
+    return this.prisma.productCategory.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  @Post('categories')
+  @Roles('admin', 'manager')
+  createCategory(@Body() data: { name: string; description?: string; color?: string; isInventory?: boolean; parentId?: string }) {
+    return this.prisma.productCategory.create({ data });
+  }
+
+  @Patch('categories/:id')
+  @Roles('admin', 'manager')
+  updateCategory(@Param('id') id: string, @Body() data: Partial<{ name: string; description?: string; color?: string; isInventory?: boolean; parentId?: string }>) {
+    return this.prisma.productCategory.update({ where: { id }, data });
   }
 }

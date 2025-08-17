@@ -81,8 +81,30 @@ export class InventoryService {
   }
 
   async calculateWAVG(productId: string, locationId?: string): Promise<number> {
-    // Placeholder until migration is complete
-    throw new BadRequestException('WAVG calculation will be available after database migration');
+    // Weighted Average = sum(totalCost) / sum(quantity) from CostLines marked as inventory for the product
+    const where: Prisma.CostLineWhereInput = {
+      productId,
+      isInventory: true,
+      quantity: { not: null },
+      totalCost: { not: null },
+      ...(locationId ? { locationId } : {}),
+    };
+
+    const agg = await this.prisma.costLine.aggregate({
+      _sum: { totalCost: true, quantity: true },
+      where,
+    });
+
+    const sumTotal = agg._sum.totalCost as unknown as Decimal | null;
+    const sumQty = agg._sum.quantity as unknown as Decimal | null;
+
+    if (!sumQty || sumQty.equals(0)) {
+      // Fallback to product.unitCost or 0
+      const product = await this.prisma.product.findUnique({ where: { id: productId } });
+      return product?.unitCost ? Number(product.unitCost) : 0;
+    }
+
+    return Number(sumTotal!.div(sumQty));
   }
 
   async checkAvailability(productId: string, quantity: number, locationId: string): Promise<boolean> {

@@ -28,6 +28,9 @@ export class PrismaService implements OnModuleInit {
   get role() { return this.prisma.role; }
   get task() { return this.prisma.task; }
   get project() { return this.prisma.project; }
+  get budget() { return this.prisma.budget; }
+  get budgetLine() { return this.prisma.budgetLine; }
+  get comment() { return this.prisma.comment; }
   get pTORequest() { return this.prisma.pTORequest; }
   get pTOBalance() { return this.prisma.pTOBalance; }
   get notification() { return this.prisma.notification; }
@@ -39,6 +42,7 @@ export class PrismaService implements OnModuleInit {
   get sale() { return this.prisma.sale; }
   get transaction() { return this.prisma.transaction; }
   get transactionCategory() { return this.prisma.transactionCategory; }
+  get productCategory() { return this.prisma.productCategory; }
   get bankAccount() { return this.prisma.bankAccount; }
   get magicToken() { return this.prisma.magicToken; }
 

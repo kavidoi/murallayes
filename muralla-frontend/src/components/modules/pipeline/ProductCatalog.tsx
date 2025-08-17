@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { PlusIcon, MagnifyingGlassIcon, TagIcon, CubeIcon, BeakerIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AuthService } from '../../../services/authService'
 
 interface Product {
   id: string
@@ -22,57 +23,43 @@ const ProductCatalog: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [, setShowCreateModal] = useState(false)
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  const [creatingCategory, setCreatingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
 
-  // Mock data - replace with API call
   useEffect(() => {
-    const mockProducts: Product[] = [
-      {
-        id: '1',
-        sku: 'CF-001',
-        name: 'Café Arábica Premium',
-        description: 'Granos de café arábica de alta calidad',
-        type: 'INSUMO',
-        uom: 'kg',
-        category: 'Materias Primas',
-        unitCost: 8500,
-        isActive: true,
-        stockLevel: 150
-      },
-      {
-        id: '2',
-        sku: 'ESP-001',
-        name: 'Espresso Muralla',
-        description: 'Blend especial de la casa',
-        type: 'TERMINADO',
-        uom: 'kg',
-        category: 'Productos Terminados',
-        unitCost: 12000,
-        isActive: true,
-        bomComponents: 3,
-        stockLevel: 45
-      },
-      {
-        id: '3',
-        sku: 'MILK-001',
-        name: 'Leche Entera',
-        description: 'Leche fresca para preparaciones',
-        type: 'INSUMO',
-        uom: 'L',
-        category: 'Lácteos',
-        unitCost: 950,
-        isActive: true,
-        stockLevel: 80
+    const load = async () => {
+      try {
+        const res = await AuthService.apiCall<{ data: any[] }>(`/products?limit=100`)
+        const mapped: Product[] = (res.data || []).map((p: any) => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          description: p.description,
+          type: p.type || 'TERMINADO',
+          uom: p.uom || 'UN',
+          category: p.category?.name,
+          unitCost: p.unitCost ?? p.price ?? 0,
+          isActive: p.isActive,
+          stockLevel: p.stock,
+        }))
+        setProducts(mapped)
+
+        const cats = await AuthService.apiCall<any[]>(`/products/categories/all`)
+        setCategories((cats || []).map((c: any) => ({ id: c.id, name: c.name })))
+      } catch (e) {
+        console.error('Error loading products/categories', e)
       }
-    ]
-    setProducts(mockProducts)
+    }
+    load()
   }, [])
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || product.sku.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = selectedType === 'all' || product.type === selectedType
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory
+    const selectedCategoryName = categories.find(c => c.id === selectedCategory)?.name
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategoryName || product.category === selectedCategory
     return matchesSearch && matchesType && matchesCategory
   })
 
@@ -138,6 +125,27 @@ const ProductCatalog: React.FC = () => {
                   Tabla
                 </button>
               </div>
+              {/* Type tabs */}
+              <div className="hidden md:flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'INSUMO', label: 'Insumos' },
+                  { id: 'TERMINADO', label: 'Productos Terminados' },
+                  { id: 'SERVICIO', label: 'Servicios' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedType(tab.id)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      selectedType === tab.id
+                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -171,16 +179,24 @@ const ProductCatalog: React.FC = () => {
                 <option value="TERMINADO">Productos Terminados</option>
                 <option value="SERVICIO">Servicios</option>
               </select>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Todas las categorías</option>
-                <option value="Materias Primas">Materias Primas</option>
-                <option value="Productos Terminados">Productos Terminados</option>
-                <option value="Lácteos">Lácteos</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Todas las categorías</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setCreatingCategory(true)}
+                  className="px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200"
+                >
+                  + Nueva categoría
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -223,7 +239,7 @@ const ProductCatalog: React.FC = () => {
                     
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Precio unitario</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Costo promedio</span>
                         <span className="font-medium text-gray-900 dark:text-white">
                           ${product.unitCost?.toLocaleString()} / {product.uom}
                         </span>
@@ -265,7 +281,7 @@ const ProductCatalog: React.FC = () => {
                       Tipo
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Precio
+                      Costo promedio
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Stock
@@ -335,6 +351,50 @@ const ProductCatalog: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Intenta ajustar los filtros o crear un nuevo producto.
             </p>
+          </div>
+        )}
+
+        {/* Create Category Modal */}
+        {creatingCategory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nueva categoría</h3>
+              <input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Nombre de la categoría"
+                className="w-full px-3 py-2 mb-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setCreatingCategory(false); setNewCategoryName(''); }}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newCategoryName.trim()) return;
+                    try {
+                      await AuthService.apiCall(`/products/categories`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newCategoryName.trim(), isInventory: true })
+                      });
+                      const cats = await AuthService.apiCall<any[]>(`/products/categories/all`);
+                      setCategories((cats || []).map((c: any) => ({ id: c.id, name: c.name })));
+                      setCreatingCategory(false);
+                      setNewCategoryName('');
+                    } catch (e) {
+                      console.error('Error creating category', e);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Crear
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

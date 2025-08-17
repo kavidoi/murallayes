@@ -35,6 +35,7 @@ import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 import { CostsModule } from './costs/costs.module';
 import { ProductsModule } from './products/products.module';
 import { WorkOrdersModule } from './workorders/workorders.module';
+import { BudgetsModule } from './budgets/budgets.module';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
@@ -92,6 +93,7 @@ class BootstrapService implements OnModuleInit {
     CostsModule,
     ProductsModule,
     WorkOrdersModule,
+    BudgetsModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
