@@ -18,11 +18,11 @@ RUN pnpm install --no-frozen-lockfile
 # Copy source code
 COPY . .
 
-# Install build-time tools
-RUN pnpm add -D prisma typescript
+# Build common package first
+RUN pnpm --filter @muralla/common build
 
 # Generate Prisma client
-RUN pnpm --filter @muralla/common build && pnpm --filter muralla-backend exec prisma generate
+RUN pnpm --filter muralla-backend exec prisma generate
 
 # Build the application
 RUN pnpm --filter muralla-backend run build
@@ -44,6 +44,9 @@ WORKDIR /app
 COPY --from=base --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/dist ./muralla-backend/dist
 COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/package.json ./muralla-backend/package.json
+COPY --from=base --chown=nestjs:nodejs /app/muralla-backend/prisma ./muralla-backend/prisma
+COPY --from=base --chown=nestjs:nodejs /app/packages/common/dist ./packages/common/dist
+COPY --from=base --chown=nestjs:nodejs /app/packages/common/package.json ./packages/common/package.json
 
 # Switch to non-root user
 USER nestjs
