@@ -28,13 +28,13 @@ COPY . .
 RUN pnpm --filter @muralla/common build
 
 # Generate Prisma client (now sources exist)
-RUN pnpm --filter muralla-backend exec prisma generate
+RUN pnpm -C muralla-backend exec prisma generate
 
 # Re-run install to run any postinstall scripts safely after sources copied
 RUN pnpm install --no-frozen-lockfile
 
 # Build the application
-RUN pnpm --filter muralla-backend run build
+RUN pnpm -C muralla-backend run build
 
 # Production stage
 FROM node:20-alpine AS production
