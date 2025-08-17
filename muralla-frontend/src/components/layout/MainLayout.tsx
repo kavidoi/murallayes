@@ -143,6 +143,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       path: '/projects',
       icon: <ProjectsIcon />,
       children: [
+        { name: t('nav.projectsOverview'), path: '/projects/overview' },
         { name: t('nav.tasksList'), path: '/projects/tasks' },
         { name: t('nav.kanban'), path: '/projects/kanban' },
         { name: t('nav.timeline'), path: '/projects/timeline' },
@@ -184,7 +185,6 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         { name: t('nav.products'), path: '/inventory/products' },
         { name: t('nav.sales'), path: '/inventory/sales' },
         { name: t('nav.stock'), path: '/inventory/stock' },
-        { name: t('nav.movements'), path: '/inventory/movements' },
       ]
     },
     {

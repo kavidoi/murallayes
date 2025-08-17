@@ -24,6 +24,14 @@ export interface Project {
   description?: string;
 }
 
+export interface TaskAssignee {
+  id: string;
+  taskId: string;
+  userId: string;
+  user: User;
+  role: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -34,6 +42,13 @@ export interface Task {
   project: Project;
   assigneeId?: string;
   assignee?: User;
+  assignees?: TaskAssignee[];
+  dueDate?: string;
+  dueTime?: string;
+  parentTaskId?: string;
+  parentTask?: Task;
+  subtasks?: Task[];
+  orderIndex: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -147,6 +162,82 @@ class TasksService {
       });
     } catch (error) {
       console.error('Error deleting task:', error);
+      throw error;
+    }
+  }
+
+  async createSubtask(parentTaskId: string, subtask: CreateTaskDto): Promise<Task> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.post(`${API_BASE_URL}/tasks/${parentTaskId}/subtasks`, subtask, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating subtask:', error);
+      throw error;
+    }
+  }
+
+  async updateSubtask(id: string, updates: UpdateTaskDto): Promise<Task> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.patch(`${API_BASE_URL}/tasks/subtasks/${id}`, updates, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+      throw error;
+    }
+  }
+
+  async reorderTasks(taskIds: string[]): Promise<void> {
+    try {
+      await AuthService.ensureValidToken();
+      await axios.patch(`${API_BASE_URL}/tasks/reorder`, { taskIds }, {
+        headers: this.getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error('Error reordering tasks:', error);
+      throw error;
+    }
+  }
+
+  async addTaskAssignee(taskId: string, userId: string, role: string = 'assignee'): Promise<TaskAssignee> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.post(`${API_BASE_URL}/tasks/${taskId}/assignees`, { userId, role }, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding task assignee:', error);
+      throw error;
+    }
+  }
+
+  async removeTaskAssignee(taskId: string, userId: string): Promise<void> {
+    try {
+      await AuthService.ensureValidToken();
+      await axios.delete(`${API_BASE_URL}/tasks/${taskId}/assignees/${userId}`, {
+        headers: this.getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error('Error removing task assignee:', error);
+      throw error;
+    }
+  }
+
+  async updateTaskAssignees(taskId: string, userIds: string[]): Promise<Task> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.patch(`${API_BASE_URL}/tasks/${taskId}/assignees`, { userIds }, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating task assignees:', error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -28,6 +28,7 @@ interface Subtask {
   inheritsDueDate: boolean
   assigneeId?: string | null
   dueDate?: string | null // YYYY-MM-DD
+  dueTime?: string | null // HH:MM format
   order: number
 }
 
@@ -38,6 +39,7 @@ interface Task {
   priority: Priority
   assigneeId?: string | null
   dueDate?: string | null
+  dueTime?: string | null // HH:MM format
   expanded?: boolean
   subtasks: Subtask[]
   order: number
@@ -98,11 +100,32 @@ const convertAPITaskToTask = (apiTask: APITask, order: number): Task => ({
   status: convertAPIStatusToStatus(apiTask.status),
   priority: apiTask.priority || 'MEDIUM',
   assigneeId: apiTask.assigneeId || null,
-  dueDate: null, // TODO: Add dueDate to backend schema
+  dueDate: apiTask.dueDate ? apiTask.dueDate.split('T')[0] : null,
+  dueTime: apiTask.dueTime || null,
   expanded: false,
-  subtasks: [], // TODO: Add subtasks support to backend
-  order,
+  subtasks: [], // Simplificado: sin subtareas por ahora
+  order: order, // Usar order proporcionado
+  // Map assignees to user IDs for the multi-assignee display
+  assignees: apiTask.assignees || [],
+})
+
+const convertAPISubtaskToSubtask = (apiSubtask: APITask, order: number): Subtask => ({
+  id: apiSubtask.id,
+  name: apiSubtask.title,
+  status: convertAPIStatusToStatus(apiSubtask.status),
+  inheritsAssignee: !apiSubtask.assigneeId, // If no assignee set, inherit from parent
+  inheritsDueDate: !apiSubtask.dueDate, // If no due date set, inherit from parent
+  assigneeId: apiSubtask.assigneeId || null,
+  dueDate: apiSubtask.dueDate ? apiSubtask.dueDate.split('T')[0] : null,
+  dueTime: apiSubtask.dueTime || null,
+  order: apiSubtask.orderIndex || order,
 });
+
+// ——— Date helpers ———
+const getTodayDate = (): string => {
+  const today = new Date()
+  return today.toISOString().split('T')[0] // Returns YYYY-MM-DD format
+}
 
 // ——— Priority helpers ———
 const getPriorityEmoji = (priority: Priority): string => {
@@ -150,11 +173,18 @@ const statusDotClasses: Record<Status, string> = {
   'Overdue': 'bg-rose-500',
 }
 
-function formatDate(date?: string | null, t?: (k: string) => string) {
+function formatDate(date?: string | null, time?: string | null, t?: (k: string) => string) {
   if (!date) return t ? t('common.noDate') : 'No date'
   const d = new Date(date)
   if (isNaN(d.getTime())) return t ? t('common.noDate') : 'No date'
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  
+  let formattedDate = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  
+  if (time) {
+    formattedDate += ` ${time}`
+  }
+  
+  return formattedDate
 }
 
 function getDueTone(date?: string | null, isCompleted?: boolean) {
@@ -209,6 +239,87 @@ function AssigneeSelect({ users, value, onChange, disabled, unassignedLabel }:{ 
   )
 }
 
+function MultiAssigneeSelect({ 
+  users, 
+  selectedUserIds, 
+  onChange, 
+  onClose 
+}: { 
+  users: User[]; 
+  selectedUserIds: string[]; 
+  onChange: (userIds: string[]) => void; 
+  onClose: () => void;
+}) {
+  const [tempSelected, setTempSelected] = useState<string[]>(selectedUserIds)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [onClose])
+
+  const toggleUser = (userId: string) => {
+    setTempSelected(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const handleSave = () => {
+    onChange(tempSelected)
+    onClose()
+  }
+
+  return (
+    <div ref={containerRef} className="absolute top-0 left-0 z-50 bg-white dark:bg-neutral-800 border rounded-lg shadow-lg p-3 min-w-64">
+      <div className="mb-2">
+        <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Asignar a:</h4>
+      </div>
+      
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {users.map(user => (
+          <label key={user.id} className="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 p-1 rounded">
+            <input
+              type="checkbox"
+              checked={tempSelected.includes(user.id)}
+              onChange={() => toggleUser(user.id)}
+              className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+            />
+            <Avatar user={user} size={24} />
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">{user.name}</span>
+          </label>
+        ))}
+      </div>
+      
+      <div className="flex justify-between items-center mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-600">
+        <span className="text-xs text-neutral-500">
+          {tempSelected.length} seleccionado{tempSelected.length !== 1 ? 's' : ''}
+        </span>
+        <div className="flex gap-2">
+          <button
+            className="text-xs text-neutral-500 hover:text-neutral-700"
+            onClick={() => setTempSelected([])}
+          >
+            Limpiar
+          </button>
+          <button
+            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+            onClick={handleSave}
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Status)=>void; t: (k: string) => string }){
   // Overdue is auto-derived from due date; do not allow selecting it directly
   const options: Status[] = ['New','In Progress','Completed']
@@ -217,6 +328,120 @@ function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Stat
     <select className="input py-1 pr-8 text-sm" value={coercedValue} onChange={(e)=>onChange(e.target.value as Status)}>
       {options.map(o=> <option key={o} value={o}>{t(`status.${o}`)}</option>)}
     </select>
+  )
+}
+
+// ——— Advanced Date Time Picker ———
+function DateTimePicker({ 
+  date, 
+  time, 
+  onDateChange, 
+  onTimeChange, 
+  onClose,
+  autoFocus = false 
+}: { 
+  date?: string | null; 
+  time?: string | null; 
+  onDateChange: (date: string | null) => void; 
+  onTimeChange: (time: string | null) => void; 
+  onClose: () => void;
+  autoFocus?: boolean;
+}) {
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [tempDate, setTempDate] = useState(date || getTodayDate())
+  const [tempTime, setTempTime] = useState(time || '')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [onClose])
+
+  const handleDateSelect = (selectedDate: string) => {
+    setTempDate(selectedDate)
+    onDateChange(selectedDate)
+    setShowCalendar(false)
+  }
+
+  const handleTimeChange = (selectedTime: string) => {
+    setTempTime(selectedTime)
+    onTimeChange(selectedTime || null)
+  }
+
+  const handleClear = () => {
+    onDateChange(null)
+    onTimeChange(null)
+    onClose()
+  }
+
+  const quickDateOptions = [
+    { label: 'Hoy', value: getTodayDate() },
+    { label: 'Mañana', value: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+    { label: 'En 1 semana', value: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+  ]
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex gap-1 p-2 bg-white dark:bg-neutral-800 border rounded-lg shadow-lg min-w-64">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
+            Fecha
+          </label>
+          <div className="space-y-2">
+            <input
+              type="date"
+              className="input py-1 text-sm w-full"
+              value={tempDate}
+              onChange={(e) => handleDateSelect(e.target.value)}
+              autoFocus={autoFocus}
+            />
+            <div className="flex gap-1">
+              {quickDateOptions.map((option) => (
+                <button
+                  key={option.label}
+                  className="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600"
+                  onClick={() => handleDateSelect(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="w-20">
+          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
+            Hora
+          </label>
+          <input
+            type="time"
+            className="input py-1 text-sm w-full"
+            value={tempTime}
+            onChange={(e) => handleTimeChange(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      <div className="flex justify-between mt-2 px-2">
+        <button
+          className="text-xs text-neutral-500 hover:text-red-500"
+          onClick={handleClear}
+        >
+          Limpiar
+        </button>
+        <button
+          className="text-xs text-blue-600 hover:text-blue-800"
+          onClick={onClose}
+        >
+          Listo
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -284,6 +509,8 @@ export default function TasksList(){
   const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
   const [editingDue, setEditingDue] = useState<string | null>(null)
   const [editingPriority, setEditingPriority] = useState<string | null>(null)
+  const [showAdvancedDatePicker, setShowAdvancedDatePicker] = useState<string | null>(null)
+  const [showMultiAssigneeSelect, setShowMultiAssigneeSelect] = useState<string | null>(null)
 
   const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
 
@@ -313,11 +540,27 @@ export default function TasksList(){
     }
   }
 
-  const addSubtask = (taskId: string) => {
-    setTasks(prev => prev.map(t => t.id===taskId ? {
-      ...t,
-      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: tr('pages.tasks.newSubtask'), status:'New', inheritsAssignee: true, inheritsDueDate: true, order: t.subtasks.length }]
-    } : t))
+  const addSubtask = async (taskId: string) => {
+    try {
+      const newSubtaskData = {
+        title: tr('pages.tasks.newSubtask'),
+        description: '',
+        status: 'PENDING' as APIStatus,
+        priority: 'MEDIUM' as Priority,
+        projectId: defaultProject?.id || '',
+      }
+      
+      const apiSubtask = await tasksService.createSubtask(taskId, newSubtaskData)
+      const newSubtask = convertAPISubtaskToSubtask(apiSubtask, 0)
+      
+      setTasks(prev => prev.map(t => t.id === taskId ? {
+        ...t,
+        subtasks: [...t.subtasks, newSubtask]
+      } : t))
+    } catch (err) {
+      console.error('Error adding subtask:', err)
+      setError('Failed to create subtask. Please try again.')
+    }
   }
 
   const updateTask = async (taskId: string, patch: Partial<Task>) => {
@@ -331,6 +574,10 @@ export default function TasksList(){
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
       if (patch.priority) apiPatch.priority = patch.priority
       if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
+      if (patch.dueDate !== undefined) {
+        apiPatch.dueDate = patch.dueDate ? new Date(patch.dueDate).toISOString() : null
+      }
+      if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
       
       await tasksService.updateTask(taskId, apiPatch)
     } catch (err) {
@@ -341,15 +588,61 @@ export default function TasksList(){
     }
   }
 
-  const updateSubtask = (taskId: string, subId: string, patch: Partial<Subtask>) => {
+  const updateSubtask = async (taskId: string, subId: string, patch: Partial<Subtask>) => {
+    // Optimistically update the UI
     setTasks(prev => prev.map(t => t.id===taskId ? {
       ...t,
       subtasks: t.subtasks.map(s => s.id===subId ? { ...s, ...patch } : s)
     } : t))
+    
+    try {
+      // Convert the patch to API format
+      const apiPatch: any = {}
+      if (patch.name) apiPatch.title = patch.name
+      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
+      if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
+      if (patch.dueDate !== undefined) {
+        apiPatch.dueDate = patch.dueDate ? new Date(patch.dueDate).toISOString() : null
+      }
+      if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
+      
+      await tasksService.updateSubtask(subId, apiPatch)
+    } catch (err) {
+      console.error('Error updating subtask:', err)
+      setError('Failed to update subtask. Please try again.')
+    }
   }
 
-  const removeSubtask = (taskId: string, subId: string) => {
-    setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
+  const removeSubtask = async (taskId: string, subId: string) => {
+    try {
+      await tasksService.deleteTask(subId)
+      setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
+    } catch (err) {
+      console.error('Error removing subtask:', err)
+      setError('Failed to delete subtask. Please try again.')
+    }
+  }
+
+  const removeTask = async (taskId: string) => {
+    try {
+      await tasksService.deleteTask(taskId)
+      setTasks(prev => prev.filter(t => t.id !== taskId))
+    } catch (err) {
+      console.error('Error removing task:', err)
+      setError('Failed to delete task. Please try again.')
+    }
+  }
+
+  const updateTaskAssignees = async (taskId: string, userIds: string[]) => {
+    try {
+      const updatedTask = await tasksService.updateTaskAssignees(taskId, userIds)
+      const convertedTask = convertAPITaskToTask(updatedTask, 0)
+      
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignees: convertedTask.assignees } : t))
+    } catch (err) {
+      console.error('Error updating task assignees:', err)
+      setError('Failed to update task assignees. Please try again.')
+    }
   }
 
   const sectionHeader = (name: string, newLabel: string) => (
@@ -459,6 +752,7 @@ export default function TasksList(){
         </div>
         <div className="flex items-center gap-2">
           <button className="btn-outline" onClick={addTask}>{tr('actions.new')}</button>
+          <a className="btn-outline" href="/projects/overview">{tr('nav.projectsOverview')}</a>
           <button className="btn-primary">{tr('actions.import')}</button>
         </div>
       </div>
@@ -478,7 +772,7 @@ export default function TasksList(){
           <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
               <div className="col-span-4">{tr('pages.tasks.columns.name')}</div>
-              <div className="col-span-1">Priority</div>
+              <div className="col-span-1">{tr('pages.tasks.columns.priority')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
@@ -538,22 +832,24 @@ export default function TasksList(){
                       </button>
                     )}
                   </div>
-                  <div className="col-span-2">
-                    {editingDue === `task:${t.id}` ? (
-                      <input
-                        type="date"
-                        className="input py-1 text-sm"
-                        value={t.dueDate ?? ''}
-                        onChange={(e)=>updateTask(t.id,{ dueDate: e.target.value || null })}
-                        onBlur={()=>setEditingDue(null)}
-                        autoFocus
-                      />
+                  <div className="col-span-2 relative">
+                    {showAdvancedDatePicker === `task:${t.id}` ? (
+                      <div className="absolute top-0 left-0 z-50">
+                        <DateTimePicker
+                          date={t.dueDate}
+                          time={t.dueTime}
+                          onDateChange={(date) => updateTask(t.id, { dueDate: date })}
+                          onTimeChange={(time) => updateTask(t.id, { dueTime: time })}
+                          onClose={() => setShowAdvancedDatePicker(null)}
+                          autoFocus
+                        />
+                      </div>
                     ) : (
                       <button
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
-                        onClick={()=>setEditingDue(`task:${t.id}`)}
+                        onClick={()=>setShowAdvancedDatePicker(`task:${t.id}`)}
                       >
-                        {formatDate(t.dueDate, tr)}
+                        {formatDate(t.dueDate, t.dueTime, tr)}
                       </button>
                     )}
                   </div>
@@ -577,28 +873,60 @@ export default function TasksList(){
                       })()
                     )}
                   </div>
-                  <div className="col-span-2">
-                    {editingAssignee === `task:${t.id}` ? (
-                      <AssigneeSelect
+                  <div className="col-span-2 relative">
+                    {showMultiAssigneeSelect === `task:${t.id}` ? (
+                      <MultiAssigneeSelect
                         users={users}
-                        value={t.assigneeId ?? ''}
-                        onChange={(v)=>{ updateTask(t.id,{ assigneeId: v }); setEditingAssignee(null) }}
-                        unassignedLabel={tr('common.unassigned')}
+                        selectedUserIds={t.assignees?.map(a => a.userId) || []}
+                        onChange={(userIds) => updateTaskAssignees(t.id, userIds)}
+                        onClose={() => setShowMultiAssigneeSelect(null)}
                       />
                     ) : (
                       <button
-                        className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-                        onClick={()=>setEditingAssignee(`task:${t.id}`)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
+                        onClick={()=>setShowMultiAssigneeSelect(`task:${t.id}`)}
                       >
-                        <Avatar user={t.assigneeId ? userById[t.assigneeId] : undefined} />
-                        <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                          {t.assigneeId ? userById[t.assigneeId].name : tr('common.unassigned')}
-                        </span>
+                        {t.assignees && t.assignees.length > 0 ? (
+                          <>
+                            <div className="flex -space-x-1">
+                              {t.assignees.slice(0, 3).map((assignee) => (
+                                <Avatar key={assignee.userId} user={userById[assignee.userId]} size={20} />
+                              ))}
+                              {t.assignees.length > 3 && (
+                                <div className="w-5 h-5 bg-neutral-300 dark:bg-neutral-600 rounded-full flex items-center justify-center text-xs">
+                                  +{t.assignees.length - 3}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm text-neutral-700 dark:text-neutral-200 ml-1">
+                              {t.assignees.length === 1 
+                                ? userById[t.assignees[0].userId]?.name || 'Usuario'
+                                : `${t.assignees.length} personas`
+                              }
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Avatar user={undefined} size={20} />
+                            <span className="text-sm text-neutral-700 dark:text-neutral-200">
+                              {tr('common.unassigned')}
+                            </span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
                   <div className="col-span-1 text-right">
-                    <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
+                    <div className="flex items-center gap-1 justify-end">
+                      <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
+                      <button 
+                        className="text-neutral-500 hover:text-rose-500 text-xs px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800" 
+                        onClick={()=>removeTask(t.id)}
+                        title={tr('actions.remove')}
+                      >
+                        {tr('actions.remove')}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -612,6 +940,7 @@ export default function TasksList(){
                   {t.subtasks.slice().sort((a,b)=>a.order-b.order).map((s) => {
                     const effectiveAssigneeId = s.inheritsAssignee ? (t.assigneeId ?? null) : (s.assigneeId ?? null)
                     const effectiveDueDate = s.inheritsDueDate ? (t.dueDate ?? null) : (s.dueDate ?? null)
+                    const effectiveDueTime = s.inheritsDueDate ? (t.dueTime ?? null) : (s.dueTime ?? null)
                     return (
                       <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
                       {({attributes, listeners}) => (
@@ -640,29 +969,31 @@ export default function TasksList(){
                           <div className="col-span-1">
                             {/* Empty priority column for subtasks to maintain alignment */}
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-2 relative">
                             <div className="flex items-center">
-                              {editingDue === `sub:${t.id}:${s.id}` && !s.inheritsDueDate ? (
-                                <input
-                                  type="date"
-                                  className="input py-1 text-sm"
-                                  value={effectiveDueDate ?? ''}
-                                  onChange={(e)=>updateSubtask(t.id, s.id, { dueDate: e.target.value || null, inheritsDueDate: false })}
-                                  onBlur={()=>setEditingDue(null)}
-                                  autoFocus
-                                />
+                              {showAdvancedDatePicker === `sub:${t.id}:${s.id}` && !s.inheritsDueDate ? (
+                                <div className="absolute top-0 left-0 z-50">
+                                  <DateTimePicker
+                                    date={effectiveDueDate}
+                                    time={effectiveDueTime}
+                                    onDateChange={(date) => updateSubtask(t.id, s.id, { dueDate: date, inheritsDueDate: false })}
+                                    onTimeChange={(time) => updateSubtask(t.id, s.id, { dueTime: time, inheritsDueDate: false })}
+                                    onClose={() => setShowAdvancedDatePicker(null)}
+                                    autoFocus
+                                  />
+                                </div>
                               ) : (
                                 <button
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60' : ''}`}
                                   onClick={()=>{
                                     if (s.inheritsDueDate) {
-                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null })
+                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null, dueTime: effectiveDueTime ?? null })
                                     }
-                                    setEditingDue(`sub:${t.id}:${s.id}`)
+                                    setShowAdvancedDatePicker(`sub:${t.id}:${s.id}`)
                                   }}
                                   title={s.inheritsDueDate ? tr('tooltips.customizeDueDate') : tr('tooltips.editDueDate')}
                                 >
-                                  {formatDate(effectiveDueDate, tr)}
+                                  {formatDate(effectiveDueDate, effectiveDueTime, tr)}
                                 </button>
                               )}
                             </div>

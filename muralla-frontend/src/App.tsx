@@ -13,10 +13,12 @@ import MyFinances from './components/modules/people/MyFinances'
 import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
 import BankAccount from './components/modules/finance/BankAccount'
 import RevenueExpenses from './components/modules/finance/RevenueExpenses'
+import BudgetManager from './components/modules/finance/BudgetManager'
 import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
 import TasksList from './components/modules/projects/TasksList'
+import ProjectsOverview from './components/modules/projects/ProjectsOverview.tsx'
 import Settings from './components/modules/settings/Settings'
 import ProductCatalog from './components/modules/pipeline/ProductCatalog'
 import InventoryDashboard from './components/modules/pipeline/InventoryDashboard'
@@ -128,7 +130,8 @@ function App() {
               <Route path="/knowledge/wiki" element={<PlaceholderPage title={t('routes.wiki.title')} description={t('routes.wiki.description')} icon="🧠" />} />
               
               {/* Projects & Tasks Routes */}
-              <Route path="/projects" element={<PlaceholderPage title={t('routes.projects.title')} description={t('routes.projects.description')} icon="📋" />} />
+              <Route path="/projects" element={<Navigate to="/projects/overview" replace />} />
+              <Route path="/projects/overview" element={<ProjectsOverview />} />
               <Route path="/projects/tasks" element={<TasksList />} />
               <Route path="/projects/kanban" element={<PlaceholderPage title={t('routes.kanban.title')} description={t('routes.kanban.description')} icon="📊" />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
@@ -150,7 +153,7 @@ function App() {
               <Route path="/finance/payments" element={<PaymentHandling />} />
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title={t('routes.taxes.title')} description={t('routes.taxes.description')} icon="🧾" />} />
-              <Route path="/finance/budgets" element={<PlaceholderPage title={t('routes.budgets.title')} description={t('routes.budgets.description')} icon="📊" />} />
+              <Route path="/finance/budgets" element={<BudgetManager />} />
               <Route path="/finance/kpis" element={<PlaceholderPage title={t('routes.kpis.title')} description={t('routes.kpis.description')} icon="📈" />} />
               <Route path="/finance/forecasts" element={<PlaceholderPage title={t('routes.forecasts.title')} description={t('routes.forecasts.description')} icon="🔮" />} />
               
@@ -171,7 +174,6 @@ function App() {
               <Route path="/inventory/products" element={<ProductCatalog />} />
               <Route path="/inventory/sales" element={<PlaceholderPage title={t('routes.sales.title')} description={t('routes.sales.description')} icon="💰" />} />
               <Route path="/inventory/stock" element={<InventoryDashboard />} />
-              <Route path="/inventory/movements" element={<InventoryDashboard />} />
               
               {/* CRM & Community Routes */}
               <Route path="/crm" element={<PlaceholderPage title={t('routes.crm.title')} description={t('routes.crm.description')} icon="👥" />} />

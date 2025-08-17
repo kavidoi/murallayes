@@ -30,15 +30,19 @@ export class ProductsService {
   }
 
   async findAll(filters: ProductFiltersDto) {
-    const { search, page, limit } = filters;
+    const { search, page, limit, type, categoryId, isActive } = filters;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
       isDeleted: false,
+      ...(typeof isActive === 'boolean' ? { isActive } : {}),
+      ...(type ? { type } : {}),
+      ...(categoryId ? { categoryId } : {}),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
         ],
       }),
     };
@@ -49,12 +53,44 @@ export class ProductsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: { category: true },
       }),
       this.prisma.product.count({ where }),
     ]);
 
+    // Compute weighted average cost from CostLine for these products (sum totalCost / sum quantity)
+    const productIds = products.map(p => p.id);
+    let avgCostByProductId: Record<string, number> = {};
+    if (productIds.length > 0) {
+      const costAgg = await this.prisma.costLine.groupBy({
+        by: ['productId'],
+        _sum: { totalCost: true, quantity: true },
+        where: {
+          productId: { in: productIds },
+          isInventory: true,
+          totalCost: { not: null },
+          quantity: { not: null },
+        },
+      });
+      avgCostByProductId = Object.fromEntries(
+        costAgg
+          .filter(r => r._sum.quantity && (r._sum.quantity as any) !== 0)
+          .map(r => {
+            const sumTotal = Number(r._sum.totalCost);
+            const sumQty = Number(r._sum.quantity);
+            const avg = sumQty > 0 ? sumTotal / sumQty : 0;
+            return [r.productId as string, avg];
+          })
+      );
+    }
+
+    const data = products.map(p => ({
+      ...p,
+      unitCost: avgCostByProductId[p.id] ?? (p.unitCost as any ?? p.price ?? 0),
+    }));
+
     return {
-      data: products,
+      data,
       meta: {
         total,
         page,

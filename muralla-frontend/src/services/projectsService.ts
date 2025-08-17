@@ -8,13 +8,35 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
+  kind?: ProjectKind;
+  deadline?: string; // ISO string
   createdAt: string;
   updatedAt: string;
+  budgets?: Budget[];
+  tasks?: ProjectTask[];
+}
+
+export type ProjectKind = 'DEADLINE' | 'CORE'
+
+export interface Budget {
+  id: string;
+  name: string;
+  totalPlanned: number | string;
+  totalCommitted: number | string;
+  totalActual: number | string;
+  currency: string;
+}
+
+export interface ProjectTask {
+  id: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
 }
 
 export interface CreateProjectDto {
   name: string;
   description?: string;
+  kind?: ProjectKind;
+  deadline?: string; // ISO string when kind === 'DEADLINE'
 }
 
 class ProjectsService {

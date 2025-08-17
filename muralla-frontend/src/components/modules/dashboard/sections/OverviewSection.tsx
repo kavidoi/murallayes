@@ -3,7 +3,27 @@ import React from 'react';
 // Widget components
 const FinancialWidget = () => (
   <div className="card bg-gradient-to-br from-accent-light to-white dark:from-accent-dark dark:to-neutral-800">
-    <h3 className="text-lg font-semibold mb-2 text-neutral-900 dark:text-white">Financial Snapshot</h3>
+    <div className="flex items-center justify-between mb-2">
+      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Financial Snapshot</h3>
+      <div className="flex space-x-2">
+        <button
+          onClick={() => window.location.href = '/finance/revenue-expenses?tab=revenue&action=add'}
+          className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center transition-colors"
+          title="Add Revenue"
+        >
+          <span className="mr-1">+</span>
+          Revenue
+        </button>
+        <button
+          onClick={() => window.location.href = '/finance/revenue-expenses?tab=expenses&action=add'}
+          className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center transition-colors"
+          title="Add Expense"
+        >
+          <span className="mr-1">+</span>
+          Expense
+        </button>
+      </div>
+    </div>
     <div className="grid grid-cols-3 gap-4">
       <div>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">Current Balance</p>
@@ -31,7 +51,7 @@ const FinancialWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/finance" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/finance/revenue-expenses" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
         View financial reports →
       </a>
     </div>

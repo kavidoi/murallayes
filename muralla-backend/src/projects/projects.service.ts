@@ -8,7 +8,7 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(data: Prisma.ProjectCreateInput) {
-    return this.prisma.project.create({ data });
+    return this.prisma.project.create({ data, include: { tasks: true } });
   }
 
   async findAll() {
@@ -20,7 +20,7 @@ export class ProjectsService {
   }
 
   async update(id: string, data: Prisma.ProjectUpdateInput) {
-    return this.prisma.project.update({ where: { id }, data });
+    return this.prisma.project.update({ where: { id }, data, include: { tasks: true } });
   }
 
   async remove(id: string) {

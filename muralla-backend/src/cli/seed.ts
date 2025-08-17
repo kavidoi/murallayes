@@ -211,11 +211,23 @@ async function createAdminUser(email: string, password: string, roleId: string) 
 }
 
 async function createDemoData(adminUserId: string, roles: Record<string, any>) {
+  // Create the mandatory "General" project for orphaned budgets/tasks
+  const generalProject = await prisma.project.upsert({
+    where: { name: 'General' },
+    update: {},
+    create: {
+      name: 'General',
+      description: 'Default project for unassigned budgets and tasks',
+      createdBy: adminUserId,
+    },
+  });
+
   // Create demo projects
   const demoProject = await prisma.project.create({
     data: {
       name: 'Welcome to Muralla Org',
       description: 'Your first project to get started with the platform',
+      createdBy: adminUserId,
     },
   });
 

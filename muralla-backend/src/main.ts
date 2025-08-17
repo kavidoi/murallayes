@@ -93,7 +93,7 @@ async function bootstrap() {
   const allowedOrigins = [
     ...(frontendUrl ? [frontendUrl] : []),
     // Development origins (only in non-production)
-    ...(isProd ? [] : ['http://localhost:5173', 'http://localhost:3000']),
+    ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000']),
     // Production HTTPS origins
     'https://admin.murallacafe.cl',
     // Railway automatic domains (HTTPS only)
