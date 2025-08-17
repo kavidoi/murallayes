@@ -7,9 +7,12 @@ RUN npm install -g pnpm@8.15.5
 WORKDIR /app
 
 # Copy package files
-# Copy root manifest and workspace layout
-COPY package.json pnpm-workspace.yaml ./
+# Copy root manifest and workspace layout (include lockfile for deterministic installs)
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+# Ensure backend manifest and vendor tarballs are present for install
 COPY muralla-backend/package.json muralla-backend/
+COPY muralla-backend/vendor muralla-backend/vendor
+# Include workspace packages manifests (some deps resolve workspaces)
 COPY packages ./packages
 
 # Install dependencies
