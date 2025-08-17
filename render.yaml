@@ -1,0 +1,61 @@
+# Render Blueprint for Muralla 4.0
+# Creates:
+# - Managed Postgres database
+# - Backend (NestJS) as a Docker-based Web Service
+# - Frontend (Vite) as a Static Site
+
+version: "1"
+
+databases:
+  - name: muralla-postgres
+    databaseName: railway
+    plan: starter
+    region: oregon
+
+services:
+  - type: web
+    name: muralla-backend
+    env: docker
+    dockerfilePath: muralla-backend/Dockerfile.ci
+    plan: starter
+    autoDeploy: true
+    region: ohio
+    healthCheckPath: /health/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: muralla-postgres
+          property: connectionString
+      # Required app secrets — set real values via API after apply
+      - key: JWT_SECRET
+        value: "REPLACE_ME"
+      - key: BACKEND_URL
+        value: "REPLACE_ME" # e.g. https://api.muralla.example
+      - key: FRONTEND_URL
+        value: "REPLACE_ME" # e.g. https://admin.muralla.example
+      # Optional: MercadoPago
+      - key: MP_ACCESS_TOKEN
+        value: ""
+      - key: MP_CLIENT_ID
+        value: ""
+      - key: MP_CLIENT_SECRET
+        value: ""
+      - key: MP_CURRENCY
+        value: "CLP"
+
+staticSites:
+  - name: muralla-frontend
+    rootDir: .
+    buildCommand: |
+      corepack enable && corepack prepare pnpm@8.15.0 --activate && \
+      pnpm install --no-frozen-lockfile && \
+      pnpm -w -r build
+    publishPath: muralla-frontend/dist
+    headers: []
+    redirects:
+      # SPA fallback: send all non-asset routes to index.html
+      - source: "/**"
+        destination: "/index.html"
+        status: 200
