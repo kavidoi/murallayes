@@ -36,6 +36,9 @@ RUN pnpm install --no-frozen-lockfile
 # Build the application
 RUN pnpm -C muralla-backend run build
 
+# Copy GraphQL schema assets into dist so NestJS can load SDL files at runtime
+RUN sh -c 'set -e; for f in $(find muralla-backend/src -name "*.graphql"); do d=$(dirname "$f" | sed s#muralla-backend/src#muralla-backend/dist#); mkdir -p "$d"; cp "$f" "$d"; done || true'
+
 # Production stage
 FROM node:20-alpine AS production
 
