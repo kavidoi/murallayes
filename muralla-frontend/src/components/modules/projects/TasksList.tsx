@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { tasksService, type Task as APITask } from '../../../services/tasksService'
+import { usersService, type User as APIUser } from '../../../services/usersService'
+import { projectsService, type Project as APIProject } from '../../../services/projectsService'
 
 // ——— Types ———
 interface User {
@@ -14,6 +17,7 @@ interface User {
 }
 
 type Status = 'New' | 'In Progress' | 'Completed' | 'Overdue'
+type APIStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE'
 
 interface Subtask {
   id: string
@@ -37,14 +41,65 @@ interface Task {
   order: number
 }
 
-// ——— Mock data (local state for now) ———
-const initialUsers: User[] = [
-  { id: 'u1', name: 'Alex Hao', initials: 'AH', color: 'bg-blue-500' },
-  { id: 'u2', name: 'Won Chung', initials: 'WC', color: 'bg-emerald-500' },
-  { id: 'u3', name: 'Bella Singh', initials: 'BS', color: 'bg-fuchsia-500' },
-  { id: 'u4', name: 'Ben Lang', initials: 'BL', color: 'bg-amber-500' },
-  { id: 'u5', name: 'Nicole Wu', initials: 'NW', color: 'bg-cyan-500' },
-]
+// ——— Helper functions ———
+const getColorForUser = (index: number): string => {
+  const colors = [
+    'bg-blue-500', 'bg-emerald-500', 'bg-fuchsia-500', 
+    'bg-amber-500', 'bg-cyan-500', 'bg-purple-500', 
+    'bg-rose-500', 'bg-indigo-500', 'bg-green-500', 'bg-orange-500'
+  ];
+  return colors[index % colors.length];
+};
+
+const getInitials = (firstName: string, lastName: string): string => {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
+
+const convertAPIUserToUser = (apiUser: APIUser, index: number): User => ({
+  id: apiUser.id,
+  name: `${apiUser.firstName} ${apiUser.lastName}`,
+  initials: getInitials(apiUser.firstName, apiUser.lastName),
+  color: getColorForUser(index),
+});
+
+const convertAPIStatusToStatus = (apiStatus: APIStatus): Status => {
+  switch (apiStatus) {
+    case 'PENDING':
+      return 'New';
+    case 'IN_PROGRESS':
+      return 'In Progress';
+    case 'DONE':
+      return 'Completed';
+    default:
+      return 'New';
+  }
+};
+
+const convertStatusToAPIStatus = (status: Status): APIStatus => {
+  switch (status) {
+    case 'New':
+      return 'PENDING';
+    case 'In Progress':
+      return 'IN_PROGRESS';
+    case 'Completed':
+      return 'DONE';
+    case 'Overdue':
+      return 'IN_PROGRESS'; // Overdue tasks are still in progress
+    default:
+      return 'PENDING';
+  }
+};
+
+const convertAPITaskToTask = (apiTask: APITask, order: number): Task => ({
+  id: apiTask.id,
+  name: apiTask.title,
+  status: convertAPIStatusToStatus(apiTask.status),
+  assigneeId: apiTask.assigneeId || null,
+  dueDate: null, // TODO: Add dueDate to backend schema
+  expanded: false,
+  subtasks: [], // TODO: Add subtasks support to backend
+  order,
+});
 
 // ——— UI helpers ———
 const statusPillClasses: Record<Status, string> = {
@@ -133,34 +188,43 @@ function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Stat
 
 export default function TasksList(){
   const { t: tr } = useTranslation()
-  const [users] = useState<User[]>(initialUsers)
-  const [tasks, setTasks] = useState<Task[]>([{
-    id: 't1',
-    name: 'Bug bash 2025',
-    status: 'In Progress',
-    assigneeId: 'u1',
-    dueDate: '2025-09-15',
-    expanded: true,
-    order: 0,
-    subtasks: [
-      { id: 's1', name: 'UI refresh for login screen', status: 'New', inheritsAssignee: true, inheritsDueDate: false, dueDate: '2025-09-01', order: 0 },
-      { id: 's2', name: 'Improve copy + paste on mobile', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u3', order: 1 },
-      { id: 's3', name: 'Update workspace setting icons', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u4', dueDate: '2025-09-10', order: 2 },
-    ],
-  },{
-    id: 't2',
-    name: 'Marketing improvements',
-    status: 'In Progress',
-    assigneeId: 'u2',
-    dueDate: '2025-09-30',
-    expanded: true,
-    order: 1,
-    subtasks: [
-      { id: 's4', name: 'Revamp user onboarding emails', status: 'In Progress', inheritsAssignee: true, inheritsDueDate: true, order: 0 },
-      { id: 's5', name: 'Homepage cleanup', status: 'In Progress', inheritsAssignee: false, inheritsDueDate: false, assigneeId: 'u3', dueDate: '2025-09-12', order: 1 },
-      { id: 's6', name: 'Analyze onboarding email results', status: 'Completed', inheritsAssignee: false, inheritsDueDate: true, assigneeId: 'u5', order: 2 },
-    ],
-  }])
+  const [users, setUsers] = useState<User[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [defaultProject, setDefaultProject] = useState<APIProject | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Fetch users, tasks, and default project in parallel
+        const [apiUsers, apiTasks, project] = await Promise.all([
+          usersService.getActiveUsers(),
+          tasksService.getAllTasks(),
+          projectsService.getOrCreateDefaultProject()
+        ])
+        
+        // Convert API data to component format
+        const convertedUsers = apiUsers.map((user, index) => convertAPIUserToUser(user, index))
+        const convertedTasks = apiTasks.map((task, index) => convertAPITaskToTask(task, index))
+        
+        setUsers(convertedUsers)
+        setTasks(convertedTasks)
+        setDefaultProject(project)
+      } catch (err) {
+        console.error('Error loading data:', err)
+        setError('Failed to load tasks and users. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   // inline-edit states for pill/chip UX
   const [editingStatus, setEditingStatus] = useState<string | null>(null)
@@ -169,18 +233,29 @@ export default function TasksList(){
 
   const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
 
-  const addTask = () => {
-    const newTask: Task = {
-      id: `t${Date.now()}`,
-      name: tr('pages.tasks.newTask'),
-      status: 'New',
-      assigneeId: null,
-      dueDate: null,
-      expanded: true,
-      order: tasks.length,
-      subtasks: [],
+  const addTask = async () => {
+    try {
+      if (!defaultProject) {
+        setError('No project available. Please try refreshing the page.')
+        return
+      }
+      
+      const newTaskData = {
+        title: tr('pages.tasks.newTask'),
+        description: '',
+        status: 'PENDING' as APIStatus,
+        projectId: defaultProject.id,
+      }
+      
+      const apiTask = await tasksService.createTask(newTaskData)
+      const newTask = convertAPITaskToTask(apiTask, tasks.length)
+      newTask.expanded = true
+      
+      setTasks(prev => [newTask, ...prev])
+    } catch (err) {
+      console.error('Error adding task:', err)
+      setError('Failed to create task. Please try again.')
     }
-    setTasks(prev => [newTask, ...prev])
   }
 
   const addSubtask = (taskId: string) => {
@@ -190,8 +265,24 @@ export default function TasksList(){
     } : t))
   }
 
-  const updateTask = (taskId: string, patch: Partial<Task>) => {
+  const updateTask = async (taskId: string, patch: Partial<Task>) => {
+    // Optimistically update the UI
     setTasks(prev => prev.map(t => t.id===taskId ? { ...t, ...patch } : t))
+    
+    try {
+      // Convert the patch to API format
+      const apiPatch: any = {}
+      if (patch.name) apiPatch.title = patch.name
+      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
+      if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
+      
+      await tasksService.updateTask(taskId, apiPatch)
+    } catch (err) {
+      console.error('Error updating task:', err)
+      setError('Failed to update task. Please try again.')
+      // Revert the optimistic update by reloading data
+      // TODO: Implement more sophisticated error handling
+    }
   }
 
   const updateSubtask = (taskId: string, subId: string, patch: Partial<Subtask>) => {
@@ -252,6 +343,55 @@ export default function TasksList(){
         return { ...t, subtasks: moved }
       }))
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
+            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
+          </div>
+        </div>
+        <div className="card p-6">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="text-neutral-600 dark:text-neutral-400">Loading tasks...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
+            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
+          </div>
+        </div>
+        <div className="card p-6">
+          <div className="text-center space-y-4">
+            <div className="text-red-600 dark:text-red-400">
+              <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-lg font-medium">Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <button 
+              className="btn-primary"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
