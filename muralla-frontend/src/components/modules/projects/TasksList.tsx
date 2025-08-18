@@ -507,8 +507,17 @@ export default function TasksList(){
         setUsers(convertedUsers)
         setTasks(convertedTasks)
         setDefaultProject(project)
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading data:', err)
+        
+        // Check if it's an authentication error (401, 403, or 500 that might be auth-related)
+        if (err?.response?.status === 401 || err?.response?.status === 403 || 
+            (err?.response?.status === 500 && err?.message?.includes('Unauthorized'))) {
+          // Redirect to login page
+          window.location.href = '/login'
+          return
+        }
+        
         setError('Failed to load tasks and users. Please try again.')
       } finally {
         setLoading(false)
@@ -547,8 +556,12 @@ export default function TasksList(){
       newTask.expanded = true
       
       setTasks(prev => [newTask, ...prev])
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding task:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to create task. Please try again.')
     }
   }
@@ -570,8 +583,12 @@ export default function TasksList(){
         ...t,
         subtasks: [...t.subtasks, newSubtask]
       } : t))
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding subtask:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to create subtask. Please try again.')
     }
   }
@@ -594,8 +611,12 @@ export default function TasksList(){
       if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
       
       await tasksService.updateTask(taskId, apiPatch)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating task:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to update task. Please try again.')
       // Revert the optimistic update by reloading data
       // TODO: Implement more sophisticated error handling
@@ -622,8 +643,12 @@ export default function TasksList(){
       if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
       
       await tasksService.updateSubtask(subId, apiPatch)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating subtask:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to update subtask. Please try again.')
     }
   }
@@ -632,8 +657,12 @@ export default function TasksList(){
     try {
       await tasksService.deleteTask(subId)
       setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error removing subtask:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to delete subtask. Please try again.')
     }
   }
@@ -642,8 +671,12 @@ export default function TasksList(){
     try {
       await tasksService.deleteTask(taskId)
       setTasks(prev => prev.filter(t => t.id !== taskId))
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error removing task:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to delete task. Please try again.')
     }
   }
@@ -654,8 +687,12 @@ export default function TasksList(){
       const convertedTask = convertAPITaskToTask(updatedTask, 0)
       
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignees: convertedTask.assignees } : t))
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating task assignees:', err)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        window.location.href = '/login'
+        return
+      }
       setError('Failed to update task assignees. Please try again.')
     }
   }
