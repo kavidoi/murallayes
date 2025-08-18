@@ -124,9 +124,23 @@ const convertAPISubtaskToSubtask = (apiSubtask: APITask, order: number): Subtask
 });
 
 // ——— Date helpers ———
+const formatYMD = (d: Date): string => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+const parseLocalDate = (ymd: string): Date => {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, (m || 1) - 1, d || 1)
+}
 const getTodayDate = (): string => {
-  const today = new Date()
-  return today.toISOString().split('T')[0] // Returns YYYY-MM-DD format
+  return formatYMD(new Date())
+}
+const addDaysLocal = (days: number): string => {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return formatYMD(d)
 }
 
 // ——— Priority helpers ———
@@ -177,7 +191,7 @@ const statusDotClasses: Record<Status, string> = {
 
 function formatDate(date?: string | null, time?: string | null, t?: (k: string) => string) {
   if (!date) return t ? t('common.noDate') : 'No date'
-  const d = new Date(date)
+  const d = parseLocalDate(date)
   if (isNaN(d.getTime())) return t ? t('common.noDate') : 'No date'
   
   let formattedDate = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -194,7 +208,7 @@ function getDueTone(date?: string | null, isCompleted?: boolean) {
   if (isCompleted) return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100'
   const today = new Date()
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const d = new Date(date)
+  const d = parseLocalDate(date)
   const diffDays = Math.ceil((d.getTime() - startOfToday.getTime()) / (1000*60*60*24))
   if (diffDays < 0) return 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
   if (diffDays <= 7) return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
@@ -206,7 +220,7 @@ function isDateOverdue(date?: string | null) {
   if (!date) return false
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const d = new Date(date)
+  const d = parseLocalDate(date)
   return !isNaN(d.getTime()) && d.getTime() < startOfToday.getTime()
 }
 
@@ -381,8 +395,8 @@ function DateTimePicker({
 
   const quickDateOptions = [
     { label: 'Hoy', value: getTodayDate() },
-    { label: 'Mañana', value: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
-    { label: 'En 1 semana', value: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+    { label: 'Mañana', value: addDaysLocal(1) },
+    { label: 'En 1 semana', value: addDaysLocal(7) },
   ]
 
   return (
@@ -574,7 +588,8 @@ export default function TasksList(){
       if (patch.priority) apiPatch.priority = patch.priority
       if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
       if (patch.dueDate !== undefined) {
-        apiPatch.dueDate = patch.dueDate ? new Date(patch.dueDate).toISOString() : null
+        // Send as local date string (YYYY-MM-DD) to avoid timezone shifts
+        apiPatch.dueDate = patch.dueDate ?? null
       }
       if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
       
@@ -601,7 +616,8 @@ export default function TasksList(){
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
       if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
       if (patch.dueDate !== undefined) {
-        apiPatch.dueDate = patch.dueDate ? new Date(patch.dueDate).toISOString() : null
+        // Send as local date string (YYYY-MM-DD) to avoid timezone shifts
+        apiPatch.dueDate = patch.dueDate ?? null
       }
       if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
       
@@ -782,7 +798,10 @@ export default function TasksList(){
           <SortableContext items={taskItemIds} strategy={verticalListSortingStrategy}>
           <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
           {tasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
-            <div key={t.id} className="">
+            <div
+              key={t.id}
+              className={`relative ${(showAdvancedDatePicker === `task:${t.id}` || showMultiAssigneeSelect === `task:${t.id}`) ? 'z-40' : ''}`}
+            >
               {/* Parent row */}
               <SortableTaskRow id={`task-${t.id}`}>
               {({attributes, listeners}) => (
@@ -917,13 +936,14 @@ export default function TasksList(){
                   </div>
                   <div className="col-span-1 text-right">
                     <div className="flex items-center gap-1 justify-end">
-                      <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
+                      <button className="btn-outline text-xs px-2 py-1" onClick={()=>addSubtask(t.id)} title={tr('actions.addSubtask')}>+sub</button>
                       <button 
-                        className="text-neutral-500 hover:text-rose-500 text-xs px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800" 
+                        className="text-neutral-500 hover:text-rose-500 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800" 
                         onClick={()=>removeTask(t.id)}
                         title={tr('actions.remove')}
+                        aria-label={tr('actions.remove')}
                       >
-                        {tr('actions.remove')}
+                        ✕
                       </button>
                     </div>
                   </div>
@@ -943,7 +963,9 @@ export default function TasksList(){
                     return (
                       <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
                       {({attributes, listeners}) => (
-                      <div className="px-2">
+                      <div
+                        className={`px-2 relative ${(showAdvancedDatePicker === `sub:${t.id}:${s.id}` || editingAssignee === `sub:${t.id}:${s.id}`) ? 'z-40' : ''}`}
+                      >
                         <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
                           <div className="col-span-4 flex items-center gap-2 pl-6">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
@@ -1049,7 +1071,14 @@ export default function TasksList(){
                             {/* Toggle hidden by request; click chip to convert to Custom */}
                           </div>
                           <div className="col-span-1 text-right">
-                            <button className="text-neutral-500 hover:text-rose-500 text-xs" onClick={()=>removeSubtask(t.id, s.id)}>{tr('actions.remove')}</button>
+                            <button 
+                              className="text-neutral-500 hover:text-rose-500 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800" 
+                              onClick={()=>removeSubtask(t.id, s.id)}
+                              title={tr('actions.remove')}
+                              aria-label={tr('actions.remove')}
+                            >
+                              ✕
+                            </button>
                           </div>
                         </div>
                       </div>
