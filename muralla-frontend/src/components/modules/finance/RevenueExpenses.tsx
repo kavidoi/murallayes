@@ -314,8 +314,8 @@ const RevenueExpenses: React.FC = () => {
     <div className="p-6 space-y-6">
       {/* Header */}
       <PageHeader
-        title="Revenue & Expenses"
-        description="Comprehensive financial tracking and analysis"
+        title={t('nav.revenueExpenses') || 'Revenue & Expenses'}
+        description={t('finance.comprehensiveTracking') || 'Comprehensive financial tracking and analysis'}
       />
 
       {/* Navigation Tabs */}
@@ -335,17 +335,17 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Financial Summary Cards (Bank Account style) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard title="Total Revenue" value={formatCurrency(summary.totalRevenue)} subtitle={summary.period} color="green" />
-              <StatCard title="Total Expenses" value={formatCurrency(summary.totalExpenses)} subtitle={summary.period} color="red" />
-              <StatCard title="Net Profit" value={formatCurrency(summary.netProfit)} subtitle={summary.period} color={summary.netProfit >= 0 ? 'green' : 'red'} />
-              <StatCard title="Bank Balance" value={formatCurrency(summary.bankBalance)} subtitle="Current" color="purple" />
+              <StatCard title={t('finance.totalRevenue') || 'Total Revenue'} value={formatCurrency(summary.totalRevenue)} subtitle={summary.period} color="green" />
+              <StatCard title={t('finance.totalExpenses') || 'Total Expenses'} value={formatCurrency(summary.totalExpenses)} subtitle={summary.period} color="red" />
+              <StatCard title={t('finance.netProfit') || 'Net Profit'} value={formatCurrency(summary.netProfit)} subtitle={summary.period} color={summary.netProfit >= 0 ? 'green' : 'red'} />
+              <StatCard title={t('finance.bankBalance') || 'Bank Balance'} value={formatCurrency(summary.bankBalance)} subtitle={t('finance.current') || 'Current'} color="purple" />
             </div>
 
             {/* Category Breakdowns */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue by Category */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Revenue by Category</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('finance.revenueByCategory') || 'Revenue by Category'}</h3>
                 <div className="space-y-3">
                   {Object.entries(summary.revenueByCategory).map(([category, amount]) => (
                     <div key={category} className="flex justify-between items-center">
@@ -358,7 +358,7 @@ const RevenueExpenses: React.FC = () => {
 
               {/* Expenses by Category */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Expenses by Category</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('finance.expensesByCategory') || 'Expenses by Category'}</h3>
                 <div className="space-y-3">
                   {Object.entries(summary.expensesByCategory).map(([category, amount]) => (
                     <div key={category} className="flex justify-between items-center">
@@ -372,23 +372,23 @@ const RevenueExpenses: React.FC = () => {
 
             {/* Additional Metrics */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Additional Metrics</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('finance.additionalMetrics') || 'Additional Metrics'}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.profitMargin.toFixed(1)}%</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Profit Margin</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('finance.profitMargin') || 'Profit Margin'}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{formatCurrency(summary.pendingRevenue)}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending Revenue</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('finance.pendingRevenue') || 'Pending Revenue'}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(summary.pendingExpenses)}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending Expenses</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('finance.pendingExpenses') || 'Pending Expenses'}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.merchantPaymentsTotal)}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Mercado Pago</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('finance.mercadoPago') || 'Mercado Pago'}</p>
                 </div>
               </div>
             </div>
@@ -400,13 +400,13 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Revenue Header with Add Button */}
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Revenue Entries</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('finance.revenueEntries') || 'Revenue Entries'}</h2>
               <button
                 onClick={() => setShowRevenueForm(true)}
                 className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <span className="mr-2">+</span>
-                Add Revenue
+                {t('finance.addRevenue') || 'Add Revenue'}
               </button>
             </div>
 
@@ -416,12 +416,12 @@ const RevenueExpenses: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.description') || 'Description'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.amount') || 'Amount'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.category') || 'Category'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.date') || 'Date'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.status') || 'Status'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.customer') || 'Customer'}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -466,13 +466,13 @@ const RevenueExpenses: React.FC = () => {
           <div className="space-y-6">
             {/* Expenses Header with Add Button */}
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Expense Entries</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('finance.expenseEntries') || 'Expense Entries'}</h2>
               <button
                 onClick={() => setShowExpenseForm(true)}
                 className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <span className="mr-2">+</span>
-                Add Expense
+                {t('finance.addExpense') || 'Add Expense'}
               </button>
             </div>
 
@@ -482,12 +482,12 @@ const RevenueExpenses: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendor</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.description') || 'Description'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.amount') || 'Amount'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.category') || 'Category'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.date') || 'Date'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.status') || 'Status'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.vendor') || 'Vendor'}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -496,11 +496,11 @@ const RevenueExpenses: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">{entry.description}</div>
                           {entry.invoiceNumber && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400">Invoice: {entry.invoiceNumber}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{t('finance.invoice') || 'Invoice'}: {entry.invoiceNumber}</div>
                           )}
                           {entry.isRecurring && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                              Recurring ({entry.recurringFrequency})
+                              {t('finance.recurring') || 'Recurring'} ({entry.recurringFrequency})
                             </span>
                           )}
                         </td>
@@ -559,14 +559,14 @@ const RevenueExpenses: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bank Link</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.type') || 'Type'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.description') || 'Description'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.amount') || 'Amount'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.category') || 'Category'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.date') || 'Date'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.status') || 'Status'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.bankLink') || 'Bank Link'}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('finance.actions') || 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -614,16 +614,16 @@ const RevenueExpenses: React.FC = () => {
                             <div className="flex items-center">
                               <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                               <div>
-                                <div className="text-sm text-green-600 dark:text-green-400 font-medium">Linked</div>
+                                <div className="text-sm text-green-600 dark:text-green-400 font-medium">{t('finance.linked') || 'Linked'}</div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                                  {transaction.linkedBankTransactionDescription || 'Bank transaction'}
+                                  {transaction.linkedBankTransactionDescription || t('finance.bankTransaction') || 'Bank transaction'}
                                 </div>
                               </div>
                             </div>
                           ) : (
                             <div className="flex items-center">
                               <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">Not linked</span>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">{t('finance.notLinked') || 'Not linked'}</span>
                             </div>
                           )}
                         </td>
@@ -631,11 +631,11 @@ const RevenueExpenses: React.FC = () => {
                           <div className="flex space-x-2">
                             {!transaction.linkedBankTransactionId && (
                               <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                                Link to Bank
+                                {t('finance.linkToBank') || 'Link to Bank'}
                               </button>
                             )}
                             <button className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                              Edit
+                              {t('finance.edit') || 'Edit'}
                             </button>
                           </div>
                         </td>
@@ -661,22 +661,22 @@ const RevenueExpenses: React.FC = () => {
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Revenue Entry</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('finance.addRevenueEntry') || 'Add Revenue Entry'}</h3>
                 <form onSubmit={handleCreateRevenue} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.description') || 'Description'}</label>
                     <input
                       type="text"
                       required
                       value={revenueForm.description}
                       onChange={(e) => setRevenueForm({...revenueForm, description: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter revenue description"
+                      placeholder={t('finance.enterRevenueDescription') || 'Enter revenue description'}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Amount (CLP)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.amount') || 'Amount'} (CLP)</label>
                     <input
                       type="number"
                       required
@@ -688,14 +688,14 @@ const RevenueExpenses: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.category') || 'Category'}</label>
                     <select
                       required
                       value={revenueForm.category}
                       onChange={(e) => setRevenueForm({...revenueForm, category: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="">Select Category</option>
+                      <option value="">{t('finance.selectCategory') || 'Select Category'}</option>
                       {categories.revenue.map(cat => (
                         <option key={cat.value} value={cat.value}>{cat.label}</option>
                       ))}
@@ -703,38 +703,38 @@ const RevenueExpenses: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Method</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.paymentMethod') || 'Payment Method'}</label>
                     <select
                       value={revenueForm.paymentMethod}
                       onChange={(e) => setRevenueForm({...revenueForm, paymentMethod: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="CASH">Cash</option>
-                      <option value="BANK_TRANSFER">Bank Transfer</option>
-                      <option value="MERCADO_PAGO">MercadoPago</option>
-                      <option value="CARD">Card</option>
+                      <option value="CASH">{t('finance.cash') || 'Cash'}</option>
+                      <option value="BANK_TRANSFER">{t('finance.bankTransfer') || 'Bank Transfer'}</option>
+                      <option value="MERCADO_PAGO">{t('finance.mercadoPago') || 'MercadoPago'}</option>
+                      <option value="CARD">{t('finance.card') || 'Card'}</option>
                     </select>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.customerName') || 'Customer Name'}</label>
                     <input
                       type="text"
                       value={revenueForm.customerName}
                       onChange={(e) => setRevenueForm({...revenueForm, customerName: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter customer name (optional)"
+                      placeholder={t('finance.enterCustomerNameOptional') || 'Enter customer name (optional)'}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Invoice Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.invoiceNumber') || 'Invoice Number'}</label>
                     <input
                       type="text"
                       value={revenueForm.invoiceNumber}
                       onChange={(e) => setRevenueForm({...revenueForm, invoiceNumber: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter invoice number (optional)"
+                      placeholder={t('finance.enterInvoiceNumberOptional') || 'Enter invoice number (optional)'}
                     />
                   </div>
 
@@ -744,13 +744,13 @@ const RevenueExpenses: React.FC = () => {
                       onClick={() => setShowRevenueForm(false)}
                       className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      {t('common.cancel') || 'Cancel'}
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                     >
-                      Create Revenue
+                      {t('finance.createRevenue') || 'Create Revenue'}
                     </button>
                   </div>
                 </form>
@@ -764,22 +764,22 @@ const RevenueExpenses: React.FC = () => {
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Expense Entry</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('finance.addExpenseEntry') || 'Add Expense Entry'}</h3>
                 <form onSubmit={handleCreateExpense} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.description') || 'Description'}</label>
                     <input
                       type="text"
                       required
                       value={expenseForm.description}
                       onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter expense description"
+                      placeholder={t('finance.enterExpenseDescription') || 'Enter expense description'}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Amount (CLP)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.amount') || 'Amount'} (CLP)</label>
                     <input
                       type="number"
                       required
@@ -791,14 +791,14 @@ const RevenueExpenses: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.category') || 'Category'}</label>
                     <select
                       required
                       value={expenseForm.category}
                       onChange={(e) => setExpenseForm({...expenseForm, category: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="">Select Category</option>
+                      <option value="">{t('finance.selectCategory') || 'Select Category'}</option>
                       {categories.expenses.map(cat => (
                         <option key={cat.value} value={cat.value}>{cat.label}</option>
                       ))}
@@ -806,38 +806,38 @@ const RevenueExpenses: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Method</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.paymentMethod') || 'Payment Method'}</label>
                     <select
                       value={expenseForm.paymentMethod}
                       onChange={(e) => setExpenseForm({...expenseForm, paymentMethod: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="CASH">Cash</option>
-                      <option value="BANK_TRANSFER">Bank Transfer</option>
-                      <option value="CARD">Card</option>
-                      <option value="EMPLOYEE_REIMBURSEMENT">Employee Reimbursement</option>
+                      <option value="CASH">{t('finance.cash') || 'Cash'}</option>
+                      <option value="BANK_TRANSFER">{t('finance.bankTransfer') || 'Bank Transfer'}</option>
+                      <option value="CARD">{t('finance.card') || 'Card'}</option>
+                      <option value="EMPLOYEE_REIMBURSEMENT">{t('finance.employeeReimbursement') || 'Employee Reimbursement'}</option>
                     </select>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Vendor</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.vendor') || 'Vendor'}</label>
                     <input
                       type="text"
                       value={expenseForm.vendor}
                       onChange={(e) => setExpenseForm({...expenseForm, vendor: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter vendor name (optional)"
+                      placeholder={t('finance.enterVendorNameOptional') || 'Enter vendor name (optional)'}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Invoice Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('finance.invoiceNumber') || 'Invoice Number'}</label>
                     <input
                       type="text"
                       value={expenseForm.invoiceNumber}
                       onChange={(e) => setExpenseForm({...expenseForm, invoiceNumber: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter invoice number (optional)"
+                      placeholder={t('finance.enterInvoiceNumberOptional') || 'Enter invoice number (optional)'}
                     />
                   </div>
 
@@ -848,7 +848,7 @@ const RevenueExpenses: React.FC = () => {
                       onChange={(e) => setExpenseForm({...expenseForm, isRecurring: e.target.checked})}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <label className="ml-2 block text-sm text-gray-900">Recurring expense</label>
+                    <label className="ml-2 block text-sm text-gray-900 dark:text-gray-100">{t('finance.recurringExpense') || 'Recurring expense'}</label>
                   </div>
 
                   <div className="flex justify-end space-x-3 pt-4">
@@ -857,13 +857,13 @@ const RevenueExpenses: React.FC = () => {
                       onClick={() => setShowExpenseForm(false)}
                       className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      {t('common.cancel') || 'Cancel'}
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                     >
-                      Create Expense
+                      {t('finance.createExpense') || 'Create Expense'}
                     </button>
                   </div>
                 </form>
