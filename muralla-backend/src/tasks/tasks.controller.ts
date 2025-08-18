@@ -44,6 +44,18 @@ export class TasksController {
     return this.tasksService.update(id, updateTaskDto);
   }
 
+  // Create a subtask under a parent task
+  @Post(':id/subtasks')
+  createSubtask(@Param('id') parentId: string, @Body() dto: any) {
+    return this.tasksService.createSubtask(parentId, dto);
+  }
+
+  // Update a subtask by subtask id
+  @Patch('subtasks/:id')
+  updateSubtask(@Param('id') id: string, @Body() dto: any) {
+    return this.tasksService.updateSubtask(id, dto);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);

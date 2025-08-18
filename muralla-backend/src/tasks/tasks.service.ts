@@ -17,6 +17,46 @@ export class TasksService {
     });
   }
 
+  async createSubtask(parentId: string, dto: any) {
+    // Ensure parent exists and inherit its projectId
+    const parent = await this.prisma.task.findUnique({
+      where: { id: parentId },
+      select: { id: true, projectId: true },
+    });
+    if (!parent) {
+      throw new Error('Parent task not found');
+    }
+
+    const data: Prisma.TaskCreateInput = {
+      title: dto.title,
+      description: dto.description ?? undefined,
+      status: dto.status,
+      priority: dto.priority,
+      project: { connect: { id: parent.projectId } },
+      parentTask: { connect: { id: parentId } },
+    } as Prisma.TaskCreateInput;
+
+    if (dto.assigneeId) {
+      // Optional primary assignee
+      (data as any).assignee = { connect: { id: dto.assigneeId } };
+    }
+
+    if (dto.dueDate) {
+      (data as any).dueDate = new Date(dto.dueDate);
+    }
+    if (dto.dueTime) {
+      (data as any).dueTime = dto.dueTime;
+    }
+
+    return this.prisma.task.create({
+      data,
+      include: {
+        project: true,
+        assignee: true,
+      },
+    });
+  }
+
   async findAll() {
     return this.prisma.task.findMany({ 
       where: {
@@ -93,6 +133,35 @@ export class TasksService {
     });
 
     return task;
+  }
+
+  async updateSubtask(id: string, dto: any) {
+    const data: Prisma.TaskUpdateInput = {};
+
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.priority !== undefined) data.priority = dto.priority;
+    if (dto.assigneeId !== undefined) {
+      data.assignee = dto.assigneeId
+        ? { connect: { id: dto.assigneeId } }
+        : { disconnect: true };
+    }
+    if (dto.dueDate !== undefined) {
+      data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    }
+    if (dto.dueTime !== undefined) {
+      data.dueTime = dto.dueTime ?? null;
+    }
+
+    return this.prisma.task.update({
+      where: { id },
+      data,
+      include: {
+        project: true,
+        assignee: true,
+      },
+    });
   }
 
   async remove(id: string) {
