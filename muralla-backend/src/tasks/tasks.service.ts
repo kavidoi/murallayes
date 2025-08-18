@@ -60,10 +60,9 @@ export class TasksService {
   async findAll() {
     return this.prisma.task.findMany({ 
       where: {
-        OR: [
-          { isDeleted: false },
-          { isDeleted: null }
-        ]
+        NOT: {
+          isDeleted: true
+        }
       },
       include: { 
         project: true, 
@@ -91,10 +90,9 @@ export class TasksService {
     return this.prisma.task.findMany({ 
       where: { 
         projectId,
-        OR: [
-          { isDeleted: false },
-          { isDeleted: null }
-        ]
+        NOT: {
+          isDeleted: true
+        }
       }, 
       include: { 
         project: true, 
@@ -112,10 +110,9 @@ export class TasksService {
     return this.prisma.task.findMany({ 
       where: { 
         assigneeId,
-        OR: [
-          { isDeleted: false },
-          { isDeleted: null }
-        ]
+        NOT: {
+          isDeleted: true
+        }
       }, 
       include: { 
         project: true, 
