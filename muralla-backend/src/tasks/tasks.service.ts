@@ -75,8 +75,13 @@ export class TasksService {
   }
 
   async findOne(id: string) {
-    return this.prisma.task.findUnique({ 
-      where: { id }, 
+    return this.prisma.task.findFirst({ 
+      where: { 
+        id,
+        NOT: {
+          isDeleted: true
+        }
+      }, 
       include: { 
         project: true, 
         assignee: true, 
@@ -127,6 +132,20 @@ export class TasksService {
   }
 
   async update(id: string, data: Prisma.TaskUpdateInput) {
+    // First check if the task exists and is not deleted
+    const existingTask = await this.prisma.task.findFirst({
+      where: {
+        id,
+        NOT: {
+          isDeleted: true
+        }
+      }
+    });
+
+    if (!existingTask) {
+      throw new Error('Task not found or has been deleted');
+    }
+
     const task = await this.prisma.task.update({ 
       where: { id }, 
       data, 
