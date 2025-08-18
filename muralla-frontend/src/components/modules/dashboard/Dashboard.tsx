@@ -7,7 +7,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="animate-fade-in">
       <header className="mb-6">
-        <h1 className="text-2xl font-display font-semibold text-neutral-900 dark:text-white">Home Hub</h1>
+        <h1 className="text-2xl font-display font-semibold text-neutral-900 dark:text-white">Centro de Inicio</h1>
         <p className="text-neutral-600 dark:text-neutral-400 mt-1">
           Welcome back! Here's what's happening in your organization.
         </p>

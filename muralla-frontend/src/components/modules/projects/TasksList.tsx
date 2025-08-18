@@ -400,7 +400,7 @@ function DateTimePicker({
   ]
 
   return (
-    <div ref={containerRef} className="relative">
+     <div ref={containerRef} className="absolute z-50">
       <div className="flex gap-1 p-2 bg-white dark:bg-neutral-800 border rounded-lg shadow-lg min-w-64">
         <div className="flex-1">
           <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
