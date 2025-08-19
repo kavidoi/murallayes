@@ -12,6 +12,7 @@ const resources = {
         noDate: 'Sin fecha',
         unassigned: 'Sin asignar',
         errorLoadingData: 'Error al cargar datos',
+        comingSoon: 'Próximamente',
       },
       theme: {
         light: 'Modo claro',
@@ -199,6 +200,7 @@ const resources = {
       },
       routes: {
         dashboard: { title: 'Inicio', description: '' },
+        tasks: { title: 'Tareas', description: '' },
         me: { title: 'Mi Centro', description: 'Vista personal: vacaciones, finanzas, turnos, ventas, productos, calendario' },
         meShifts: { title: 'Mis turnos', description: 'Tus turnos programados y pasados' },
         meData: { title: 'Mis datos', description: 'Datos personales, perfil, documentos' },
@@ -347,6 +349,7 @@ const resources = {
         loadingAuth: 'Checking authentication...',
         noDate: 'No date',
         unassigned: 'Unassigned',
+        comingSoon: 'Coming Soon',
       },
       theme: {
         light: 'Light Mode',
@@ -468,6 +471,9 @@ const resources = {
           es: 'Spanish',
           en: 'English'
         }
+      },
+      routes: {
+        tasks: { title: 'Tasks', description: '' }
       }
     }
   }
