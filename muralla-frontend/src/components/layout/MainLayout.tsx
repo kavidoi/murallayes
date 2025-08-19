@@ -178,6 +178,20 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       ]
     },
     {
+      name: t('nav.pipeline'),
+      path: '/pipeline',
+      icon: <InventoryIcon />,
+      children: [
+        { name: t('nav.products'), path: '/pipeline/products' },
+        { name: t('nav.inventory'), path: '/pipeline/inventory' },
+        { name: t('nav.purchaseOrders'), path: '/pipeline/purchase-orders' },
+        { name: t('nav.costs'), path: '/pipeline/costs' },
+        { name: t('nav.production'), path: '/pipeline/production' },
+        { name: t('nav.banking'), path: '/pipeline/banking' },
+        { name: t('nav.reports'), path: '/pipeline/reports' },
+      ]
+    },
+    {
       name: t('nav.inventory'),
       path: '/inventory',
       icon: <InventoryIcon />,
