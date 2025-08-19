@@ -26,6 +26,7 @@ import CostsPurchases from './components/modules/pipeline/CostsPurchases'
 import ProductionWorkOrders from './components/modules/pipeline/ProductionWorkOrders'
 import BankingTransactions from './components/modules/pipeline/BankingTransactions'
 import ReportsAnalytics from './components/modules/pipeline/ReportsAnalytics'
+import PurchaseOrders from './components/modules/pipeline/PurchaseOrders'
 import { useTranslation } from 'react-i18next'
 import CeluReceipt from './components/modules/mobile/CeluReceipt'
 
@@ -161,6 +162,7 @@ function App() {
               <Route path="/pipeline" element={<ProductCatalog />} />
               <Route path="/pipeline/products" element={<ProductCatalog />} />
               <Route path="/pipeline/inventory" element={<InventoryDashboard />} />
+              <Route path="/pipeline/purchase-orders" element={<PurchaseOrders />} />
               <Route path="/pipeline/costs" element={<CostsPurchases />} />
               <Route path="/pipeline/production" element={<ProductionWorkOrders />} />
               <Route path="/pipeline/banking" element={<BankingTransactions />} />
