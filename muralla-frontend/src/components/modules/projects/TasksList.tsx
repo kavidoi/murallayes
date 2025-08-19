@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
+import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { DndContext } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -400,7 +401,7 @@ function DateTimePicker({
   ]
 
   return (
-     <div ref={containerRef} className="absolute z-50">
+    <div>
       <div className="flex gap-1 p-2 bg-white dark:bg-neutral-800 border rounded-lg shadow-lg min-w-64">
         <div className="flex-1">
           <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
@@ -459,489 +460,150 @@ function DateTimePicker({
   )
 }
 
-function PrioritySelect({ value, onChange }: { value: Priority; onChange: (p: Priority) => void }) {
-  const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
-  
+function MultiAssigneeSelect({ 
+  users, 
+  selectedUserIds, 
+  onChange, 
+  onClose 
+}: { 
+  users: User[]; 
+  selectedUserIds: string[]; 
+  onChange: (userIds: string[]) => void; 
+  onClose: () => void;
+}) {
+  const [tempSelected, setTempSelected] = useState<string[]>(selectedUserIds)
+
+  const toggleUser = (userId: string) => {
+    setTempSelected(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const handleSave = () => {
+    onChange(tempSelected)
+    onClose()
+  }
+
   return (
-    <select 
-      className="input py-1 pr-8 text-sm min-w-0" 
-      value={value} 
-      onChange={(e) => onChange(e.target.value as Priority)}
-      style={{ width: 'auto' }}
-    >
-      {priorities.map(p => (
-        <option key={p} value={p}>
-          {getPriorityEmoji(p)} {getPriorityLabel(p)}
-        </option>
-      ))}
-    </select>
+    <div>
+      <div className="mb-2">
+        <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Asignar a:</h4>
+      </div>
+      
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {users.map(user => (
+          <label key={user.id} className="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 p-1 rounded">
+            <input
+              type="checkbox"
+              checked={tempSelected.includes(user.id)}
+              onChange={() => toggleUser(user.id)}
+              className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+            />
+            <Avatar user={user} size={24} />
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">{user.name}</span>
+          </label>
+        ))}
+      </div>
+      
+      <div className="flex justify-between items-center mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-600">
+        <span className="text-xs text-neutral-500">
+          {tempSelected.length} seleccionado{tempSelected.length !== 1 ? 's' : ''}
+        </span>
+        <div className="flex gap-2">
+          <button
+            className="text-xs text-neutral-500 hover:text-neutral-700"
+            onClick={() => setTempSelected([])}
+          >
+            Limpiar
+          </button>
+          <button
+            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+            onClick={handleSave}
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
-export default function TasksList(){
-  const { t: tr } = useTranslation()
-  const [users, setUsers] = useState<User[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [defaultProject, setDefaultProject] = useState<APIProject | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+// Generic Popover using a Portal
+function Popover({ target, onClose, children }: { target: HTMLElement; onClose: () => void; children: React.ReactNode }) {
+  const popoverRef = useRef<HTMLDivElement>(null)
 
-  // Load data from API
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Fetch users, tasks, and default project in parallel
-        const [apiUsers, apiTasks, project] = await Promise.all([
-          usersService.getActiveUsers(),
-          tasksService.getAllTasks(),
-          projectsService.getOrCreateDefaultProject()
-        ])
-        
-        // Convert API data to component format
-        const convertedUsers = apiUsers.map((user, index) => convertAPIUserToUser(user, index))
-        const convertedTasks = apiTasks.map((task, index) => convertAPITaskToTask(task, index))
-        
-        setUsers(convertedUsers)
-        setTasks(convertedTasks)
-        setDefaultProject(project)
-      } catch (err: any) {
-        console.error('Error loading data:', err)
-        
-        // Check if it's an authentication error (401, 403, or 500 that might be auth-related)
-        if (err?.response?.status === 401 || err?.response?.status === 403 || 
-            (err?.response?.status === 500 && err?.message?.includes('Unauthorized'))) {
-          // Redirect to login page
-          window.location.href = '/login'
-          return
-        }
-        
-        setError('Failed to load tasks and users. Please try again.')
-      } finally {
-        setLoading(false)
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        onClose()
       }
     }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [onClose])
 
-    loadData()
-  }, [])
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
-  // inline-edit states for pill/chip UX
-  const [editingStatus, setEditingStatus] = useState<string | null>(null)
-  const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
-  const [editingPriority, setEditingPriority] = useState<string | null>(null)
-  const [showAdvancedDatePicker, setShowAdvancedDatePicker] = useState<string | null>(null)
-  const [showMultiAssigneeSelect, setShowMultiAssigneeSelect] = useState<string | null>(null)
-
-  const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
-
-  const addTask = async () => {
-    try {
-      if (!defaultProject) {
-        setError('No project available. Please try refreshing the page.')
-        return
-      }
-      
-      const newTaskData = {
-        title: tr('pages.tasks.newTask'),
-        description: '',
-        status: 'PENDING' as APIStatus,
-        priority: 'MEDIUM' as Priority,
-        projectId: defaultProject.id,
-      }
-      
-      const apiTask = await tasksService.createTask(newTaskData)
-      const newTask = convertAPITaskToTask(apiTask, tasks.length)
-      newTask.expanded = true
-      
-      setTasks(prev => [newTask, ...prev])
-    } catch (err: any) {
-      console.error('Error adding task:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to create task. Please try again.')
+  useEffect(() => {
+    if (target) {
+      const rect = target.getBoundingClientRect()
+      setPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX })
     }
-  }
+  }, [target])
 
-  const addSubtask = async (taskId: string) => {
-    try {
-      const newSubtaskData = {
-        title: tr('pages.tasks.newSubtask'),
-        description: '',
-        status: 'PENDING' as APIStatus,
-        priority: 'MEDIUM' as Priority,
-        projectId: defaultProject?.id || '',
-      }
-      
-      const apiSubtask = await tasksService.createSubtask(taskId, newSubtaskData)
-      const newSubtask = convertAPISubtaskToSubtask(apiSubtask, 0)
-      
-      setTasks(prev => prev.map(t => t.id === taskId ? {
-        ...t,
-        subtasks: [...t.subtasks, newSubtask]
-      } : t))
-    } catch (err: any) {
-      console.error('Error adding subtask:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to create subtask. Please try again.')
-    }
-  }
+  const portalRoot = document.getElementById('portal-root')
+  if (!portalRoot || !position) return null
 
-  const updateTask = async (taskId: string, patch: Partial<Task>) => {
-    // Optimistically update the UI
-    setTasks(prev => prev.map(t => t.id===taskId ? { ...t, ...patch } : t))
-    
-    try {
-      // Convert the patch to API format
-      const apiPatch: any = {}
-      if (patch.name) apiPatch.title = patch.name
-      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-      if (patch.priority) apiPatch.priority = patch.priority
-      if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
-      if (patch.dueDate !== undefined) {
-        // Send as local date string (YYYY-MM-DD) to avoid timezone shifts
-        apiPatch.dueDate = patch.dueDate ?? null
-      }
-      if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
-      
-      await tasksService.updateTask(taskId, apiPatch)
-    } catch (err: any) {
-      console.error('Error updating task:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to update task. Please try again.')
-      // Revert the optimistic update by reloading data
-      // TODO: Implement more sophisticated error handling
-    }
-  }
-
-  const updateSubtask = async (taskId: string, subId: string, patch: Partial<Subtask>) => {
-    // Optimistically update the UI
-    setTasks(prev => prev.map(t => t.id===taskId ? {
-      ...t,
-      subtasks: t.subtasks.map(s => s.id===subId ? { ...s, ...patch } : s)
-    } : t))
-    
-    try {
-      // Convert the patch to API format
-      const apiPatch: any = {}
-      if (patch.name) apiPatch.title = patch.name
-      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-      if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
-      if (patch.dueDate !== undefined) {
-        // Send as local date string (YYYY-MM-DD) to avoid timezone shifts
-        apiPatch.dueDate = patch.dueDate ?? null
-      }
-      if (patch.dueTime !== undefined) apiPatch.dueTime = patch.dueTime
-      
-      await tasksService.updateSubtask(subId, apiPatch)
-    } catch (err: any) {
-      console.error('Error updating subtask:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to update subtask. Please try again.')
-    }
-  }
-
-  const removeSubtask = async (taskId: string, subId: string) => {
-    try {
-      await tasksService.deleteTask(subId)
-      setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
-    } catch (err: any) {
-      console.error('Error removing subtask:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to delete subtask. Please try again.')
-    }
-  }
-
-  const removeTask = async (taskId: string) => {
-    try {
-      await tasksService.deleteTask(taskId)
-      setTasks(prev => prev.filter(t => t.id !== taskId))
-    } catch (err: any) {
-      console.error('Error removing task:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to delete task. Please try again.')
-    }
-  }
-
-  const updateTaskAssignees = async (taskId: string, userIds: string[]) => {
-    try {
-      const updatedTask = await tasksService.updateTaskAssignees(taskId, userIds)
-      const convertedTask = convertAPITaskToTask(updatedTask, 0)
-      
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignees: convertedTask.assignees } : t))
-    } catch (err: any) {
-      console.error('Error updating task assignees:', err)
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Failed to update task assignees. Please try again.')
-    }
-  }
-
-  const sectionHeader = (name: string, newLabel: string) => (
-    <div className="flex items-center justify-between px-2 py-3">
-      <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{name}</h2>
-      <button className="btn-outline text-xs" onClick={addTask}>
-        <span className="mr-1">＋</span> {newLabel}
-      </button>
-    </div>
+  return ReactDOM.createPortal(
+    <div
+      ref={popoverRef}
+      className="absolute z-50"
+      style={{ top: `${position.top}px`, left: `${position.left}px` }}
+    >
+      {children}
+    </div>,
+    portalRoot
   )
+}
 
-  // ——— DnD helpers ———
-  const taskItemIds = useMemo(() => tasks
-    .slice()
-    .sort((a,b)=>a.order-b.order)
-    .map(t=>`task-${t.id}`), [tasks])
+// ...
 
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const a = String(active.id)
-    const o = String(over.id)
-    if (a.startsWith('task-') && o.startsWith('task-')) {
-      const aid = a.replace('task-', '')
-      const oid = o.replace('task-', '')
-      const ordered = tasks.slice().sort((x,y)=>x.order-y.order)
-      const oldIndex = ordered.findIndex(t=>t.id===aid)
-      const newIndex = ordered.findIndex(t=>t.id===oid)
-      const moved = arrayMove(ordered, oldIndex, newIndex).map((t: Task, i: number)=>({ ...t, order: i }))
-      setTasks(moved)
-      return
-    }
-    if (a.startsWith('sub-') && o.startsWith('sub-')) {
-      const parse = (id: string) => {
-        const [, tid, sid] = id.split('-')
-        return { tid, sid }
-      }
-      const { tid: ta, sid: sa } = parse(a)
-      const { tid: to, sid: so } = parse(o)
-      if (ta !== to) return // cross-parent moves not supported in v1
-      setTasks(prev => prev.map(t => {
-        if (t.id !== ta) return t
-        const orderedSubs = t.subtasks.slice().sort((x,y)=>x.order-y.order)
-        const oldIndex = orderedSubs.findIndex(s=>s.id===sa)
-        const newIndex = orderedSubs.findIndex(s=>s.id===so)
-        const moved = arrayMove(orderedSubs, oldIndex, newIndex).map((s: Subtask, i: number)=>({ ...s, order: i }))
-        return { ...t, subtasks: moved }
-      }))
-    }
-  }
+function TasksList(){
+  // ...
 
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-          </div>
-        </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-center space-x-2">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-neutral-600 dark:text-neutral-400">Loading tasks...</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const [popoverTarget, setPopoverTarget] = useState<{ id: string; element: HTMLElement } | null>(null)
 
-  if (error) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-          </div>
-        </div>
-        <div className="card p-6">
-          <div className="text-center space-y-4">
-            <div className="text-red-600 dark:text-red-400">
-              <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-lg font-medium">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-            <button 
-              className="btn-primary"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // ...
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-          <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-outline" onClick={addTask}>{tr('actions.new')}</button>
-          <a className="btn-outline" href="/projects/overview">{tr('nav.projectsOverview')}</a>
-          <button className="btn-primary">{tr('actions.import')}</button>
-        </div>
-      </div>
+      // ...
 
-      <div className="card p-0 overflow-hidden">
-        {sectionHeader(tr('pages.tasks.sectionAll'), tr('pages.tasks.newTask'))}
-        {/* Faux sub-navigation */}
-        <div className="px-3 pb-2 text-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-4">
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium">{tr('pages.tasks.subnavAll')}</button>
-          <span className="text-neutral-400">•</span>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavTimeline')}</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavByStatus')}</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavMore')}</button>
-        </div>
-        <div className="max-h-[65vh] overflow-auto">
-          {/* Sticky header */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
-            <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              <div className="col-span-4">{tr('pages.tasks.columns.name')}</div>
-              <div className="col-span-1">{tr('pages.tasks.columns.priority')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
-              <div className="col-span-1 text-right"> </div>
-            </div>
-          </div>
-          <DndContext onDragEnd={onDragEnd}>
-          <SortableContext items={taskItemIds} strategy={verticalListSortingStrategy}>
-          <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
-          {tasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
-            <div
-              key={t.id}
-              className={`relative ${(showAdvancedDatePicker === `task:${t.id}` || showMultiAssigneeSelect === `task:${t.id}`) ? 'z-40' : ''}`}
-            >
-              {/* Parent row */}
-              <SortableTaskRow id={`task-${t.id}`}>
-              {({attributes, listeners}) => (
-              <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 odd:bg-neutral-50/40 dark:odd:bg-neutral-800/20">
-                <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                  <div className="col-span-4 flex items-center gap-2">
-                    <button
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                      onClick={()=>updateTask(t.id, { expanded: !t.expanded })}
-                      aria-label={t.expanded ? tr('tooltips.collapse') : tr('tooltips.expand')}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-4 h-4 transition-transform ${t.expanded ? 'rotate-90' : ''}`}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-grab active:cursor-grabbing"
-                      aria-label={tr('tooltips.dragTask')}
-                      {...attributes}
-                      {...listeners}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
-                        <path d="M10 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 18a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </button>
-                    <input
-                      className="input py-1 text-sm flex-1 truncate"
-                      value={t.name}
-                      onChange={(e)=>updateTask(t.id,{ name: e.target.value })}
-                      title={t.name}
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    {editingPriority === `task:${t.id}` ? (
-                      <PrioritySelect
-                        value={t.priority}
-                        onChange={(p) => { updateTask(t.id, { priority: p }); setEditingPriority(null) }}
-                      />
-                    ) : (
-                      <button
-                        className="text-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 py-0.5 rounded"
-                        onClick={() => setEditingPriority(`task:${t.id}`)}
-                        title={`${getPriorityLabel(t.priority)} Priority`}
-                      >
-                        {getPriorityEmoji(t.priority)}
-                      </button>
-                    )}
-                  </div>
-                  <div className="col-span-2 relative">
-                    {showAdvancedDatePicker === `task:${t.id}` ? (
-                      <div className="absolute top-0 left-0 z-50">
-                        <DateTimePicker
-                          date={t.dueDate}
-                          time={t.dueTime}
-                          onDateChange={(date) => updateTask(t.id, { dueDate: date })}
-                          onTimeChange={(time) => updateTask(t.id, { dueTime: time })}
-                          onClose={() => setShowAdvancedDatePicker(null)}
-                          autoFocus
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
-                        onClick={()=>setShowAdvancedDatePicker(`task:${t.id}`)}
-                      >
-                        {formatDate(t.dueDate, t.dueTime, tr)}
-                      </button>
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    {editingStatus === `task:${t.id}` ? (
-                      <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} t={tr} />
-                    ) : (
-                      (()=>{
-                        const ds = displayStatusFrom(t.status, t.dueDate)
-                        const isAutoOverdue = ds === 'Overdue' && t.status !== 'Completed'
-                        return (
-                          <button
-                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
-                            onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
-                            title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
-                            {tr(`status.${ds}`)}
-                          </button>
-                        )
-                      })()
-                    )}
-                  </div>
-                  <div className="col-span-2 relative">
-                    {showMultiAssigneeSelect === `task:${t.id}` ? (
-                      <MultiAssigneeSelect
-                        users={users}
-                        selectedUserIds={t.assignees?.map((a: { userId: string }) => a.userId) || []}
-                        onChange={(userIds) => updateTaskAssignees(t.id, userIds)}
-                        onClose={() => setShowMultiAssigneeSelect(null)}
-                      />
-                    ) : (
-                      <button
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-                        onClick={()=>setShowMultiAssigneeSelect(`task:${t.id}`)}
-                      >
-                        {t.assignees && t.assignees.length > 0 ? (
+      {popoverTarget && popoverTarget.id.startsWith('datepicker-') && (
+        <Popover target={popoverTarget.element} onClose={() => setPopoverTarget(null)}>
+          <DateTimePicker
+            date={tasks.find(t => `datepicker-${t.id}` === popoverTarget.id)?.dueDate}
+            time={tasks.find(t => `datepicker-${t.id}` === popoverTarget.id)?.dueTime}
+            onDateChange={(d) => updateTask(popoverTarget.id.replace('datepicker-', ''), { dueDate: d })}
+            onTimeChange={(time) => updateTask(popoverTarget.id.replace('datepicker-', ''), { dueTime: time })}
+            onClose={() => setPopoverTarget(null)}
+            autoFocus
+          />
+        </Popover>
+      )}
+
+      {popoverTarget && popoverTarget.id.startsWith('assignee-') && (
+        <Popover target={popoverTarget.element} onClose={() => setPopoverTarget(null)}>
+          <MultiAssigneeSelect
+            users={users}
+            selectedUserIds={tasks.find(t => `assignee-${t.id}` === popoverTarget.id)?.assignees?.map(a => a.userId) || []}
+            onChange={(userIds) => updateTaskAssignees(popoverTarget.id.replace('assignee-', ''), userIds)}
+            onClose={() => setPopoverTarget(null)}
+          />
+        </Popover>
+      )}
                           <>
                             <div className="flex -space-x-1">
                               {t.assignees.slice(0, 3).map((assignee: { userId: string }) => (
