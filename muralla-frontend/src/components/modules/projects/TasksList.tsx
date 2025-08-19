@@ -25,7 +25,7 @@ interface Subtask {
   status: Status
   inheritsAssignee: boolean
   inheritsDueDate: boolean
-  assigneeId?: string | null
+  assigneeIds: string[]
   dueDate?: string | null // YYYY-MM-DD
   order: number
 }
@@ -34,7 +34,7 @@ interface Task {
   id: string
   name: string
   status: Status
-  assigneeId?: string | null
+  assigneeIds: string[]
   dueDate?: string | null
   expanded?: boolean
   subtasks: Subtask[]
@@ -96,7 +96,7 @@ const convertAPITaskToTask = (apiTask: APITask, order: number, project?: APIProj
   id: apiTask.id,
   name: apiTask.title,
   status: convertAPIStatusToStatus(apiTask.status),
-  assigneeId: apiTask.assigneeId || null,
+  assigneeIds: apiTask.assigneeId ? [apiTask.assigneeId] : [],
   dueDate: null, // TODO: Add dueDate to backend schema
   expanded: false,
   subtasks: [], // TODO: Add subtasks support to backend
@@ -124,6 +124,27 @@ function formatDate(date?: string | null, t?: (k: string) => string) {
   if (!date) return t ? t('common.noDate') : 'No date'
   const d = new Date(date)
   if (isNaN(d.getTime())) return t ? t('common.noDate') : 'No date'
+  
+  // Check if it matches a preset
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const nextWeek = new Date(today)
+  nextWeek.setDate(today.getDate() + 7)
+  const twoWeeks = new Date(today)
+  twoWeeks.setDate(today.getDate() + 14)
+  
+  const dateStr = date
+  const todayStr = today.toISOString().split('T')[0]
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  const nextWeekStr = nextWeek.toISOString().split('T')[0]
+  const twoWeeksStr = twoWeeks.toISOString().split('T')[0]
+  
+  if (dateStr === todayStr) return 'Tonight'
+  if (dateStr === tomorrowStr) return 'Tomorrow'
+  if (dateStr === nextWeekStr) return 'Next Week'
+  if (dateStr === twoWeeksStr) return 'Two Weeks'
+  
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
@@ -163,19 +184,164 @@ function Avatar({ user, size = 28 }: { user?: User; size?: number }) {
   )
 }
 
-function AssigneeSelect({ users, value, onChange, disabled, unassignedLabel }:{ users: User[]; value?: string | null; onChange: (v: string | null) => void; disabled?: boolean; unassignedLabel: string }){
+// Advanced date presets
+type DatePreset = 'tonight' | 'tomorrow' | 'next-week' | 'two-weeks' | 'custom'
+
+const getDateFromPreset = (preset: DatePreset): string | null => {
+  const now = new Date()
+  switch (preset) {
+    case 'tonight':
+      return now.toISOString().split('T')[0]
+    case 'tomorrow':
+      const tomorrow = new Date(now)
+      tomorrow.setDate(now.getDate() + 1)
+      return tomorrow.toISOString().split('T')[0]
+    case 'next-week':
+      const nextWeek = new Date(now)
+      nextWeek.setDate(now.getDate() + 7)
+      return nextWeek.toISOString().split('T')[0]
+    case 'two-weeks':
+      const twoWeeks = new Date(now)
+      twoWeeks.setDate(now.getDate() + 14)
+      return twoWeeks.toISOString().split('T')[0]
+    default:
+      return null
+  }
+}
+
+const getPresetLabel = (preset: DatePreset): string => {
+  switch (preset) {
+    case 'tonight': return 'Tonight'
+    case 'tomorrow': return 'Tomorrow'
+    case 'next-week': return 'Next Week'
+    case 'two-weeks': return 'Two Weeks'
+    case 'custom': return 'Custom Date'
+    default: return 'Custom Date'
+  }
+}
+
+function MultiAssigneeSelect({ users, values, onChange, disabled, unassignedLabel }: {
+  users: User[]
+  values: string[]
+  onChange: (ids: string[]) => void
+  disabled?: boolean
+  unassignedLabel: string
+}) {
+  const [isOpen, setIsOpen] = React.useState(false)
+  
+  const toggleUser = (userId: string) => {
+    if (values.includes(userId)) {
+      onChange(values.filter(id => id !== userId))
+    } else {
+      onChange([...values, userId])
+    }
+  }
+  
+  const selectedUsers = users.filter(u => values.includes(u.id))
+  
   return (
-    <select
-      className="input py-1 pr-8 text-sm"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
-      disabled={disabled}
-    >
-      <option value="">{unassignedLabel}</option>
-      {users.map(u => (
-        <option key={u.id} value={u.id}>{u.name}</option>
-      ))}
-    </select>
+    <div className="relative">
+      <button
+        className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+      >
+        <div className="flex -space-x-1">
+          {selectedUsers.length === 0 ? (
+            <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+          ) : (
+            selectedUsers.slice(0, 3).map(user => (
+              <Avatar key={user.id} user={user} size={24} />
+            ))
+          )}
+          {selectedUsers.length > 3 && (
+            <div className="w-6 h-6 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
+              +{selectedUsers.length - 3}
+            </div>
+          )}
+        </div>
+        <span className="text-sm text-neutral-700 dark:text-neutral-200 flex-1">
+          {selectedUsers.length === 0 ? unassignedLabel : `${selectedUsers.length} assigned`}
+        </span>
+        <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg z-50">
+          <div className="p-2 space-y-1">
+            {users.map(user => (
+              <label key={user.id} className="flex items-center gap-2 p-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={values.includes(user.id)}
+                  onChange={() => toggleUser(user.id)}
+                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                />
+                <Avatar user={user} size={20} />
+                <span className="text-sm">{user.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdvancedDatePicker({ value, onChange, onBlur }: {
+  value: string | null
+  onChange: (date: string | null) => void
+  onBlur: () => void
+}) {
+  const [selectedPreset, setSelectedPreset] = React.useState<DatePreset>('custom')
+  const [customDate, setCustomDate] = React.useState(value || '')
+  
+  const presets: DatePreset[] = ['tonight', 'tomorrow', 'next-week', 'two-weeks', 'custom']
+  
+  const handlePresetChange = (preset: DatePreset) => {
+    setSelectedPreset(preset)
+    if (preset !== 'custom') {
+      const date = getDateFromPreset(preset)
+      onChange(date)
+      onBlur()
+    }
+  }
+  
+  const handleCustomDateChange = (date: string) => {
+    setCustomDate(date)
+    onChange(date || null)
+  }
+  
+  return (
+    <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg p-3 min-w-48">
+      <div className="space-y-2">
+        {presets.map(preset => (
+          <button
+            key={preset}
+            className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 ${
+              selectedPreset === preset ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : ''
+            }`}
+            onClick={() => handlePresetChange(preset)}
+          >
+            {getPresetLabel(preset)}
+          </button>
+        ))}
+      </div>
+      {selectedPreset === 'custom' && (
+        <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+          <input
+            type="date"
+            className="input py-1 text-sm w-full"
+            value={customDate}
+            onChange={(e) => handleCustomDateChange(e.target.value)}
+            onBlur={onBlur}
+            autoFocus
+          />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -234,6 +400,16 @@ export default function TasksList(){
   const [editingStatus, setEditingStatus] = useState<string | null>(null)
   const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
   const [editingDue, setEditingDue] = useState<string | null>(null)
+  
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = () => {
+      setEditingAssignee(null)
+      setEditingDue(null)
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
 
   const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
 
@@ -265,7 +441,7 @@ export default function TasksList(){
   const addSubtask = (taskId: string) => {
     setTasks(prev => prev.map(t => t.id===taskId ? {
       ...t,
-      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: tr('pages.tasks.newSubtask'), status:'New', inheritsAssignee: true, inheritsDueDate: true, order: t.subtasks.length }]
+      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: tr('pages.tasks.newSubtask'), status:'New', inheritsAssignee: true, inheritsDueDate: true, assigneeIds: [], order: t.subtasks.length }]
     } : t))
   }
 
@@ -278,7 +454,7 @@ export default function TasksList(){
       const apiPatch: any = {}
       if (patch.name) apiPatch.title = patch.name
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-      if (patch.assigneeId !== undefined) apiPatch.assigneeId = patch.assigneeId
+      if (patch.assigneeIds !== undefined) apiPatch.assigneeId = patch.assigneeIds[0] || null
       
       await tasksService.updateTask(taskId, apiPatch)
     } catch (err) {
@@ -473,14 +649,13 @@ export default function TasksList(){
                   </div>
                   <div className="col-span-2">
                     {editingDue === `task:${t.id}` ? (
-                      <input
-                        type="date"
-                        className="input py-1 text-sm"
-                        value={t.dueDate ?? ''}
-                        onChange={(e)=>updateTask(t.id,{ dueDate: e.target.value || null })}
-                        onBlur={()=>setEditingDue(null)}
-                        autoFocus
-                      />
+                      <div className="relative">
+                        <AdvancedDatePicker
+                          value={t.dueDate ?? null}
+                          onChange={(date) => updateTask(t.id, { dueDate: date })}
+                          onBlur={() => setEditingDue(null)}
+                        />
+                      </div>
                     ) : (
                       <button
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
@@ -512,10 +687,10 @@ export default function TasksList(){
                   </div>
                   <div className="col-span-2">
                     {editingAssignee === `task:${t.id}` ? (
-                      <AssigneeSelect
+                      <MultiAssigneeSelect
                         users={users}
-                        value={t.assigneeId ?? ''}
-                        onChange={(v)=>{ updateTask(t.id,{ assigneeId: v }); setEditingAssignee(null) }}
+                        values={t.assigneeIds}
+                        onChange={(ids) => { updateTask(t.id, { assigneeIds: ids }); setEditingAssignee(null) }}
                         unassignedLabel={tr('common.unassigned')}
                       />
                     ) : (
@@ -523,9 +698,22 @@ export default function TasksList(){
                         className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
                         onClick={()=>setEditingAssignee(`task:${t.id}`)}
                       >
-                        <Avatar user={t.assigneeId ? userById[t.assigneeId] : undefined} />
+                        <div className="flex -space-x-1">
+                          {t.assigneeIds.length === 0 ? (
+                            <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+                          ) : (
+                            t.assigneeIds.slice(0, 3).map(id => (
+                              <Avatar key={id} user={userById[id]} size={24} />
+                            ))
+                          )}
+                          {t.assigneeIds.length > 3 && (
+                            <div className="w-6 h-6 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
+                              +{t.assigneeIds.length - 3}
+                            </div>
+                          )}
+                        </div>
                         <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                          {t.assigneeId ? userById[t.assigneeId].name : tr('common.unassigned')}
+                          {t.assigneeIds.length === 0 ? tr('common.unassigned') : `${t.assigneeIds.length} assigned`}
                         </span>
                       </button>
                     )}
@@ -550,7 +738,7 @@ export default function TasksList(){
                 <div className="bg-neutral-50 dark:bg-neutral-900/20">
                   <SortableContext items={t.subtasks.slice().sort((a,b)=>a.order-b.order).map(s=>`sub-${t.id}-${s.id}`)} strategy={verticalListSortingStrategy}>
                   {t.subtasks.slice().sort((a,b)=>a.order-b.order).map((s) => {
-                    const effectiveAssigneeId = s.inheritsAssignee ? (t.assigneeId ?? null) : (s.assigneeId ?? null)
+                    const effectiveAssigneeIds = s.inheritsAssignee ? t.assigneeIds : s.assigneeIds
                     const effectiveDueDate = s.inheritsDueDate ? (t.dueDate ?? null) : (s.dueDate ?? null)
                     return (
                       <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
@@ -581,20 +769,19 @@ export default function TasksList(){
                           <div className="col-span-2">
                             <div className="flex items-center">
                               {editingDue === `sub:${t.id}:${s.id}` && !s.inheritsDueDate ? (
-                                <input
-                                  type="date"
-                                  className="input py-1 text-sm"
-                                  value={effectiveDueDate ?? ''}
-                                  onChange={(e)=>updateSubtask(t.id, s.id, { dueDate: e.target.value || null, inheritsDueDate: false })}
-                                  onBlur={()=>setEditingDue(null)}
-                                  autoFocus
-                                />
+                                <div className="relative">
+                                  <AdvancedDatePicker
+                                    value={effectiveDueDate}
+                                    onChange={(date) => updateSubtask(t.id, s.id, { dueDate: date, inheritsDueDate: false })}
+                                    onBlur={() => setEditingDue(null)}
+                                  />
+                                </div>
                               ) : (
                                 <button
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60' : ''}`}
                                   onClick={()=>{
                                     if (s.inheritsDueDate) {
-                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate ?? null })
+                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate })
                                     }
                                     setEditingDue(`sub:${t.id}:${s.id}`)
                                   }}
@@ -629,10 +816,10 @@ export default function TasksList(){
                           <div className="col-span-2">
                             <div className="flex items-center gap-2">
                               {editingAssignee === `sub:${t.id}:${s.id}` && !s.inheritsAssignee ? (
-                                <AssigneeSelect
+                                <MultiAssigneeSelect
                                   users={users}
-                                  value={effectiveAssigneeId}
-                                  onChange={(v)=>{ updateSubtask(t.id, s.id, { assigneeId: v, inheritsAssignee: false }); setEditingAssignee(null) }}
+                                  values={effectiveAssigneeIds}
+                                  onChange={(ids) => { updateSubtask(t.id, s.id, { assigneeIds: ids, inheritsAssignee: false }); setEditingAssignee(null) }}
                                   disabled={s.inheritsAssignee}
                                   unassignedLabel={tr('common.unassigned')}
                                 />
@@ -641,15 +828,28 @@ export default function TasksList(){
                                   className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60' : ''}`}
                                   onClick={()=>{
                                     if (s.inheritsAssignee) {
-                                      updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeId: effectiveAssigneeId ?? null })
+                                      updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeIds: effectiveAssigneeIds })
                                     }
                                     setEditingAssignee(`sub:${t.id}:${s.id}`)
                                   }}
                                   title={s.inheritsAssignee ? tr('tooltips.customizeAssignee') : tr('tooltips.setAssignee')}
                                 >
-                                  <Avatar user={effectiveAssigneeId ? userById[effectiveAssigneeId] : undefined} />
+                                  <div className="flex -space-x-1">
+                                    {effectiveAssigneeIds.length === 0 ? (
+                                      <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+                                    ) : (
+                                      effectiveAssigneeIds.slice(0, 3).map(id => (
+                                        <Avatar key={id} user={userById[id]} size={20} />
+                                      ))
+                                    )}
+                                    {effectiveAssigneeIds.length > 3 && (
+                                      <div className="w-5 h-5 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
+                                        +{effectiveAssigneeIds.length - 3}
+                                      </div>
+                                    )}
+                                  </div>
                                   <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                                    {effectiveAssigneeId ? userById[effectiveAssigneeId].name : tr('common.unassigned')}
+                                    {effectiveAssigneeIds.length === 0 ? tr('common.unassigned') : `${effectiveAssigneeIds.length} assigned`}
                                   </span>
                                 </button>
                               )}
