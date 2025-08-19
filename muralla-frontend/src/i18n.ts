@@ -184,7 +184,8 @@ const resources = {
             priority: 'Prioridad',
             dueDate: 'Fecha',
             status: 'Estado',
-            assignee: 'Responsable'
+            assignee: 'Responsable',
+            project: 'Proyecto'
           }
         },
         placeholders: {
@@ -457,7 +458,8 @@ const resources = {
             priority: 'Priority',
             dueDate: 'Due Date',
             status: 'Status',
-            assignee: 'Assignee'
+            assignee: 'Assignee',
+            project: 'Project'
           }
         },
         projectsOverview: { title: 'Projects', description: 'Create and manage larger projects with tasks and budgets' },

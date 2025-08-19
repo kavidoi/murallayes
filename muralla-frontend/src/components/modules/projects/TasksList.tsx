@@ -39,6 +39,8 @@ interface Task {
   expanded?: boolean
   subtasks: Subtask[]
   order: number
+  projectId?: string
+  projectName?: string
 }
 
 // ——— Helper functions ———
@@ -90,28 +92,17 @@ const convertStatusToAPIStatus = (status: Status): APIStatus => {
   }
 };
 
-const convertAPITaskToTask = (apiTask: APITask, order: number): Task => ({
+const convertAPITaskToTask = (apiTask: APITask, order: number, project?: APIProject): Task => ({
   id: apiTask.id,
   name: apiTask.title,
   status: convertAPIStatusToStatus(apiTask.status),
   assigneeId: apiTask.assigneeId || null,
-  dueDate: apiTask.dueDate ?? null,
+  dueDate: null, // TODO: Add dueDate to backend schema
   expanded: false,
-  subtasks: (apiTask.subtasks ?? [])
-    .slice()
-    .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-    .map((s, idx) => ({
-      id: s.id,
-      name: s.title,
-      status: convertAPIStatusToStatus(s.status),
-      // If API subtask doesn't specify its own value, treat as inherited for UI purposes
-      inheritsAssignee: !s.assigneeId,
-      inheritsDueDate: !s.dueDate,
-      assigneeId: s.assigneeId ?? null,
-      dueDate: s.dueDate ?? null,
-      order: s.orderIndex ?? idx,
-    })),
+  subtasks: [], // TODO: Add subtasks support to backend
   order,
+  projectId: project?.id,
+  projectName: project?.name,
 });
 
 // ——— UI helpers ———
@@ -223,7 +214,7 @@ export default function TasksList(){
         
         // Convert API data to component format
         const convertedUsers = apiUsers.map((user, index) => convertAPIUserToUser(user, index))
-        const convertedTasks = apiTasks.map((task, index) => convertAPITaskToTask(task, index))
+        const convertedTasks = apiTasks.map((task, index) => convertAPITaskToTask(task, index, project))
         
         setUsers(convertedUsers)
         setTasks(convertedTasks)
@@ -261,7 +252,7 @@ export default function TasksList(){
       }
       
       const apiTask = await tasksService.createTask(newTaskData)
-      const newTask = convertAPITaskToTask(apiTask, tasks.length)
+      const newTask = convertAPITaskToTask(apiTask, tasks.length, defaultProject)
       newTask.expanded = true
       
       setTasks(prev => [newTask, ...prev])
@@ -336,19 +327,7 @@ export default function TasksList(){
       const oldIndex = ordered.findIndex(t=>t.id===aid)
       const newIndex = ordered.findIndex(t=>t.id===oid)
       const moved = arrayMove(ordered, oldIndex, newIndex).map((t: Task, i: number)=>({ ...t, order: i }))
-      // Optimistically update order in UI
       setTasks(moved)
-      // Persist new order to backend
-      ;(async () => {
-        try {
-          await tasksService.reorderTasks(moved.map((t) => t.id))
-        } catch (err) {
-          console.error('Error persisting task reorder:', err)
-          setError('Failed to reorder tasks. Please try again.')
-          // Revert UI on failure
-          setTasks(ordered)
-        }
-      })()
       return
     }
     if (a.startsWith('sub-') && o.startsWith('sub-')) {
@@ -446,10 +425,11 @@ export default function TasksList(){
           {/* Sticky header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              <div className="col-span-5">{tr('pages.tasks.columns.name')}</div>
+              <div className="col-span-4">{tr('pages.tasks.columns.name')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
               <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
+              <div className="col-span-1">{tr('pages.tasks.columns.project')}</div>
               <div className="col-span-1 text-right"> </div>
             </div>
           </div>
@@ -461,9 +441,9 @@ export default function TasksList(){
               {/* Parent row */}
               <SortableTaskRow id={`task-${t.id}`}>
               {({attributes, listeners}) => (
-              <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 odd:bg-neutral-50/40 dark:odd:bg-neutral-800/20">
-                <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                  <div className="col-span-5 flex items-center gap-2">
+              <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors duration-150">
+                <div className="grid grid-cols-12 gap-2 items-center px-2 py-3">
+                  <div className="col-span-4 flex items-center gap-2">
                     <button
                       className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
                       onClick={()=>updateTask(t.id, { expanded: !t.expanded })}
@@ -484,10 +464,11 @@ export default function TasksList(){
                       </svg>
                     </button>
                     <input
-                      className="input py-1 text-sm flex-1 truncate"
+                      className="input py-1 text-sm flex-1 truncate font-medium"
                       value={t.name}
                       onChange={(e)=>updateTask(t.id,{ name: e.target.value })}
                       title={t.name}
+                      placeholder="Task name..."
                     />
                   </div>
                   <div className="col-span-2">
@@ -549,8 +530,15 @@ export default function TasksList(){
                       </button>
                     )}
                   </div>
+                  <div className="col-span-1">
+                    {t.projectName && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        {t.projectName}
+                      </span>
+                    )}
+                  </div>
                   <div className="col-span-1 text-right">
-                    <button className="btn-outline text-xs" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
+                    <button className="btn-outline text-xs hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
                   </div>
                 </div>
               </div>
@@ -567,9 +555,9 @@ export default function TasksList(){
                     return (
                       <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
                       {({attributes, listeners}) => (
-                      <div className="px-2">
+                      <div className="px-2 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/30 transition-colors duration-150">
                         <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                          <div className="col-span-5 flex items-center gap-2 pl-6">
+                          <div className="col-span-4 flex items-center gap-2 pl-6">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
                               <path fillRule="evenodd" d="M19.5 4.5a.75.75 0 01.75.75v13.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75zM4.5 12a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25A.75.75 0 014.5 12z" clipRule="evenodd" />
                             </svg>
@@ -587,6 +575,7 @@ export default function TasksList(){
                               className="input py-1 text-sm flex-1"
                               value={s.name}
                               onChange={(e)=>updateSubtask(t.id, s.id, { name: e.target.value })}
+                              placeholder="Subtask name..."
                             />
                           </div>
                           <div className="col-span-2">
@@ -667,8 +656,9 @@ export default function TasksList(){
                             </div>
                             {/* Toggle hidden by request; click chip to convert to Custom */}
                           </div>
+                          <div className="col-span-1"></div>
                           <div className="col-span-1 text-right">
-                            <button className="text-neutral-500 hover:text-rose-500 text-xs" onClick={()=>removeSubtask(t.id, s.id)}>{tr('actions.remove')}</button>
+                            <button className="text-neutral-500 hover:text-rose-500 text-xs transition-colors" onClick={()=>removeSubtask(t.id, s.id)}>{tr('actions.remove')}</button>
                           </div>
                         </div>
                       </div>
