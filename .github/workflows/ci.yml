@@ -156,11 +156,19 @@ jobs:
     environment: staging
     
     steps:
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your staging deployment commands here
-        # For example: kubectl apply -f k8s/staging/ or docker-compose up -d
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Trigger Railway deploy (staging)
+      env:
+        RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_PROJECT_NAME: murallayes
+        RAILWAY_ENVIRONMENT: staging
+      run: bash ./scripts/deploy_via_api.sh
 
   deploy-production:
     needs: build-and-push
@@ -169,8 +177,16 @@ jobs:
     environment: production
     
     steps:
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production environment..."
-        # Add your production deployment commands here
-        # For example: kubectl apply -f k8s/production/ or docker-compose up -d
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Trigger Railway deploy (production)
+      env:
+        RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_PROJECT_NAME: murallayes
+        RAILWAY_ENVIRONMENT: production
+      run: bash ./scripts/deploy_via_api.sh
