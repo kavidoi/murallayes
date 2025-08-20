@@ -1,33 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthService } from './services/authService'
+import { useTranslation } from 'react-i18next'
+
+// Eager load critical components
 import MainLayout from './components/layout/MainLayout'
 import Dashboard from './components/modules/dashboard/Dashboard'
 import Login from './components/modules/auth/Login'
-import PaymentBrick from './components/modules/finance/PaymentBrick'
-import PaymentHandling from './components/modules/finance/PaymentHandling'
-import FinanceDashboard from './components/modules/finance/FinanceDashboard'
-import PeopleOverview from './components/modules/people/PeopleOverview'
-import TeamDirectory from './components/modules/people/TeamDirectory'
-import StaffFinances from './components/modules/people/StaffFinances'
-import MyFinances from './components/modules/people/MyFinances'
-import KnowledgeOverview from './components/modules/knowledge/KnowledgeOverview'
-import BankAccount from './components/modules/finance/BankAccount'
-import RevenueExpenses from './components/modules/finance/RevenueExpenses'
-import BudgetManager from './components/modules/finance/BudgetManager'
 import PlaceholderPage from './components/common/PlaceholderPage'
-import PTO from './components/modules/people/PTO'
-import { AuthService } from './services/authService'
-import TasksList from './components/modules/projects/TasksList'
-import ProjectsOverview from './components/modules/projects/ProjectsOverview'
-import Settings from './components/modules/settings/Settings'
-import ProductCatalog from './components/modules/pipeline/ProductCatalog'
-import InventoryDashboard from './components/modules/pipeline/InventoryDashboard'
-import CostsPurchases from './components/modules/pipeline/CostsPurchases'
-import ProductionWorkOrders from './components/modules/pipeline/ProductionWorkOrders'
-import ReportsAnalytics from './components/modules/pipeline/ReportsAnalytics'
-import PurchaseOrders from './components/modules/pipeline/PurchaseOrders'
-import { useTranslation } from 'react-i18next'
-import CeluReceipt from './components/modules/mobile/CeluReceipt'
+
+// Lazy load non-critical components for code splitting
+const PaymentBrick = lazy(() => import('./components/modules/finance/PaymentBrick'))
+const PaymentHandling = lazy(() => import('./components/modules/finance/PaymentHandling'))
+const FinanceDashboard = lazy(() => import('./components/modules/finance/FinanceDashboard'))
+const PeopleOverview = lazy(() => import('./components/modules/people/PeopleOverview'))
+const TeamDirectory = lazy(() => import('./components/modules/people/TeamDirectory'))
+const StaffFinances = lazy(() => import('./components/modules/people/StaffFinances'))
+const MyFinances = lazy(() => import('./components/modules/people/MyFinances'))
+const KnowledgeOverview = lazy(() => import('./components/modules/knowledge/KnowledgeOverview'))
+const BankAccount = lazy(() => import('./components/modules/finance/BankAccount'))
+const RevenueExpenses = lazy(() => import('./components/modules/finance/RevenueExpenses'))
+const BudgetManager = lazy(() => import('./components/modules/finance/BudgetManager'))
+const PTO = lazy(() => import('./components/modules/people/PTO'))
+const TasksList = lazy(() => import('./components/modules/projects/TasksList'))
+const ProjectsOverview = lazy(() => import('./components/modules/projects/ProjectsOverview'))
+const Settings = lazy(() => import('./components/modules/settings/Settings'))
+const ProductCatalog = lazy(() => import('./components/modules/pipeline/ProductCatalog'))
+const InventoryDashboard = lazy(() => import('./components/modules/pipeline/InventoryDashboard'))
+const CostsPurchases = lazy(() => import('./components/modules/pipeline/CostsPurchases'))
+const ProductionWorkOrders = lazy(() => import('./components/modules/pipeline/ProductionWorkOrders'))
+const ReportsAnalytics = lazy(() => import('./components/modules/pipeline/ReportsAnalytics'))
+const PurchaseOrders = lazy(() => import('./components/modules/pipeline/PurchaseOrders'))
+const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+    </div>
+  </div>
+)
 
 function App() {
   const { t } = useTranslation()
@@ -110,8 +124,9 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
         <Route path="*" element={
           <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
-            <Routes>
-              <Route index element={<Dashboard />} />
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route index element={<Dashboard />} />
               
               {/* My (user-centric) Routes */}
               <Route path="/me" element={<PlaceholderPage title={t('routes.me.title')} description={t('routes.me.description')} icon="🙋" />} />
@@ -218,7 +233,8 @@ function App() {
               {/* Settings */}
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </MainLayout>
         } />
       </Routes>

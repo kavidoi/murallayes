@@ -19,9 +19,10 @@ export default function Login() {
       console.log('Login successful, redirecting to dashboard');
       // Use full reload so App.tsx re-runs auth check and renders protected routes
       window.location.href = '/';
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      setError(err?.message || 'Login failed. Please check your credentials.');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

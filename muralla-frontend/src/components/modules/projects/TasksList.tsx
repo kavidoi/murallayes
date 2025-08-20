@@ -531,8 +531,8 @@ export default function TasksList(){
     setTasks(prev => prev.map(t => t.id===taskId ? { ...t, ...patch } : t))
     
     try {
-      const promises: Promise<any>[] = []
-      const apiPatch: any = {}
+      const promises: Promise<unknown>[] = []
+      const apiPatch: Partial<{ title: string; status: APIStatus }> = {}
       if (patch.name) apiPatch.title = patch.name
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
 
@@ -558,8 +558,8 @@ export default function TasksList(){
       subtasks: t.subtasks.map(s => s.id===subId ? { ...s, ...patch } : s)
     }) : t))
     try {
-      const promises: Promise<any>[] = []
-      const apiPatch: any = {}
+      const promises: Promise<unknown>[] = []
+      const apiPatch: Partial<{ title: string; status: APIStatus }> = {}
       if (patch.name) apiPatch.title = patch.name
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
       if (Object.keys(apiPatch).length > 0) {
@@ -874,13 +874,13 @@ export default function TasksList(){
                     {editingStatus === `task:${t.id}` ? (
                       <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} t={tr} />
                     ) : (
-                      (()=>{
+                      (() => {
                         const ds = displayStatusFrom(t.status, t.dueDate)
                         const isAutoOverdue = ds === 'Overdue' && t.status !== 'Completed'
                         return (
                           <button
                             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
-                            onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
+                            onClick={() => { if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
                             title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
@@ -1003,13 +1003,13 @@ export default function TasksList(){
                             {editingStatus === `sub:${t.id}:${s.id}` ? (
                               <StatusSelect value={s.status} onChange={(st)=>{ updateSubtask(t.id,s.id,{ status: st }); setEditingStatus(null) }} t={tr} />
                             ) : (
-                              (()=>{
+                              (() => {
                                 const ds = displayStatusFrom(s.status, effectiveDueDate)
                                 const isAutoOverdue = ds === 'Overdue' && s.status !== 'Completed'
                                 return (
                                   <button
                                     className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
-                                    onClick={()=>{ if(!isAutoOverdue) setEditingStatus(`sub:${t.id}:${s.id}`) }}
+                                    onClick={() => { if(!isAutoOverdue) setEditingStatus(`sub:${t.id}:${s.id}`) }}
                                     title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
                                   >
                                     <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
@@ -1088,20 +1088,26 @@ export default function TasksList(){
 }
 
 // ——— Sortable row wrappers ———
-function SortableTaskRow({ id, children }:{ id: string; children: (p:{attributes: any; listeners: any})=>React.ReactNode }){
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-  return <div ref={setNodeRef} style={style}>{children({attributes, listeners})}</div>
+// —— Sortable attributes and listeners types ——
+interface SortableHandlers {
+  attributes: React.HTMLAttributes<HTMLElement>;
+  listeners: React.DOMAttributes<HTMLElement> | undefined;
 }
 
-function SortableSubtaskRow({ id, children }:{ id: string; children: (p:{attributes: any; listeners: any})=>React.ReactNode }){
+function SortableTaskRow({ id, children }: { id: string; children: (p: SortableHandlers) => React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   }
-  return <div ref={setNodeRef} style={style}>{children({attributes, listeners})}</div>
+  return <div ref={setNodeRef} style={style}>{children({ attributes, listeners })}</div>
+}
+
+function SortableSubtaskRow({ id, children }: { id: string; children: (p: SortableHandlers) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return <div ref={setNodeRef} style={style}>{children({ attributes, listeners })}</div>
 }

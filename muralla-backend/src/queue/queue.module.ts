@@ -45,7 +45,6 @@ const bullRoot = buildBullRoot();
       : [
           BullModule.registerQueue(
             { name: 'tasks' },
-            { name: 'notifications' },
             { name: 'emails' },
           ),
         ]),

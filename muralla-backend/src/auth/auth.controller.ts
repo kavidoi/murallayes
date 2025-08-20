@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
@@ -24,14 +25,14 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req: any) {
+  async login(@Request() req: ExpressRequest & { user: any }) {
     return this.authService.login(req.user);
   }
 
   @Public()
   @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 attempts per 5 minutes
   @Post('register')
-  async register(@Body() createUserDto: any) {
+  async register(@Body() createUserDto: { email: string; password: string; firstName: string; lastName: string; roleId?: string }) {
     return this.authService.register(createUserDto);
   }
 
@@ -77,7 +78,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async me(@Request() req: any) {
+  async me(@Request() req: ExpressRequest & { user: any }) {
     return { user: req.user };
   }
 }

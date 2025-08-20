@@ -36,24 +36,33 @@ import { CostsModule } from './costs/costs.module';
 import { ProductsModule } from './products/products.module';
 import { WorkOrdersModule } from './workorders/workorders.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { QueueService } from './queue/queue.service';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
-  constructor(private users: UsersService) {}
+  constructor(private users: UsersService, private queueService: QueueService) {}
   async onModuleInit() {
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
     try {
       if (email && password) {
         await this.users.findOrCreateAdmin(email, password);
-        // eslint-disable-next-line no-console
         console.log(`Admin ensured from env: ${email}`);
       } else {
-        // eslint-disable-next-line no-console
         console.warn('ADMIN_EMAIL/ADMIN_PASSWORD not set; skipping admin bootstrap');
       }
     } catch (e) {
       console.error('Failed to ensure admin user', e);
+    }
+
+    // Schedule recurring jobs
+    try {
+      await this.queueService.addDailyReportJob();
+      await this.queueService.addWeeklyBackupJob();
+      console.log('Scheduled recurring jobs: daily-report and weekly-backup');
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      console.warn('Skipping queue scheduling (queues may be disabled):', errorMessage);
     }
   }
 }

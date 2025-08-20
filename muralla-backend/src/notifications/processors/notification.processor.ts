@@ -41,7 +41,7 @@ export class NotificationProcessor {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
           template: {
-            select: { id: true, name: true, type: true },
+            select: { id: true, name: true, type: true, subject: true, content: true },
           },
         },
       });
@@ -84,11 +84,8 @@ export class NotificationProcessor {
 
       this.logger.log(`Successfully sent notification ${notificationId}`);
     } catch (error) {
-      console.error('Failed to send notification:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to send notification: ${errorMessage}`);
-
-      // Mark as failed
+      // Log and mark as failed before rethrowing so Bull marks the job failed and we persist the status
+      this.logger.error(`Failed to send notification ${notificationId}:`, error as any);
       await this.prisma.notification.update({
         where: { id: notificationId },
         data: {
@@ -97,8 +94,7 @@ export class NotificationProcessor {
           errorMessage: error instanceof Error ? error.message : String(error),
         },
       });
-
-      throw error;
+      throw (error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -113,9 +109,9 @@ export class NotificationProcessor {
     const mailOptions = {
       from: process.env.SMTP_FROM || 'noreply@muralla.org',
       to: notification.recipient.email,
-      subject: notification.subject || 'Notification from Muralla',
+      subject: (notification.subject || notification.template?.subject || 'Notification from Muralla'),
       html: this.formatEmailContent(notification),
-      text: this.stripHtml(notification.content),
+      text: this.stripHtml(notification.content || notification.template?.content || ''),
     };
 
     await this.emailTransporter.sendMail(mailOptions);

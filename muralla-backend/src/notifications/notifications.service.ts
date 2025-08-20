@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,10 +26,11 @@ interface RecipientRule {
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
-    @InjectQueue('notifications') private notificationQueue: Queue,
+    @Optional() @InjectQueue('notifications') private notificationQueue?: Queue,
   ) {}
 
   // Template Management
@@ -287,16 +288,20 @@ export class NotificationsService {
         } as any,
       });
 
-      // Add to queue for processing
-      await this.notificationQueue.add('send-notification', {
-        notificationId: notification.id,
-        templateId: template.id,
-        recipientId,
-        type: template.type,
-        subject: template.subject,
-        content: template.content,
-        variables: data.variables || {},
-      });
+      // Add to queue for processing (if queues enabled)
+      if (!this.notificationQueue) {
+        this.logger.warn(`Queues disabled; skipping enqueue for notification ${notification.id}`);
+      } else {
+        await this.notificationQueue.add('send-notification', {
+          notificationId: notification.id,
+          templateId: template.id,
+          recipientId,
+          type: template.type,
+          subject: template.subject,
+          content: template.content,
+          variables: data.variables || {},
+        });
+      }
 
       notifications.push(notification);
     }
@@ -353,16 +358,20 @@ export class NotificationsService {
               } as any,
             });
 
-            // Add to queue for processing
-            await this.notificationQueue.add('send-notification', {
-              notificationId: notification.id,
-              templateId: rule.template.id,
-              recipientId,
-              type: rule.template.type,
-              subject: rule.template.subject,
-              content: rule.template.content,
-              variables: entityData,
-            });
+            // Add to queue for processing (if queues enabled)
+            if (!this.notificationQueue) {
+              this.logger.warn(`Queues disabled; skipping enqueue for notification ${notification.id}`);
+            } else {
+              await this.notificationQueue.add('send-notification', {
+                notificationId: notification.id,
+                templateId: rule.template.id,
+                recipientId,
+                type: rule.template.type,
+                subject: rule.template.subject,
+                content: rule.template.content,
+                variables: entityData,
+              });
+            }
           }
 
           processedRules.push({
