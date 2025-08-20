@@ -145,6 +145,7 @@ const AssigneeSelector: React.FC<{
   disabled?: boolean
 }> = ({ selectedUserIds, users, onSelectionChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
   const selectedUsers = users.filter(u => selectedUserIds.includes(u.id))
   
   const toggleUser = (userId: string) => {
@@ -155,9 +156,19 @@ const AssigneeSelector: React.FC<{
     }
   }
   
+  const getDropdownPosition = () => {
+    if (!buttonRef) return { top: 0, left: 0 }
+    const rect = buttonRef.getBoundingClientRect()
+    return {
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.right + window.scrollX - 200 // Align dropdown to right of button
+    }
+  }
+
   return (
     <div className="relative">
       <button
+        ref={setButtonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -187,7 +198,10 @@ const AssigneeSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-8 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto">
+          <div 
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto"
+            style={getDropdownPosition()}
+          >
             {users.map(user => (
               <label key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                 <input
@@ -214,6 +228,7 @@ const StatusSelector: React.FC<{
   disabled?: boolean
 }> = ({ status, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
   
   const getStatusColor = (s: Status) => {
     switch (s) {
@@ -227,9 +242,19 @@ const StatusSelector: React.FC<{
   
   const selectableStatuses: Status[] = ['New', 'In Progress', 'Completed']
   
+  const getDropdownPosition = () => {
+    if (!buttonRef) return { top: 0, left: 0 }
+    const rect = buttonRef.getBoundingClientRect()
+    return {
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.right + window.scrollX - 140 // Align dropdown to right of button
+    }
+  }
+  
   return (
     <div className="relative">
       <button
+        ref={setButtonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -244,7 +269,10 @@ const StatusSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-6 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-1 min-w-32">
+          <div 
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-1 min-w-32"
+            style={getDropdownPosition()}
+          >
             {selectableStatuses.map(s => (
               <button
                 key={s}
@@ -272,6 +300,7 @@ const DueDateSelector: React.FC<{
   disabled?: boolean
 }> = ({ dueDate, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
   const { t } = useTranslation()
   
   const today = new Date()
@@ -306,9 +335,19 @@ const DueDateSelector: React.FC<{
     return date.toLocaleDateString()
   }
   
+  const getDropdownPosition = () => {
+    if (!buttonRef) return { top: 0, left: 0 }
+    const rect = buttonRef.getBoundingClientRect()
+    return {
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.right + window.scrollX - 200 // Align dropdown to right of button
+    }
+  }
+  
   return (
     <div className="relative">
       <button
+        ref={setButtonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -323,7 +362,10 @@ const DueDateSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-6 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48">
+          <div 
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48"
+            style={getDropdownPosition()}
+          >
             <div className="space-y-1 mb-2">
               {presets.map(preset => (
                 <button
