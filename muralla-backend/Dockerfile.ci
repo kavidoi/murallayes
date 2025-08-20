@@ -19,7 +19,7 @@ COPY muralla-backend/vendor muralla-backend/vendor
 COPY packages ./packages
 
 # Install dependencies (skip postinstall scripts until sources are copied)
-RUN pnpm install --no-frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
 
 # Copy source code
 COPY . .
@@ -31,7 +31,7 @@ RUN pnpm --filter @muralla/common build
 RUN pnpm -C muralla-backend exec prisma generate
 
 # Re-run install to run any postinstall scripts safely after sources copied
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile --prefer-offline
 
 # Build the application
 RUN pnpm -C muralla-backend run build
