@@ -9,14 +9,15 @@ export default [
       parserOptions: {
         ecmaVersion: 2021,
         sourceType: 'module',
-        project: './tsconfig.json',
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: '.',
       },
     },
     plugins: {
       '@typescript-eslint': typescriptEslint,
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off',
     },

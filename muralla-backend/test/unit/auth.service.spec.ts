@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../../src/auth/auth.service';
 import { UsersService } from '../../src/users/users.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
+import { NotificationsService } from '../../src/notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
@@ -35,6 +37,18 @@ describe('AuthService', () => {
       sign: jest.fn(),
     };
 
+    const mockPrismaService = {
+      user: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+
+    const mockNotificationsService = {
+      sendNotification: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -45,6 +59,14 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -113,6 +135,8 @@ describe('AuthService', () => {
 
       expect(result).toEqual({
         access_token: expectedToken,
+        refresh_token: expectedToken,
+        expires_in: '1h',
       });
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: mockUser.id,

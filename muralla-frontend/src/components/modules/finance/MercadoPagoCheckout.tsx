@@ -71,7 +71,13 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        try { await brick?.unmount?.(); } catch (e) { console.warn('Error unmounting on amount change:', e); }
+        try { 
+          if (brick?.unmount) {
+            await brick.unmount(); 
+          } 
+        } catch (e) { 
+          console.warn('Error unmounting on amount change:', e); 
+        }
         try { mpService?.destroyBrick('payment'); } catch {}
         if (paymentBrickRef.current) paymentBrickRef.current.innerHTML = '';
         await initializeMercadoPago();

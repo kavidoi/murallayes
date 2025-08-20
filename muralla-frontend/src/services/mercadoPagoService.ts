@@ -194,7 +194,7 @@ export class MercadoPagoService {
 
     const brickConfig = {
       // Provide MercadoPago instance when using preferenceId to satisfy Bricks requirement
-      mercadoPago: this.mp,
+      mercadoPago: this.mp || undefined,
       initialization: normalizedInitialization,
       customization: { ...defaultCustomization, ...customization },
       callbacks: {
