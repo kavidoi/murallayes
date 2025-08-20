@@ -187,7 +187,7 @@ const AssigneeSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-8 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto">
+          <div className="absolute right-0 top-8 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto">
             {users.map(user => (
               <label key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                 <input
@@ -244,7 +244,7 @@ const StatusSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-6 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 min-w-32">
+          <div className="absolute right-0 top-6 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-1 min-w-32">
             {selectableStatuses.map(s => (
               <button
                 key={s}
@@ -323,7 +323,7 @@ const DueDateSelector: React.FC<{
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)} 
           />
-          <div className="absolute right-0 top-6 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 min-w-48">
+          <div className="absolute right-0 top-6 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48">
             <div className="space-y-1 mb-2">
               {presets.map(preset => (
                 <button
@@ -435,8 +435,9 @@ const SortableTaskRow: React.FC<{
   onSubtaskUpdate: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => void
   onAddSubtask: (taskId: string) => void
   onDeleteSubtask: (subtaskId: string) => void
+  onDeleteTask?: (taskId: string) => void
   isSubtask?: boolean
-}> = ({ task, users, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, isSubtask = false }) => {
+}> = ({ task, users, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -527,23 +528,28 @@ const SortableTaskRow: React.FC<{
           {!isSubtask && (
             <button
               onClick={() => onAddSubtask(task.id)}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 rounded border border-blue-200 hover:border-blue-300 dark:border-blue-600 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               title={t('pages.tasks.actions.addSubtask')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+              + Subtarea
             </button>
           )}
           {isSubtask && (
             <button
               onClick={() => onDeleteSubtask(task.id)}
-              className="p-1 text-gray-400 hover:text-red-600 rounded"
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded border border-red-200 hover:border-red-300 dark:border-red-600 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               title={t('pages.tasks.actions.deleteSubtask')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              Eliminar
+            </button>
+          )}
+          {!isSubtask && (
+            <button
+              onClick={() => onDeleteTask?.(task.id)}
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded border border-red-200 hover:border-red-300 dark:border-red-600 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1"
+              title="Eliminar tarea"
+            >
+              Eliminar
             </button>
           )}
         </div>
@@ -569,6 +575,7 @@ const SortableTaskRow: React.FC<{
               onSubtaskUpdate={onSubtaskUpdate}
               onAddSubtask={onAddSubtask}
               onDeleteSubtask={onDeleteSubtask}
+              onDeleteTask={onDeleteTask}
               isSubtask={true}
             />
           ))}
@@ -765,6 +772,17 @@ const TasksList: React.FC = () => {
       console.error('Failed to delete subtask:', err)
     }
   }, [loadData])
+
+  const handleDeleteTask = useCallback(async (taskId: string) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
+      try {
+        await tasksService.deleteTask(taskId)
+        loadData()
+      } catch (err) {
+        console.error('Failed to delete task:', err)
+      }
+    }
+  }, [loadData])
   
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
@@ -854,75 +872,79 @@ const TasksList: React.FC = () => {
         </div>
         
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Search */}
-            <div className="flex-1 min-w-64">
+            <div className="col-span-1 lg:col-span-2">
               <input
                 type="text"
                 placeholder={t('pages.tasks.searchTasks')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input w-full"
+                className="input w-full text-sm"
               />
             </div>
             
-            {/* Toggles */}
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={noDateFilter}
-                  onChange={(e) => setNoDateFilter(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm">{t('pages.tasks.filters.noDate')}</span>
-              </label>
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as Status | 'All')}
+                className="input text-sm min-w-28"
+              >
+                <option value="All">Todos</option>
+                <option value="New">Nuevo</option>
+                <option value="In Progress">En Progreso</option>
+                <option value="Completed">Completado</option>
+                <option value="Overdue">Vencido</option>
+              </select>
               
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={oneAssignedFilter}
-                  onChange={(e) => setOneAssignedFilter(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm">{t('pages.tasks.filters.oneAssigned')}</span>
-              </label>
+              {/* Assignee filter */}
+              <select
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                className="input text-sm min-w-32"
+              >
+                <option value="All">Todos</option>
+                <option value="Unassigned">Sin asignar</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
+                ))}
+              </select>
             </div>
             
-            {/* Status filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as Status | 'All')}
-              className="input min-w-32"
-            >
-              <option value="All">{t('pages.tasks.filters.allStatus')}</option>
-              <option value="New">{t('status.New')}</option>
-              <option value="In Progress">{t('status.In Progress')}</option>
-              <option value="Completed">{t('status.Completed')}</option>
-              <option value="Overdue">{t('status.Overdue')}</option>
-            </select>
-            
-            {/* Assignee filter */}
-            <select
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="input min-w-40"
-            >
-              <option value="All">{t('pages.tasks.filters.allAssignees')}</option>
-              <option value="Unassigned">{t('pages.tasks.filters.unassigned')}</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-            
-            {/* Reset */}
-            <button
-              onClick={resetFilters}
-              className="btn-secondary"
-            >
-              {t('pages.tasks.filters.reset')}
-            </button>
+            {/* Toggles and Reset */}
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={noDateFilter}
+                    onChange={(e) => setNoDateFilter(e.target.checked)}
+                    className="rounded border-gray-300 text-sm"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Sin fecha</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={oneAssignedFilter}
+                    onChange={(e) => setOneAssignedFilter(e.target.checked)}
+                    className="rounded border-gray-300 text-sm"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">1 asignado</span>
+                </label>
+              </div>
+              
+              <button
+                onClick={resetFilters}
+                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
           </div>
         </div>
         
@@ -957,6 +979,7 @@ const TasksList: React.FC = () => {
                       onSubtaskUpdate={handleSubtaskUpdate}
                       onAddSubtask={handleAddSubtask}
                       onDeleteSubtask={handleDeleteSubtask}
+                      onDeleteTask={handleDeleteTask}
                     />
                   ))}
                 </div>
