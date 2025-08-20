@@ -1,17 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
 @Injectable()
 export class QueueService {
   constructor(
-    @InjectQueue('tasks') private taskQueue: Queue,
-    @InjectQueue('notifications') private notificationQueue: Queue,
-    @InjectQueue('emails') private emailQueue: Queue,
+    @Optional() @InjectQueue('tasks') private taskQueue?: Queue,
+    @Optional() @InjectQueue('notifications') private notificationQueue?: Queue,
+    @Optional() @InjectQueue('emails') private emailQueue?: Queue,
   ) {}
 
   // Task-related jobs
   async addTaskReminderJob(taskId: string, dueDate: Date) {
+    if (!this.taskQueue) return;
     const delay = dueDate.getTime() - Date.now() - (24 * 60 * 60 * 1000); // 1 day before due
     if (delay > 0) {
       await this.taskQueue.add('task-reminder', { taskId }, { delay });
@@ -19,6 +20,7 @@ export class QueueService {
   }
 
   async addTaskOverdueJob(taskId: string, dueDate: Date) {
+    if (!this.taskQueue) return;
     const delay = dueDate.getTime() - Date.now();
     if (delay > 0) {
       await this.taskQueue.add('task-overdue', { taskId }, { delay });
@@ -27,6 +29,7 @@ export class QueueService {
 
   // Notification jobs
   async addNotificationJob(userId: string, message: string, type: string) {
+    if (!this.notificationQueue) return;
     await this.notificationQueue.add('send-notification', {
       userId,
       message,
@@ -35,6 +38,7 @@ export class QueueService {
   }
 
   async addBulkNotificationJob(userIds: string[], message: string, type: string) {
+    if (!this.notificationQueue) return;
     await this.notificationQueue.add('bulk-notification', {
       userIds,
       message,
@@ -44,6 +48,7 @@ export class QueueService {
 
   // Email jobs
   async addEmailJob(to: string, subject: string, template: string, data: any) {
+    if (!this.emailQueue) return;
     await this.emailQueue.add('send-email', {
       to,
       subject,
@@ -53,6 +58,7 @@ export class QueueService {
   }
 
   async addWelcomeEmailJob(userEmail: string, userName: string) {
+    if (!this.emailQueue) return;
     await this.emailQueue.add('welcome-email', {
       email: userEmail,
       name: userName,
@@ -61,6 +67,7 @@ export class QueueService {
 
   // Recurring jobs
   async addDailyReportJob() {
+    if (!this.taskQueue) return;
     await this.taskQueue.add(
       'daily-report',
       {},
@@ -71,6 +78,7 @@ export class QueueService {
   }
 
   async addWeeklyBackupJob() {
+    if (!this.taskQueue) return;
     await this.taskQueue.add(
       'weekly-backup',
       {},
@@ -83,6 +91,14 @@ export class QueueService {
   // Queue management
   async getQueueStats(queueName: string) {
     const queue = this.getQueue(queueName);
+    if (!queue) {
+      return {
+        waiting: 0,
+        active: 0,
+        completed: 0,
+        failed: 0,
+      };
+    }
     const waiting = await queue.getWaiting();
     const active = await queue.getActive();
     const completed = await queue.getCompleted();
@@ -96,7 +112,7 @@ export class QueueService {
     };
   }
 
-  private getQueue(name: string): Queue {
+  private getQueue(name: string): Queue | undefined {
     switch (name) {
       case 'tasks':
         return this.taskQueue;

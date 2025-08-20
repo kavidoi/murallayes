@@ -27,6 +27,7 @@ export class PrismaService implements OnModuleInit {
   get user() { return this.prisma.user; }
   get role() { return this.prisma.role; }
   get task() { return this.prisma.task; }
+  get taskAssignee() { return this.prisma.taskAssignee; }
   get project() { return this.prisma.project; }
   get budget() { return this.prisma.budget; }
   get budgetLine() { return this.prisma.budgetLine; }

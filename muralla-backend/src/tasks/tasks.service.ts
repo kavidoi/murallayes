@@ -62,14 +62,34 @@ export class TasksService {
       where: {
         NOT: {
           isDeleted: true
-        }
+        },
+        parentTaskId: null // Only get top-level tasks
       },
       include: { 
         project: true, 
-        assignee: true
+        assignee: true,
+        assignees: {
+          include: {
+            user: true
+          }
+        },
+        subtasks: {
+          where: {
+            NOT: { isDeleted: true }
+          },
+          include: {
+            assignee: true,
+            assignees: {
+              include: {
+                user: true
+              }
+            }
+          },
+          orderBy: { orderIndex: 'asc' }
+        }
       },
       orderBy: {
-        createdAt: 'desc'
+        orderIndex: 'asc'
       }
     });
   }
@@ -97,16 +117,34 @@ export class TasksService {
         projectId,
         NOT: {
           isDeleted: true
-        }
+        },
+        parentTaskId: null // Only get top-level tasks
       }, 
       include: { 
         project: true, 
-        assignee: true, 
-
-
+        assignee: true,
+        assignees: {
+          include: {
+            user: true
+          }
+        },
+        subtasks: {
+          where: {
+            NOT: { isDeleted: true }
+          },
+          include: {
+            assignee: true,
+            assignees: {
+              include: {
+                user: true
+              }
+            }
+          },
+          orderBy: { orderIndex: 'asc' }
+        }
       },
       orderBy: {
-        createdAt: 'desc'
+        orderIndex: 'asc'
       }
     });
   }
@@ -114,19 +152,46 @@ export class TasksService {
   async findByAssignee(assigneeId: string) {
     return this.prisma.task.findMany({ 
       where: { 
-        assigneeId,
+        OR: [
+          { assigneeId },
+          { 
+            assignees: {
+              some: {
+                userId: assigneeId
+              }
+            }
+          }
+        ],
         NOT: {
           isDeleted: true
-        }
+        },
+        parentTaskId: null // Only get top-level tasks
       }, 
       include: { 
         project: true, 
-        assignee: true, 
-
-
+        assignee: true,
+        assignees: {
+          include: {
+            user: true
+          }
+        },
+        subtasks: {
+          where: {
+            NOT: { isDeleted: true }
+          },
+          include: {
+            assignee: true,
+            assignees: {
+              include: {
+                user: true
+              }
+            }
+          },
+          orderBy: { orderIndex: 'asc' }
+        }
       },
       orderBy: {
-        createdAt: 'desc'
+        orderIndex: 'asc'
       }
     });
   }
@@ -215,6 +280,90 @@ export class TasksService {
     );
 
     return { success: true } as const;
+  }
+
+  async reorderTasks(taskIds: string[]) {
+    // Validate that all IDs correspond to top-level tasks and are not deleted
+    const existing = await this.prisma.task.findMany({
+      where: {
+        id: { in: taskIds },
+        parentTaskId: null,
+        NOT: { isDeleted: true },
+      },
+      select: { id: true },
+    });
+
+    if (existing.length !== taskIds.length) {
+      throw new Error('One or more top-level tasks not found');
+    }
+
+    // Update orderIndex in a transaction
+    await this.prisma.$transaction(
+      taskIds.map((id, index) =>
+        this.prisma.task.update({
+          where: { id },
+          data: { orderIndex: index },
+        })
+      )
+    );
+
+    return { success: true } as const;
+  }
+
+  async updateTaskAssignees(taskId: string, userIds: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      // Remove all existing assignees
+      await tx.taskAssignee.deleteMany({
+        where: { taskId },
+      });
+
+      // Add new assignees
+      if (userIds.length > 0) {
+        await tx.taskAssignee.createMany({
+          data: userIds.map(userId => ({
+            taskId,
+            userId,
+            role: 'assignee',
+          })),
+        });
+      }
+
+      // Return updated task
+      return tx.task.findUnique({
+        where: { id: taskId },
+        include: {
+          project: true,
+          assignee: true,
+          assignees: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+    });
+  }
+
+  async addTaskAssignee(taskId: string, userId: string, role: string = 'assignee') {
+    return this.prisma.taskAssignee.create({
+      data: {
+        taskId,
+        userId,
+        role,
+      },
+      include: {
+        user: true,
+      },
+    });
+  }
+
+  async removeTaskAssignee(taskId: string, userId: string) {
+    return this.prisma.taskAssignee.deleteMany({
+      where: {
+        taskId,
+        userId,
+      },
+    });
   }
 
   async remove(id: string) {

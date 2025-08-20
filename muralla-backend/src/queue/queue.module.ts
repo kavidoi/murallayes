@@ -45,11 +45,15 @@ const bullRoot = buildBullRoot();
       : [
           BullModule.registerQueue(
             { name: 'tasks' },
+            { name: 'notifications' },
             { name: 'emails' },
           ),
         ]),
   ],
   providers: [QueueService, TaskProcessor, NotificationProcessor],
-  exports: [QueueService, BullModule],
+  exports: [
+    QueueService,
+    ...(process.env.DISABLE_QUEUES === 'true' ? [] : [BullModule]),
+  ],
 })
 export class QueueModule {}
