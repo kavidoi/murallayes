@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start:dev": "ts-node --transpile-only src/main.ts",
-    "build": "tsc -p .",
+    "build": "tsc -p . --skipLibCheck",
     "start": "node dist/main.js",
     "start:prod": "pnpm run migrate:deploy && pnpm run start",
     "seed": "ts-node prisma/seed.ts",

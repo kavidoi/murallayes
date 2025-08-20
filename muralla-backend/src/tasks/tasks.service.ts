@@ -196,7 +196,7 @@ export class TasksService {
     });
   }
 
-  async update(id: string, data: Prisma.TaskUpdateInput) {
+  async update(id: string, data: any) {
     // First check if the task exists and is not deleted
     const existingTask = await this.prisma.task.findFirst({
       where: {
@@ -211,14 +211,42 @@ export class TasksService {
       throw new Error('Task not found or has been deleted');
     }
 
+    // Convert plain data to proper Prisma update input
+    const updateData: Prisma.TaskUpdateInput = {};
+    
+    // Handle basic fields
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.priority !== undefined) updateData.priority = data.priority;
+    if (data.dueDate !== undefined) {
+      updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    }
+    if (data.dueTime !== undefined) updateData.dueTime = data.dueTime;
+    
+    // Handle project relation (required field)
+    if (data.projectId !== undefined && data.projectId) {
+      updateData.project = { connect: { id: data.projectId } };
+    }
+    
+    // Handle assignee relation
+    if (data.assigneeId !== undefined) {
+      updateData.assignee = data.assigneeId
+        ? { connect: { id: data.assigneeId } }
+        : { disconnect: true };
+    }
+
     const task = await this.prisma.task.update({ 
       where: { id }, 
-      data, 
+      data: updateData, 
       include: { 
         project: true, 
-        assignee: true, 
-
-
+        assignee: true,
+        assignees: {
+          include: {
+            user: true
+          }
+        }
       } 
     });
 
