@@ -62,6 +62,28 @@ export class TasksController {
     return this.tasksService.reorderSubtasks(parentId, body.subtaskIds);
   }
 
+  // Reorder top-level tasks
+  @Patch('reorder')
+  reorderTasks(@Body() body: { taskIds: string[] }) {
+    return this.tasksService.reorderTasks(body.taskIds);
+  }
+
+  // Manage task assignees
+  @Patch(':id/assignees')
+  updateTaskAssignees(@Param('id') taskId: string, @Body() body: { userIds: string[] }) {
+    return this.tasksService.updateTaskAssignees(taskId, body.userIds);
+  }
+
+  @Post(':id/assignees')
+  addTaskAssignee(@Param('id') taskId: string, @Body() body: { userId: string; role?: string }) {
+    return this.tasksService.addTaskAssignee(taskId, body.userId, body.role || 'assignee');
+  }
+
+  @Delete(':id/assignees/:userId')
+  removeTaskAssignee(@Param('id') taskId: string, @Param('userId') userId: string) {
+    return this.tasksService.removeTaskAssignee(taskId, userId);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);

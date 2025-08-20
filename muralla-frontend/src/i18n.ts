@@ -182,13 +182,41 @@ const resources = {
           subnavMore: '3 más…',
           newTask: 'Nueva tarea',
           newSubtask: 'Nueva subtarea',
+          loadingTasks: 'Cargando tareas...',
+          failedToLoadTasks: 'Error al cargar tareas',
+          failedToAddTask: 'Error al crear tarea',
+          noTasksFound: 'No se encontraron tareas',
+          createFirstTask: 'Crea tu primera tarea o ajusta los filtros',
+          searchTasks: 'Buscar tareas...',
+          filters: {
+            noDate: 'Sin fecha',
+            oneAssigned: '1 asignado',
+            allStatus: 'Todos los estados',
+            allAssignees: 'Todos los asignados',
+            unassigned: 'Sin asignar',
+            reset: 'Reiniciar'
+          },
           columns: {
             name: 'Nombre',
-            priority: 'Prioridad',
-            dueDate: 'Fecha',
+            dueDate: 'Fecha de vencimiento',
             status: 'Estado',
-            assignee: 'Responsable',
-            project: 'Proyecto'
+            assignee: 'Asignado',
+            project: 'Proyecto',
+            actions: 'Acciones'
+          },
+          dueDates: {
+            noDate: 'Sin fecha',
+            tonight: 'Esta noche',
+            tomorrow: 'Mañana',
+            nextWeek: 'Próxima semana',
+            twoWeeks: 'En dos semanas',
+            clearDate: 'Quitar fecha'
+          },
+          actions: {
+            addSubtask: 'Agregar subtarea',
+            deleteSubtask: 'Eliminar subtarea',
+            expandSubtasks: 'Expandir subtareas',
+            collapseSubtasks: 'Contraer subtareas'
           }
         },
         placeholders: {
@@ -457,15 +485,43 @@ const resources = {
           subnavTimeline: 'Timeline',
           subnavByStatus: 'By Status',
           subnavMore: '3 more…',
-          newTask: 'New task',
-          newSubtask: 'New sub-item',
+          newTask: 'New Task',
+          newSubtask: 'New Subtask',
+          loadingTasks: 'Loading tasks...',
+          failedToLoadTasks: 'Failed to load tasks',
+          failedToAddTask: 'Failed to add task',
+          noTasksFound: 'No tasks found',
+          createFirstTask: 'Create your first task or adjust your filters',
+          searchTasks: 'Search tasks...',
+          filters: {
+            noDate: 'No date',
+            oneAssigned: '1 assigned',
+            allStatus: 'All Status',
+            allAssignees: 'All Assignees',
+            unassigned: 'Unassigned',
+            reset: 'Reset'
+          },
           columns: {
             name: 'Name',
-            priority: 'Priority',
             dueDate: 'Due Date',
             status: 'Status',
             assignee: 'Assignee',
-            project: 'Project'
+            project: 'Project',
+            actions: 'Actions'
+          },
+          dueDates: {
+            noDate: 'No date',
+            tonight: 'Tonight',
+            tomorrow: 'Tomorrow',
+            nextWeek: 'Next Week',
+            twoWeeks: 'Two Weeks',
+            clearDate: 'Clear date'
+          },
+          actions: {
+            addSubtask: 'Add subtask',
+            deleteSubtask: 'Delete subtask',
+            expandSubtasks: 'Expand subtasks',
+            collapseSubtasks: 'Collapse subtasks'
           }
         },
         projectsOverview: { title: 'Projects', description: 'Create and manage larger projects with tasks and budgets' },

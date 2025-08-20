@@ -80,6 +80,12 @@ model Task {
   comments    Comment[]
 
   @@map("tasks")
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([parentTaskId])
+  @@index([orderIndex])
+  @@index([status])
+  @@index([dueDate])
 }
 
 model TaskAssignee {

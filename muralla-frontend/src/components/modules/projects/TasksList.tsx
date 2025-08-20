@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DndContext } from '@dnd-kit/core'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { tasksService, type Task as APITask } from '../../../services/tasksService'
 import { usersService, type User as APIUser } from '../../../services/usersService'
@@ -53,25 +53,6 @@ const getColorForUser = (index: number): string => {
   return colors[index % colors.length];
 };
 
-// Convert API Task (subtask payload) to local Subtask
-const convertAPISubtaskToSubtask = (st: APITask, indexFallback: number): Subtask => {
-  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
-  const subAssigneeIds = (st.assignees && st.assignees.length > 0)
-    ? st.assignees.map(a => a.userId)
-    : (st.assigneeId ? [st.assigneeId] : [])
-  const subDue = toYMD(st.dueDate)
-  return {
-    id: st.id,
-    name: st.title,
-    status: convertAPIStatusToStatus(st.status),
-    inheritsAssignee: subAssigneeIds.length === 0,
-    inheritsDueDate: !subDue,
-    assigneeIds: subAssigneeIds,
-    dueDate: subDue,
-    order: typeof (st as any).orderIndex === 'number' ? (st as any).orderIndex : indexFallback,
-  }
-}
-
 const getInitials = (firstName: string, lastName: string): string => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
@@ -83,93 +64,216 @@ const convertAPIUserToUser = (apiUser: APIUser, index: number): User => ({
   color: getColorForUser(index),
 });
 
-const convertAPIStatusToStatus = (apiStatus: APIStatus): Status => {
-  switch (apiStatus) {
-    case 'PENDING':
-      return 'New';
-    case 'IN_PROGRESS':
-      return 'In Progress';
-    case 'DONE':
-      return 'Completed';
-    default:
-      return 'New';
-  }
+const convertAPIStatusToStatus = (apiStatus: APIStatus, dueDate?: string): Status => {
+  if (apiStatus === 'DONE') return 'Completed';
+  if (dueDate && new Date(dueDate) < new Date() && apiStatus !== 'DONE' as APIStatus) return 'Overdue';
+  if (apiStatus === 'IN_PROGRESS') return 'In Progress';
+  return 'New';
 };
 
 const convertStatusToAPIStatus = (status: Status): APIStatus => {
   switch (status) {
-    case 'New':
-      return 'PENDING';
     case 'In Progress':
       return 'IN_PROGRESS';
     case 'Completed':
       return 'DONE';
+    case 'New':
     case 'Overdue':
-      return 'IN_PROGRESS'; // Overdue tasks are still in progress
     default:
       return 'PENDING';
   }
 };
 
-const convertAPITaskToTask = (apiTask: APITask, fallbackOrder: number, project?: APIProject): Task => {
-  const assigneeIds = (apiTask.assignees && apiTask.assignees.length > 0)
+// Convert API Task to local Task
+const convertAPITaskToTask = (apiTask: APITask, _users: User[], projects: APIProject[]): Task => {
+  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+  const taskAssigneeIds = (apiTask.assignees && apiTask.assignees.length > 0)
     ? apiTask.assignees.map(a => a.userId)
     : (apiTask.assigneeId ? [apiTask.assigneeId] : [])
-
-  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
-
-  const subtasks: Subtask[] = (apiTask.subtasks ?? []).map((st, idx) => {
-    const subAssigneeIds = (st.assignees && st.assignees.length > 0)
-      ? st.assignees.map(a => a.userId)
-      : (st.assigneeId ? [st.assigneeId] : [])
-    const subDue = toYMD(st.dueDate)
-    return {
-      id: st.id,
-      name: st.title,
-      status: convertAPIStatusToStatus(st.status),
-      inheritsAssignee: subAssigneeIds.length === 0,
-      inheritsDueDate: !subDue,
-      assigneeIds: subAssigneeIds,
-      dueDate: subDue,
-      order: typeof (st as any).orderIndex === 'number' ? (st as any).orderIndex : idx,
-    }
-  })
-
+  const taskDue = toYMD(apiTask.dueDate)
+  const project = projects.find(p => p.id === apiTask.projectId)
+  
   return {
     id: apiTask.id,
     name: apiTask.title,
-    status: convertAPIStatusToStatus(apiTask.status),
-    assigneeIds,
-    dueDate: toYMD(apiTask.dueDate),
+    status: convertAPIStatusToStatus(apiTask.status, taskDue || undefined),
+    assigneeIds: taskAssigneeIds,
+    dueDate: taskDue,
     expanded: false,
-    subtasks,
-    order: typeof apiTask.orderIndex === 'number' ? apiTask.orderIndex : fallbackOrder,
-    projectId: apiTask.projectId ?? project?.id,
-    projectName: apiTask.project?.name ?? project?.name,
+    subtasks: (apiTask.subtasks || []).map((st, idx) => {
+      const subAssigneeIds = (st.assignees && st.assignees.length > 0)
+        ? st.assignees.map(a => a.userId)
+        : (st.assigneeId ? [st.assigneeId] : [])
+      const subDue = toYMD(st.dueDate)
+      return {
+        id: st.id,
+        name: st.title,
+        status: convertAPIStatusToStatus(st.status, subDue || undefined),
+        inheritsAssignee: subAssigneeIds.length === 0,
+        inheritsDueDate: !subDue,
+        assigneeIds: subAssigneeIds,
+        dueDate: subDue,
+        order: st.orderIndex ?? idx,
+      }
+    }).sort((a, b) => a.order - b.order),
+    order: apiTask.orderIndex ?? 0,
+    projectId: apiTask.projectId,
+    projectName: project?.name || 'Unknown Project',
   }
+}
+
+// ——— Components ———
+
+// User Avatar Component
+const UserAvatar: React.FC<{ user: User; size?: 'sm' | 'md' }> = ({ user, size = 'md' }) => {
+  const sizeClasses = size === 'sm' ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-sm';
+  return (
+    <div 
+      className={`${sizeClasses} ${user.color} rounded-full flex items-center justify-center text-white font-medium shadow-sm`}
+      title={user.name}
+    >
+      {user.initials}
+    </div>
+  );
 };
 
-// ——— UI helpers ———
-const statusPillClasses: Record<Status, string> = {
-  'New': 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100',
-  'In Progress': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  'Completed': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  'Overdue': 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
-}
-
-const statusDotClasses: Record<Status, string> = {
-  'New': 'bg-neutral-400 dark:bg-neutral-300',
-  'In Progress': 'bg-amber-500',
-  'Completed': 'bg-emerald-500',
-  'Overdue': 'bg-rose-500',
-}
-
-function formatDate(date?: string | null, t?: (k: string) => string) {
-  if (!date) return t ? t('common.noDate') : 'No date'
-  const d = new Date(date)
-  if (isNaN(d.getTime())) return t ? t('common.noDate') : 'No date'
+// Multi-assignee selector
+const AssigneeSelector: React.FC<{
+  selectedUserIds: string[]
+  users: User[]
+  onSelectionChange: (userIds: string[]) => void
+  disabled?: boolean
+}> = ({ selectedUserIds, users, onSelectionChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedUsers = users.filter(u => selectedUserIds.includes(u.id))
   
-  // Check if it matches a preset
+  const toggleUser = (userId: string) => {
+    if (selectedUserIds.includes(userId)) {
+      onSelectionChange(selectedUserIds.filter(id => id !== userId))
+    } else {
+      onSelectionChange([...selectedUserIds, userId])
+    }
+  }
+  
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className="flex items-center space-x-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+      >
+        {selectedUsers.length === 0 ? (
+          <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center text-gray-400">
+            <span className="text-xs">+</span>
+          </div>
+        ) : (
+          <div className="flex -space-x-1">
+            {selectedUsers.slice(0, 3).map(user => (
+              <UserAvatar key={user.id} user={user} size="sm" />
+            ))}
+            {selectedUsers.length > 3 && (
+              <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                +{selectedUsers.length - 3}
+              </div>
+            )}
+          </div>
+        )}
+      </button>
+      
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)} 
+          />
+          <div className="absolute right-0 top-8 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto">
+            {users.map(user => (
+              <label key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedUserIds.includes(user.id)}
+                  onChange={() => toggleUser(user.id)}
+                  className="rounded border-gray-300"
+                />
+                <UserAvatar user={user} size="sm" />
+                <span className="text-sm">{user.name}</span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Status selector
+const StatusSelector: React.FC<{
+  status: Status
+  onChange: (status: Status) => void
+  disabled?: boolean
+}> = ({ status, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  
+  const getStatusColor = (s: Status) => {
+    switch (s) {
+      case 'New': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+      case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200'
+      case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200'
+      case 'Overdue': return 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+  
+  const selectableStatuses: Status[] = ['New', 'In Progress', 'Completed']
+  
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} disabled:opacity-50`}
+      >
+        {status}
+      </button>
+      
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)} 
+          />
+          <div className="absolute right-0 top-6 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 min-w-32">
+            {selectableStatuses.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  onChange(s)
+                  setIsOpen(false)
+                }}
+                className={`w-full text-left px-2 py-1 rounded text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 ${getStatusColor(s)}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Due date selector with presets
+const DueDateSelector: React.FC<{
+  dueDate?: string | null
+  onChange: (date: string | null) => void
+  disabled?: boolean
+}> = ({ dueDate, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const { t } = useTranslation()
+  
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(today.getDate() + 1)
@@ -178,936 +282,691 @@ function formatDate(date?: string | null, t?: (k: string) => string) {
   const twoWeeks = new Date(today)
   twoWeeks.setDate(today.getDate() + 14)
   
-  const dateStr = date
-  const todayStr = today.toISOString().split('T')[0]
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
-  const nextWeekStr = nextWeek.toISOString().split('T')[0]
-  const twoWeeksStr = twoWeeks.toISOString().split('T')[0]
+  const presets = [
+    { label: t('pages.tasks.dueDates.tonight'), value: today.toISOString().slice(0, 10) },
+    { label: t('pages.tasks.dueDates.tomorrow'), value: tomorrow.toISOString().slice(0, 10) },
+    { label: t('pages.tasks.dueDates.nextWeek'), value: nextWeek.toISOString().slice(0, 10) },
+    { label: t('pages.tasks.dueDates.twoWeeks'), value: twoWeeks.toISOString().slice(0, 10) },
+  ]
   
-  if (dateStr === todayStr) return 'Tonight'
-  if (dateStr === tomorrowStr) return 'Tomorrow'
-  if (dateStr === nextWeekStr) return 'Next Week'
-  if (dateStr === twoWeeksStr) return 'Two Weeks'
-  
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
-}
-
-function getDueTone(date?: string | null, isCompleted?: boolean) {
-  if (!date) return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100'
-  if (isCompleted) return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100'
-  const today = new Date()
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const d = new Date(date)
-  const diffDays = Math.ceil((d.getTime() - startOfToday.getTime()) / (1000*60*60*24))
-  if (diffDays < 0) return 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
-  if (diffDays <= 7) return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-  return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-100'
-}
-
-// ——— Derived status helpers ———
-function isDateOverdue(date?: string | null) {
-  if (!date) return false
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const d = new Date(date)
-  return !isNaN(d.getTime()) && d.getTime() < startOfToday.getTime()
-}
-
-function displayStatusFrom(status: Status, dueDate?: string | null): Status {
-  if (status === 'Completed') return status
-  return isDateOverdue(dueDate) ? 'Overdue' : status
-}
-
-function Avatar({ user, size = 28 }: { user?: User; size?: number }) {
-  const style: React.CSSProperties = { width: size, height: size }
-  if (!user) return <div style={style} className="rounded-full bg-neutral-200 dark:bg-neutral-700" />
-  return (
-    <div style={style} className={`rounded-full ${user.color} text-white flex items-center justify-center text-[10px] font-semibold`}>
-      {user.initials}
-    </div>
-  )
-}
-
-// Advanced date presets
-type DatePreset = 'tonight' | 'tomorrow' | 'next-week' | 'two-weeks' | 'custom'
-
-const getDateFromPreset = (preset: DatePreset): string | null => {
-  const now = new Date()
-  switch (preset) {
-    case 'tonight':
-      return now.toISOString().split('T')[0]
-    case 'tomorrow':
-      const tomorrow = new Date(now)
-      tomorrow.setDate(now.getDate() + 1)
-      return tomorrow.toISOString().split('T')[0]
-    case 'next-week':
-      const nextWeek = new Date(now)
-      nextWeek.setDate(now.getDate() + 7)
-      return nextWeek.toISOString().split('T')[0]
-    case 'two-weeks':
-      const twoWeeks = new Date(now)
-      twoWeeks.setDate(now.getDate() + 14)
-      return twoWeeks.toISOString().split('T')[0]
-    default:
-      return null
-  }
-}
-
-const getPresetLabel = (preset: DatePreset): string => {
-  switch (preset) {
-    case 'tonight': return 'Tonight'
-    case 'tomorrow': return 'Tomorrow'
-    case 'next-week': return 'Next Week'
-    case 'two-weeks': return 'Two Weeks'
-    case 'custom': return 'Custom Date'
-    default: return 'Custom Date'
-  }
-}
-
-function MultiAssigneeSelect({ users, values, onChange, disabled, unassignedLabel }: {
-  users: User[]
-  values: string[]
-  onChange: (ids: string[]) => void
-  disabled?: boolean
-  unassignedLabel: string
-}) {
-  const [isOpen, setIsOpen] = React.useState(false)
-  
-  const toggleUser = (userId: string) => {
-    if (values.includes(userId)) {
-      onChange(values.filter(id => id !== userId))
-    } else {
-      onChange([...values, userId])
-    }
+  const getDueDateColor = () => {
+    if (!dueDate) return 'text-gray-400'
+    const due = new Date(dueDate)
+    const now = new Date()
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) return 'text-red-600' // Overdue
+    if (diffDays <= 1) return 'text-amber-600' // Due today/tomorrow
+    return 'text-gray-700 dark:text-gray-300'
   }
   
-  const selectedUsers = users.filter(u => values.includes(u.id))
+  const formatDueDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return t('pages.tasks.dueDates.noDate')
+    const date = new Date(dateStr)
+    return date.toLocaleDateString()
+  }
   
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative">
       <button
-        className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
+        className={`px-2 py-1 rounded text-xs ${getDueDateColor()} hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50`}
       >
-        <div className="flex -space-x-1">
-          {selectedUsers.length === 0 ? (
-            <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
-          ) : (
-            selectedUsers.slice(0, 3).map(user => (
-              <Avatar key={user.id} user={user} size={24} />
-            ))
-          )}
-          {selectedUsers.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
-              +{selectedUsers.length - 3}
-            </div>
-          )}
-        </div>
-        <span className="text-sm text-neutral-700 dark:text-neutral-200 flex-1">
-          {selectedUsers.length === 0 ? unassignedLabel : `${selectedUsers.length} assigned`}
-        </span>
-        <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {formatDueDate(dueDate)}
       </button>
       
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg z-50">
-          <div className="p-2 space-y-1">
-            {users.map(user => (
-              <label key={user.id} className="flex items-center gap-2 p-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={values.includes(user.id)}
-                  onChange={() => toggleUser(user.id)}
-                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                />
-                <Avatar user={user} size={20} />
-                <span className="text-sm">{user.name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AdvancedDatePicker({ value, onChange, onBlur }: {
-  value: string | null
-  onChange: (date: string | null) => void
-  onBlur: () => void
-}) {
-  const [selectedPreset, setSelectedPreset] = React.useState<DatePreset>('custom')
-  const [customDate, setCustomDate] = React.useState(value || '')
-  
-  const presets: DatePreset[] = ['tonight', 'tomorrow', 'next-week', 'two-weeks', 'custom']
-  
-  const handlePresetChange = (preset: DatePreset) => {
-    setSelectedPreset(preset)
-    if (preset !== 'custom') {
-      const date = getDateFromPreset(preset)
-      onChange(date)
-      onBlur()
-    }
-  }
-  
-  const handleCustomDateChange = (date: string) => {
-    setCustomDate(date)
-    onChange(date || null)
-  }
-  
-  return (
-    <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg p-3 min-w-48">
-      <div className="space-y-2">
-        {presets.map(preset => (
-          <button
-            key={preset}
-            className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 ${
-              selectedPreset === preset ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : ''
-            }`}
-            onClick={() => handlePresetChange(preset)}
-          >
-            {getPresetLabel(preset)}
-          </button>
-        ))}
-      </div>
-      {selectedPreset === 'custom' && (
-        <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-          <input
-            type="date"
-            className="input py-1 text-sm w-full"
-            value={customDate}
-            onChange={(e) => handleCustomDateChange(e.target.value)}
-            onBlur={onBlur}
-            autoFocus
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)} 
           />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StatusSelect({ value, onChange, t }:{ value: Status; onChange: (s: Status)=>void; t: (k: string) => string }){
-  // Overdue is auto-derived from due date; do not allow selecting it directly
-  const options: Status[] = ['New','In Progress','Completed']
-  const coercedValue = value === 'Overdue' ? 'In Progress' : value
-  return (
-    <select className="input py-1 pr-8 text-sm" value={coercedValue} onChange={(e)=>onChange(e.target.value as Status)}>
-      {options.map(o=> <option key={o} value={o}>{t(`status.${o}`)}</option>)}
-    </select>
-  )
-}
-
-export default function TasksList(){
-  const { t: tr } = useTranslation()
-  const [users, setUsers] = useState<User[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [defaultProject, setDefaultProject] = useState<APIProject | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  // Load data from API
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Fetch users, tasks, and default project in parallel
-        const [apiUsers, apiTasks, project] = await Promise.all([
-          usersService.getActiveUsers(),
-          tasksService.getAllTasks(),
-          projectsService.getOrCreateDefaultProject()
-        ])
-        
-        // Convert API data to component format
-        const convertedUsers = apiUsers.map((user, index) => convertAPIUserToUser(user, index))
-        const convertedTasks = apiTasks.map((task, index) => convertAPITaskToTask(task, index, project))
-        
-        setUsers(convertedUsers)
-        setTasks(convertedTasks)
-        setDefaultProject(project)
-      } catch (err) {
-        console.error('Error loading data:', err)
-        setError('Failed to load tasks and users. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [])
-
-  // inline-edit states for pill/chip UX
-  const [editingStatus, setEditingStatus] = useState<string | null>(null)
-  const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
-  const [editingDue, setEditingDue] = useState<string | null>(null)
-  
-  // Close dropdowns when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = () => {
-      setEditingStatus(null)
-      setEditingAssignee(null)
-      setEditingDue(null)
-    }
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
-  }, [])
-
-  // Filters
-  type FilterState = { noDate: boolean; oneAssigned: boolean; status: 'All' | Status; assignee: 'All' | 'Unassigned' | string; search: string }
-  const [filters, setFilters] = useState<FilterState>({ noDate: false, oneAssigned: false, status: 'All', assignee: 'All', search: '' })
-
-  const filteredTasks = useMemo(() => {
-    let list = tasks.slice()
-    if (filters.noDate) list = list.filter(t => !t.dueDate)
-    if (filters.oneAssigned) list = list.filter(t => t.assigneeIds.length === 1)
-    if (filters.status !== 'All') list = list.filter(t => displayStatusFrom(t.status, t.dueDate) === filters.status)
-    if (filters.assignee === 'Unassigned') list = list.filter(t => t.assigneeIds.length === 0)
-    else if (filters.assignee !== 'All') list = list.filter(t => t.assigneeIds.includes(filters.assignee))
-    if (filters.search.trim()) {
-      const q = filters.search.trim().toLowerCase()
-      list = list.filter(t => t.name.toLowerCase().includes(q))
-    }
-    return list
-  }, [tasks, filters])
-
-  const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
-
-  const addTask = async () => {
-    try {
-      if (!defaultProject) {
-        setError('No project available. Please try refreshing the page.')
-        return
-      }
-      
-      const newTaskData = {
-        title: tr('pages.tasks.newTask'),
-        description: '',
-        status: 'PENDING' as APIStatus,
-        projectId: defaultProject.id,
-      }
-      
-      const apiTask = await tasksService.createTask(newTaskData)
-      const newTask = convertAPITaskToTask(apiTask, tasks.length, defaultProject)
-      newTask.expanded = true
-      
-      setTasks(prev => [newTask, ...prev])
-    } catch (err) {
-      console.error('Error adding task:', err)
-      setError('Failed to create task. Please try again.')
-    }
-  }
-
-  const addSubtask = async (taskId: string) => {
-    try {
-      const parent = tasks.find(t => t.id === taskId)
-      const projId = parent?.projectId ?? defaultProject?.id
-      if (!projId) {
-        setError('No project available. Please try refreshing the page.')
-        return
-      }
-      const apiSub = await tasksService.createSubtask(taskId, {
-        title: tr('pages.tasks.newSubtask'),
-        status: 'PENDING' as APIStatus,
-        projectId: projId,
-      })
-      const newSub = convertAPISubtaskToSubtask(apiSub, parent ? parent.subtasks.length : 0)
-      setTasks(prev => prev.map(t => t.id===taskId ? {
-        ...t,
-        expanded: true,
-        subtasks: [...t.subtasks, newSub]
-      } : t))
-    } catch (err) {
-      console.error('Error adding subtask:', err)
-      setError('Failed to create subtask. Please try again.')
-    }
-  }
-
-  const updateTask = async (taskId: string, patch: Partial<Task>) => {
-    // Optimistically update the UI
-    setTasks(prev => prev.map(t => t.id===taskId ? { ...t, ...patch } : t))
-    
-    try {
-      const promises: Promise<unknown>[] = []
-      const apiPatch: Partial<{ title: string; status: APIStatus }> = {}
-      if (patch.name) apiPatch.title = patch.name
-      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-
-      if (Object.keys(apiPatch).length > 0) {
-        promises.push(tasksService.updateTask(taskId, apiPatch))
-      }
-      if (patch.assigneeIds !== undefined) {
-        promises.push(tasksService.updateTaskAssignees(taskId, patch.assigneeIds))
-      }
-
-      await Promise.all(promises)
-    } catch (err) {
-      console.error('Error updating task:', err)
-      setError('Failed to update task. Please try again.')
-      // TODO: Consider reverting optimistic update if necessary
-    }
-  }
-
-  const updateSubtask = async (taskId: string, subId: string, patch: Partial<Subtask>) => {
-    // Optimistic update
-    setTasks(prev => prev.map(t => t.id===taskId ? ({
-      ...t,
-      subtasks: t.subtasks.map(s => s.id===subId ? { ...s, ...patch } : s)
-    }) : t))
-    try {
-      const promises: Promise<unknown>[] = []
-      const apiPatch: Partial<{ title: string; status: APIStatus }> = {}
-      if (patch.name) apiPatch.title = patch.name
-      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-      if (Object.keys(apiPatch).length > 0) {
-        promises.push(tasksService.updateSubtask(subId, apiPatch))
-      }
-      if (patch.assigneeIds !== undefined) {
-        promises.push(tasksService.updateTaskAssignees(subId, patch.assigneeIds))
-      }
-      await Promise.all(promises)
-    } catch (err) {
-      console.error('Error updating subtask:', err)
-      setError('Failed to update subtask. Please try again.')
-    }
-  }
-
-  const removeSubtask = async (taskId: string, subId: string) => {
-    // Optimistic remove
-    setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
-    try {
-      await tasksService.deleteTask(subId)
-    } catch (err) {
-      console.error('Error removing subtask:', err)
-      setError('Failed to remove subtask. Please try again.')
-    }
-  }
-
-  const sectionHeader = (name: string, newLabel: string) => (
-    <div className="flex items-center justify-between px-2 py-3">
-      <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{name}</h2>
-      <button className="btn-outline text-xs" onClick={addTask}>
-        <span className="mr-1">＋</span> {newLabel}
-      </button>
-    </div>
-  )
-
-  // ——— DnD helpers ———
-  const taskItemIds = useMemo(() => filteredTasks
-    .slice()
-    .sort((a,b)=>a.order-b.order)
-    .map(t=>`task-${t.id}`), [filteredTasks])
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const a = String(active.id)
-    const o = String(over.id)
-    if (a.startsWith('task-') && o.startsWith('task-')) {
-      const aid = a.replace('task-', '')
-      const oid = o.replace('task-', '')
-      const ordered = tasks.slice().sort((x,y)=>x.order-y.order)
-      const oldIndex = ordered.findIndex(t=>t.id===aid)
-      const newIndex = ordered.findIndex(t=>t.id===oid)
-      const moved = arrayMove(ordered, oldIndex, newIndex).map((t: Task, i: number)=>({ ...t, order: i }))
-      setTasks(moved)
-      // Persist reorder to backend (optimistic)
-      tasksService.reorderTasks(moved.map((t: Task) => t.id)).catch(err => {
-        console.error('Error reordering tasks:', err)
-      })
-      return
-    }
-    if (a.startsWith('sub-') && o.startsWith('sub-')) {
-      const parse = (id: string) => {
-        const [, tid, sid] = id.split('-')
-        return { tid, sid }
-      }
-      const { tid: ta, sid: sa } = parse(a)
-      const { tid: to, sid: so } = parse(o)
-      if (ta !== to) return // cross-parent moves not supported in v1
-      // Compute new subtask order from current state, update optimistically, then persist
-      const parent = tasks.find(t => t.id === ta)
-      if (!parent) return
-      const orderedSubs = parent.subtasks.slice().sort((x,y)=>x.order-y.order)
-      const oldIndex = orderedSubs.findIndex(s=>s.id===sa)
-      const newIndex = orderedSubs.findIndex(s=>s.id===so)
-      const moved = arrayMove(orderedSubs, oldIndex, newIndex).map((s: Subtask, i: number)=>({ ...s, order: i }))
-      setTasks(prev => prev.map(t => t.id===ta ? ({ ...t, subtasks: moved }) : t))
-      tasksService.reorderSubtasks(ta, moved.map(s => s.id)).catch(err => {
-        console.error('Error reordering subtasks:', err)
-      })
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-          </div>
-        </div>
-        <div className="card p-6">
-          <div className="flex items-center justify-center space-x-2">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-neutral-600 dark:text-neutral-400">Loading tasks...</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-          </div>
-        </div>
-        <div className="card p-6">
-          <div className="text-center space-y-4">
-            <div className="text-red-600 dark:text-red-400">
-              <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-lg font-medium">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-            <button 
-              className="btn-primary"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{tr('pages.tasks.title')}</h1>
-          <p className="text-neutral-500 dark:text-neutral-400">{tr('pages.tasks.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-outline" onClick={addTask}>{tr('actions.new')}</button>
-          <button className="btn-primary">{tr('actions.import')}</button>
-        </div>
-      </div>
-
-      <div className="card p-0 overflow-hidden">
-        {sectionHeader(tr('pages.tasks.sectionAll'), tr('pages.tasks.newTask'))}
-        {/* Faux sub-navigation */}
-        <div className="px-3 pb-2 text-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-4">
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium">{tr('pages.tasks.subnavAll')}</button>
-          <span className="text-neutral-400">•</span>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavTimeline')}</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavByStatus')}</button>
-          <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavMore')}</button>
-        </div>
-        {/* Filters */}
-        <div className="px-3 pb-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Filters:</span>
-            <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs transition-colors ${
-                filters.noDate
-                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
-                  : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-              onClick={() => setFilters(prev => ({ ...prev, noDate: !prev.noDate }))}
-            >
-              {tr('common.noDate')}
-              {filters.noDate && (
-                <svg className="w-3 h-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </button>
-            <button
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs transition-colors ${
-                filters.oneAssigned
-                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
-                  : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-              onClick={() => setFilters(prev => ({ ...prev, oneAssigned: !prev.oneAssigned }))}
-            >
-              1 assigned
-              {filters.oneAssigned && (
-                <svg className="w-3 h-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </button>
-            {/* Status filter */}
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-neutral-500 dark:text-neutral-400">Status:</span>
-              <select
-                className="input py-1 text-xs"
-                value={filters.status}
-                onChange={e => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
+          <div className="absolute right-0 top-6 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 min-w-48">
+            <div className="space-y-1 mb-2">
+              {presets.map(preset => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    onChange(preset.value)
+                    setIsOpen(false)
+                  }}
+                  className="w-full text-left px-2 py-1 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(null)
+                  setIsOpen(false)
+                }}
+                className="w-full text-left px-2 py-1 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600"
               >
-                {(['All','New','In Progress','Completed','Overdue'] as const).map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                {t('pages.tasks.dueDates.clearDate')}
+              </button>
             </div>
-            {/* Assignee filter */}
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-neutral-500 dark:text-neutral-400">Assignee:</span>
-              <select
-                className="input py-1 text-xs"
-                value={filters.assignee}
-                onChange={e => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
-              >
-                <option value="All">All</option>
-                <option value="Unassigned">Unassigned</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-            {/* Search */}
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-neutral-500 dark:text-neutral-400">Search:</span>
+            <div className="border-t border-gray-200 dark:border-gray-600 pt-2">
               <input
-                type="text"
-                className="input py-1 text-xs"
-                placeholder="Search tasks..."
-                value={filters.search}
-                onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                type="date"
+                value={dueDate || ''}
+                onChange={(e) => {
+                  onChange(e.target.value || null)
+                  setIsOpen(false)
+                }}
+                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700"
               />
             </div>
-            {(filters.noDate || filters.oneAssigned || filters.status !== 'All' || filters.assignee !== 'All' || filters.search.trim()) && (
-              <div className="ml-2 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                <span>
-                  Showing {filteredTasks.length} of {tasks.length}
-                </span>
-                <button
-                  className="underline hover:text-neutral-700 dark:hover:text-neutral-300"
-                  onClick={() => setFilters({ noDate: false, oneAssigned: false, status: 'All', assignee: 'All', search: '' })}
-                >
-                  Reset
-                </button>
-              </div>
-            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Inline text editor
+const InlineTextEditor: React.FC<{
+  value: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+  className?: string
+  disabled?: boolean
+}> = ({ value, onChange, onBlur, placeholder, className, disabled }) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  
+  const handleStart = () => {
+    if (!disabled) {
+      setIsEditing(true)
+      setEditValue(value)
+    }
+  }
+  
+  const handleSave = () => {
+    onChange(editValue.trim() || value)
+    setIsEditing(false)
+    onBlur?.()
+  }
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      setEditValue(value)
+      setIsEditing(false)
+    }
+  }
+  
+  if (isEditing) {
+    return (
+      <input
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className={`bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 ${className}`}
+        autoFocus
+      />
+    )
+  }
+  
+  return (
+    <span
+      onClick={handleStart}
+      className={`cursor-text hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5 ${disabled ? 'cursor-default' : ''} ${className}`}
+    >
+      {value || placeholder}
+    </span>
+  )
+}
+
+// Sortable task row
+const SortableTaskRow: React.FC<{
+  task: Task
+  users: User[]
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
+  onSubtaskUpdate: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => void
+  onAddSubtask: (taskId: string) => void
+  onDeleteSubtask: (subtaskId: string) => void
+  isSubtask?: boolean
+}> = ({ task, users, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, isSubtask = false }) => {
+  const { t } = useTranslation()
+  
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+  
+  const toggleExpanded = () => {
+    if (task.subtasks.length > 0) {
+      onTaskUpdate(task.id, { expanded: !task.expanded })
+    }
+  }
+  
+  return (
+    <div ref={setNodeRef} style={style} className={isSubtask ? 'ml-6' : ''}>
+      <div className={`grid grid-cols-12 gap-4 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-900'}`}>
+        {/* Drag handle + Expand/Collapse + Name */}
+        <div className="col-span-4 flex items-center space-x-2">
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+            ⋮⋮
+          </div>
+          
+          {!isSubtask && (
+            <button
+              onClick={toggleExpanded}
+              className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+            >
+              <svg className={`w-4 h-4 transition-transform ${task.expanded ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+          
+          <div className="flex-1">
+            <InlineTextEditor
+              value={task.name}
+              onChange={(name) => onTaskUpdate(task.id, { name })}
+              placeholder="Task name"
+              className={isSubtask ? 'text-sm text-gray-600 dark:text-gray-400' : 'font-medium'}
+            />
           </div>
         </div>
-        <div className="max-h-[65vh] overflow-auto">
-          {/* Sticky header */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
-            <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              <div className="col-span-4">{tr('pages.tasks.columns.name')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.dueDate')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.status')}</div>
-              <div className="col-span-2">{tr('pages.tasks.columns.assignee')}</div>
-              <div className="col-span-1">{tr('pages.tasks.columns.project')}</div>
-              <div className="col-span-1 text-right"> </div>
-            </div>
-          </div>
-          <DndContext onDragEnd={onDragEnd}>
-          <SortableContext items={taskItemIds} strategy={verticalListSortingStrategy}>
-          <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
-          {filteredTasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
-            <div key={t.id} className="">
-              {/* Parent row */}
-              <SortableTaskRow id={`task-${t.id}`}>
-              {({attributes, listeners}) => (
-              <div className="px-2 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors duration-150">
-                <div className="grid grid-cols-12 gap-2 items-center px-2 py-3">
-                  <div className="col-span-4 flex items-center gap-2">
-                    <button
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                      onClick={()=>updateTask(t.id, { expanded: !t.expanded })}
-                      aria-label={t.expanded ? tr('tooltips.collapse') : tr('tooltips.expand')}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-4 h-4 transition-transform ${t.expanded ? 'rotate-90' : ''}`}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-grab active:cursor-grabbing"
-                      aria-label={tr('tooltips.dragTask')}
-                      {...attributes}
-                      {...listeners}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
-                        <path d="M10 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 18a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </button>
-                    <input
-                      className="input py-1 text-sm flex-1 truncate font-medium"
-                      value={t.name}
-                      onChange={(e)=>updateTask(t.id,{ name: e.target.value })}
-                      title={t.name}
-                      placeholder="Task name..."
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    {editingDue === `task:${t.id}` ? (
-                      <div className="relative" onClick={(e) => e.stopPropagation()}>
-                        <AdvancedDatePicker
-                          value={t.dueDate ?? null}
-                          onChange={(date) => updateTask(t.id, { dueDate: date })}
-                          onBlur={() => setEditingDue(null)}
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
-                        onClick={(e)=>{ e.stopPropagation(); setEditingDue(`task:${t.id}`) }}
-                      >
-                        {formatDate(t.dueDate, tr)}
-                      </button>
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    {editingStatus === `task:${t.id}` ? (
-                      <StatusSelect value={t.status} onChange={(s)=>{ updateTask(t.id,{ status: s }); setEditingStatus(null) }} t={tr} />
-                    ) : (
-                      (() => {
-                        const ds = displayStatusFrom(t.status, t.dueDate)
-                        const isAutoOverdue = ds === 'Overdue' && t.status !== 'Completed'
-                        return (
-                          <button
-                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
-                            onClick={() => { if(!isAutoOverdue) setEditingStatus(`task:${t.id}`) }}
-                            title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
-                            {tr(`status.${ds}`)}
-                          </button>
-                        )
-                      })()
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    {editingAssignee === `task:${t.id}` ? (
-                      <MultiAssigneeSelect
-                        users={users}
-                        values={t.assigneeIds}
-                        onChange={(ids) => { updateTask(t.id, { assigneeIds: ids }); setEditingAssignee(null) }}
-                        unassignedLabel={tr('common.unassigned')}
-                      />
-                    ) : (
-                      <button
-                        className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-                        onClick={(e)=>{ e.stopPropagation(); setEditingAssignee(`task:${t.id}`) }}
-                      >
-                        <div className="flex -space-x-1">
-                          {t.assigneeIds.length === 0 ? (
-                            <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
-                          ) : (
-                            t.assigneeIds.slice(0, 3).map(id => (
-                              <Avatar key={id} user={userById[id]} size={24} />
-                            ))
-                          )}
-                          {t.assigneeIds.length > 3 && (
-                            <div className="w-6 h-6 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
-                              +{t.assigneeIds.length - 3}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                          {t.assigneeIds.length === 0 ? tr('common.unassigned') : `${t.assigneeIds.length} assigned`}
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="col-span-1">
-                    {t.projectName && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        {t.projectName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="col-span-1 text-right">
-                    <button className="btn-outline text-xs hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" onClick={()=>addSubtask(t.id)}>{tr('actions.addSubtask')}</button>
-                  </div>
-                </div>
-              </div>
-              )}
-              </SortableTaskRow>
-
-              {/* Subtasks */}
-              {t.expanded && (
-                <div className="bg-neutral-50 dark:bg-neutral-900/20">
-                  <SortableContext items={t.subtasks.slice().sort((a,b)=>a.order-b.order).map(s=>`sub-${t.id}-${s.id}`)} strategy={verticalListSortingStrategy}>
-                  {t.subtasks.slice().sort((a,b)=>a.order-b.order).map((s) => {
-                    const effectiveAssigneeIds = s.inheritsAssignee ? t.assigneeIds : s.assigneeIds
-                    const effectiveDueDate = s.inheritsDueDate ? (t.dueDate ?? null) : (s.dueDate ?? null)
-                    return (
-                      <SortableSubtaskRow key={s.id} id={`sub-${t.id}-${s.id}`}>
-                      {({attributes, listeners}) => (
-                      <div className="px-2 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/30 transition-colors duration-150">
-                        <div className="grid grid-cols-12 gap-2 items-center px-2 py-2">
-                          <div className="col-span-4 flex items-center gap-2 pl-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
-                              <path fillRule="evenodd" d="M19.5 4.5a.75.75 0 01.75.75v13.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75zM4.5 12a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H5.25A.75.75 0 014.5 12z" clipRule="evenodd" />
-                            </svg>
-                            <button
-                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-grab active:cursor-grabbing"
-                              aria-label={tr('tooltips.dragSubtask')}
-                              {...attributes}
-                              {...listeners}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-neutral-400">
-                                <path d="M10 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zM10 18a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
-                              </svg>
-                            </button>
-                            <input
-                              className="input py-1 text-sm flex-1"
-                              value={s.name}
-                              onChange={(e)=>updateSubtask(t.id, s.id, { name: e.target.value })}
-                              placeholder="Subtask name..."
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <div className="flex items-center">
-                              {editingDue === `sub:${t.id}:${s.id}` && !s.inheritsDueDate ? (
-                                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                  <AdvancedDatePicker
-                                    value={effectiveDueDate}
-                                    onChange={(date) => updateSubtask(t.id, s.id, { dueDate: date, inheritsDueDate: false })}
-                                    onBlur={() => setEditingDue(null)}
-                                  />
-                                </div>
-                              ) : (
-                              <button
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60' : ''}`}
-                                  onClick={(e)=>{
-                                    e.stopPropagation()
-                                    if (s.inheritsDueDate) {
-                                      updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate })
-                                    }
-                                    setEditingDue(`sub:${t.id}:${s.id}`)
-                                  }}
-                                  title={s.inheritsDueDate ? tr('tooltips.customizeDueDate') : tr('tooltips.editDueDate')}
-                                >
-                                  {formatDate(effectiveDueDate, tr)}
-                                </button>
-                              )}
-                            </div>
-                            {/* Toggle hidden by request; click chip to convert to Custom */}
-                          </div>
-                          <div className="col-span-2">
-                            {editingStatus === `sub:${t.id}:${s.id}` ? (
-                              <StatusSelect value={s.status} onChange={(st)=>{ updateSubtask(t.id,s.id,{ status: st }); setEditingStatus(null) }} t={tr} />
-                            ) : (
-                              (() => {
-                                const ds = displayStatusFrom(s.status, effectiveDueDate)
-                                const isAutoOverdue = ds === 'Overdue' && s.status !== 'Completed'
-                                return (
-                                  <button
-                                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusPillClasses[ds]} ${isAutoOverdue? 'cursor-default' : ''}`}
-                                    onClick={() => { if(!isAutoOverdue) setEditingStatus(`sub:${t.id}:${s.id}`) }}
-                                    title={isAutoOverdue ? tr('tooltips.autoOverdue') : tr('tooltips.editStatus')}
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full ${statusDotClasses[ds]}`}></span>
-                                    {tr(`status.${ds}`)}
-                                  </button>
-                                )
-                              })()
-                            )}
-                          </div>
-                          <div className="col-span-2">
-                            <div className="flex items-center gap-2">
-                              {editingAssignee === `sub:${t.id}:${s.id}` && !s.inheritsAssignee ? (
-                                <MultiAssigneeSelect
-                                  users={users}
-                                  values={effectiveAssigneeIds}
-                                  onChange={(ids) => { updateSubtask(t.id, s.id, { assigneeIds: ids, inheritsAssignee: false }); setEditingAssignee(null) }}
-                                  disabled={s.inheritsAssignee}
-                                  unassignedLabel={tr('common.unassigned')}
-                                />
-                              ) : (
-                                <button
-                                  className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60' : ''}`}
-                                  onClick={(e)=>{
-                                    e.stopPropagation()
-                                    if (s.inheritsAssignee) {
-                                      updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeIds: effectiveAssigneeIds })
-                                    }
-                                    setEditingAssignee(`sub:${t.id}:${s.id}`)
-                                  }}
-                                  title={s.inheritsAssignee ? tr('tooltips.customizeAssignee') : tr('tooltips.setAssignee')}
-                                >
-                                  <div className="flex -space-x-1">
-                                    {effectiveAssigneeIds.length === 0 ? (
-                                      <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700" />
-                                    ) : (
-                                      effectiveAssigneeIds.slice(0, 3).map(id => (
-                                        <Avatar key={id} user={userById[id]} size={20} />
-                                      ))
-                                    )}
-                                    {effectiveAssigneeIds.length > 3 && (
-                                      <div className="w-5 h-5 rounded-full bg-neutral-400 text-white flex items-center justify-center text-xs font-semibold">
-                                        +{effectiveAssigneeIds.length - 3}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className="text-sm text-neutral-700 dark:text-neutral-200">
-                                    {effectiveAssigneeIds.length === 0 ? tr('common.unassigned') : `${effectiveAssigneeIds.length} assigned`}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                            {/* Toggle hidden by request; click chip to convert to Custom */}
-                          </div>
-                          <div className="col-span-1"></div>
-                          <div className="col-span-1 text-right">
-                            <button className="text-neutral-500 hover:text-rose-500 text-xs transition-colors" onClick={()=>removeSubtask(t.id, s.id)}>{tr('actions.remove')}</button>
-                          </div>
-                        </div>
-                      </div>
-                      )}
-                      </SortableSubtaskRow>
-                    )
-                  })}
-                  </SortableContext>
-                </div>
-              )}
-            </div>
+        
+        {/* Due Date */}
+        <div className="col-span-2 flex items-center">
+          <DueDateSelector
+            dueDate={task.dueDate}
+            onChange={(dueDate) => onTaskUpdate(task.id, { dueDate })}
+          />
+        </div>
+        
+        {/* Status */}
+        <div className="col-span-2 flex items-center">
+          <StatusSelector
+            status={task.status}
+            onChange={(status) => onTaskUpdate(task.id, { status })}
+          />
+        </div>
+        
+        {/* Assignees */}
+        <div className="col-span-2 flex items-center">
+          <AssigneeSelector
+            selectedUserIds={task.assigneeIds}
+            users={users}
+            onSelectionChange={(assigneeIds) => onTaskUpdate(task.id, { assigneeIds })}
+          />
+        </div>
+        
+        {/* Project */}
+        <div className="col-span-1 flex items-center">
+          <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+            {task.projectName}
+          </span>
+        </div>
+        
+        {/* Actions */}
+        <div className="col-span-1 flex items-center space-x-1">
+          {!isSubtask && (
+            <button
+              onClick={() => onAddSubtask(task.id)}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+              title={t('pages.tasks.actions.addSubtask')}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          )}
+          {isSubtask && (
+            <button
+              onClick={() => onDeleteSubtask(task.id)}
+              className="p-1 text-gray-400 hover:text-red-600 rounded"
+              title={t('pages.tasks.actions.deleteSubtask')}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Subtasks */}
+      {task.expanded && task.subtasks.length > 0 && (
+        <div>
+          {task.subtasks.map(subtask => (
+            <SortableTaskRow
+              key={subtask.id}
+              task={{
+                ...subtask,
+                projectId: task.projectId,
+                projectName: task.projectName,
+                expanded: false,
+                subtasks: []
+              }}
+              users={users}
+              onTaskUpdate={(subtaskId, updates) => {
+                onSubtaskUpdate(task.id, subtaskId, updates as Partial<Subtask>)
+              }}
+              onSubtaskUpdate={onSubtaskUpdate}
+              onAddSubtask={onAddSubtask}
+              onDeleteSubtask={onDeleteSubtask}
+              isSubtask={true}
+            />
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Main TasksList component
+const TasksList: React.FC = () => {
+  const { t } = useTranslation()
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<Status | 'All'>('All')
+  const [assigneeFilter, setAssigneeFilter] = useState<string | 'All' | 'Unassigned'>('All')
+  const [noDateFilter, setNoDateFilter] = useState(false)
+  const [oneAssignedFilter, setOneAssignedFilter] = useState(false)
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+  
+  // Load data
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [tasksData, usersData, projectsData] = await Promise.all([
+        tasksService.getAllTasks(),
+        usersService.getActiveUsers(),
+        projectsService.getAllProjects()
+      ])
+      
+      const mappedUsers = usersData.map(convertAPIUserToUser)
+      const mappedTasks = tasksData.map(task => convertAPITaskToTask(task, mappedUsers, projectsData))
+      
+      setUsers(mappedUsers)
+      setTasks(mappedTasks)
+      setError(null)
+    } catch (err) {
+      console.error('Failed to load tasks:', err)
+      setError('Failed to load tasks')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+  
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+  
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      // Search filter
+      if (searchTerm && !task.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false
+      }
+      
+      // Status filter
+      if (statusFilter !== 'All' && task.status !== statusFilter) {
+        return false
+      }
+      
+      // Assignee filter
+      if (assigneeFilter === 'Unassigned' && task.assigneeIds.length > 0) {
+        return false
+      } else if (assigneeFilter !== 'All' && assigneeFilter !== 'Unassigned') {
+        if (!task.assigneeIds.includes(assigneeFilter)) {
+          return false
+        }
+      }
+      
+      // No date filter
+      if (noDateFilter && task.dueDate) {
+        return false
+      }
+      
+      // One assigned filter
+      if (oneAssignedFilter && task.assigneeIds.length !== 1) {
+        return false
+      }
+      
+      return true
+    }).sort((a, b) => a.order - b.order)
+  }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter])
+  
+  // Task operations
+  const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
+    try {
+      // Optimistic update
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, ...updates } : task
+      ))
+      
+      // API call
+      const apiUpdates: any = {}
+      if ('name' in updates) apiUpdates.title = updates.name
+      if ('status' in updates) apiUpdates.status = convertStatusToAPIStatus(updates.status!)
+      if ('assigneeIds' in updates) {
+        await tasksService.updateTaskAssignees(taskId, updates.assigneeIds!)
+        return // updateTaskAssignees returns the full updated task
+      }
+      if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
+      
+      if (Object.keys(apiUpdates).length > 0) {
+        await tasksService.updateTask(taskId, apiUpdates)
+      }
+    } catch (err) {
+      console.error('Failed to update task:', err)
+      // Revert optimistic update
+      loadData()
+    }
+  }, [loadData])
+  
+  const handleSubtaskUpdate = useCallback(async (parentTaskId: string, subtaskId: string, updates: Partial<Subtask>) => {
+    try {
+      // Optimistic update
+      setTasks(prev => prev.map(task => 
+        task.id === parentTaskId 
+          ? {
+              ...task,
+              subtasks: task.subtasks.map(subtask =>
+                subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
+              )
+            }
+          : task
+      ))
+      
+      // API call
+      const apiUpdates: any = {}
+      if ('name' in updates) apiUpdates.title = updates.name
+      if ('status' in updates) apiUpdates.status = convertStatusToAPIStatus(updates.status!)
+      if ('assigneeIds' in updates) {
+        await tasksService.updateTaskAssignees(subtaskId, updates.assigneeIds!)
+        return
+      }
+      if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
+      
+      if (Object.keys(apiUpdates).length > 0) {
+        await tasksService.updateSubtask(subtaskId, apiUpdates)
+      }
+    } catch (err) {
+      console.error('Failed to update subtask:', err)
+      loadData()
+    }
+  }, [loadData])
+  
+  const handleAddTask = useCallback(async () => {
+    try {
+      const defaultProject = await projectsService.getOrCreateDefaultProject()
+      await tasksService.createTask({
+        title: 'New Task',
+        status: 'PENDING',
+        projectId: defaultProject.id
+      })
+      
+      // Refresh data to get the new task with proper ordering
+      loadData()
+    } catch (err) {
+      console.error('Failed to add task:', err)
+      setError('Failed to add task')
+    }
+  }, [loadData])
+  
+  const handleAddSubtask = useCallback(async (parentTaskId: string) => {
+    try {
+      await tasksService.createSubtask(parentTaskId, {
+        title: 'New Subtask',
+        status: 'PENDING',
+        projectId: '' // Will be inherited from parent
+      })
+      
+      // Refresh data
+      loadData()
+    } catch (err) {
+      console.error('Failed to add subtask:', err)
+    }
+  }, [loadData])
+  
+  const handleDeleteSubtask = useCallback(async (subtaskId: string) => {
+    try {
+      await tasksService.deleteTask(subtaskId)
+      loadData()
+    } catch (err) {
+      console.error('Failed to delete subtask:', err)
+    }
+  }, [loadData])
+  
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (!over || active.id === over.id) return
+    
+    const oldIndex = filteredTasks.findIndex(task => task.id === active.id)
+    const newIndex = filteredTasks.findIndex(task => task.id === over.id)
+    
+    if (oldIndex === -1 || newIndex === -1) return
+    
+    // Optimistic update
+    const newTasks = arrayMove(filteredTasks, oldIndex, newIndex)
+    setTasks(prev => {
+      const otherTasks = prev.filter(t => !filteredTasks.find(ft => ft.id === t.id))
+      return [...otherTasks, ...newTasks]
+    })
+    
+    try {
+      // Update order on backend
+      await tasksService.reorderTasks(newTasks.map(t => t.id))
+    } catch (err) {
+      console.error('Failed to reorder tasks:', err)
+      // Revert on error
+      loadData()
+    }
+  }, [filteredTasks, loadData])
+  
+  const resetFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('All')
+    setAssigneeFilter('All')
+    setNoDateFilter(false)
+    setOneAssignedFilter(false)
+  }
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">{t('pages.tasks.loadingTasks')}</p>
+        </div>
+      </div>
+    )
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={loadData}
+            className="btn-primary"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('pages.tasks.title')}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{t('pages.tasks.subtitle')}</p>
           </div>
-          </SortableContext>
-          </DndContext>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleAddTask}
+              className="btn-primary"
+            >
+              {t('pages.tasks.newTask')}
+            </button>
+            <button
+              className="btn-secondary"
+              disabled
+            >
+              {t('actions.import')}
+            </button>
+          </div>
+        </div>
+        
+        {/* Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Search */}
+            <div className="flex-1 min-w-64">
+              <input
+                type="text"
+                placeholder={t('pages.tasks.searchTasks')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input w-full"
+              />
+            </div>
+            
+            {/* Toggles */}
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={noDateFilter}
+                  onChange={(e) => setNoDateFilter(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">{t('pages.tasks.filters.noDate')}</span>
+              </label>
+              
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={oneAssignedFilter}
+                  onChange={(e) => setOneAssignedFilter(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">{t('pages.tasks.filters.oneAssigned')}</span>
+              </label>
+            </div>
+            
+            {/* Status filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as Status | 'All')}
+              className="input min-w-32"
+            >
+              <option value="All">{t('pages.tasks.filters.allStatus')}</option>
+              <option value="New">{t('status.New')}</option>
+              <option value="In Progress">{t('status.In Progress')}</option>
+              <option value="Completed">{t('status.Completed')}</option>
+              <option value="Overdue">{t('status.Overdue')}</option>
+            </select>
+            
+            {/* Assignee filter */}
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="input min-w-40"
+            >
+              <option value="All">{t('pages.tasks.filters.allAssignees')}</option>
+              <option value="Unassigned">{t('pages.tasks.filters.unassigned')}</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+            
+            {/* Reset */}
+            <button
+              onClick={resetFilters}
+              className="btn-secondary"
+            >
+              {t('pages.tasks.filters.reset')}
+            </button>
+          </div>
+        </div>
+        
+        {/* Tasks table */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {/* Headers */}
+          <div className="grid grid-cols-12 gap-4 p-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 font-medium text-gray-700 dark:text-gray-300 text-sm sticky top-0">
+            <div className="col-span-4">{t('pages.tasks.columns.name')}</div>
+            <div className="col-span-2">{t('pages.tasks.columns.dueDate')}</div>
+            <div className="col-span-2">{t('pages.tasks.columns.status')}</div>
+            <div className="col-span-2">{t('pages.tasks.columns.assignee')}</div>
+            <div className="col-span-1">{t('pages.tasks.columns.project')}</div>
+            <div className="col-span-1">{t('pages.tasks.columns.actions')}</div>
+          </div>
+          
+          {/* Task rows */}
+          {filteredTasks.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              <p className="text-lg mb-2">{t('pages.tasks.noTasksFound')}</p>
+              <p className="text-sm">{t('pages.tasks.createFirstTask')}</p>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <div>
+                  {filteredTasks.map(task => (
+                    <SortableTaskRow
+                      key={task.id}
+                      task={task}
+                      users={users}
+                      onTaskUpdate={handleTaskUpdate}
+                      onSubtaskUpdate={handleSubtaskUpdate}
+                      onAddSubtask={handleAddSubtask}
+                      onDeleteSubtask={handleDeleteSubtask}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// ——— Sortable row wrappers ———
-// —— Sortable attributes and listeners types ——
-interface SortableHandlers {
-  attributes: React.HTMLAttributes<HTMLElement>;
-  listeners: React.DOMAttributes<HTMLElement> | undefined;
-}
-
-function SortableTaskRow({ id, children }: { id: string; children: (p: SortableHandlers) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-  return <div ref={setNodeRef} style={style}>{children({ attributes, listeners })}</div>
-}
-
-function SortableSubtaskRow({ id, children }: { id: string; children: (p: SortableHandlers) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-  return <div ref={setNodeRef} style={style}>{children({ attributes, listeners })}</div>
-}
+export default TasksList
