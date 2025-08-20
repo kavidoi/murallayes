@@ -53,6 +53,25 @@ const getColorForUser = (index: number): string => {
   return colors[index % colors.length];
 };
 
+// Convert API Task (subtask payload) to local Subtask
+const convertAPISubtaskToSubtask = (st: APITask, indexFallback: number): Subtask => {
+  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+  const subAssigneeIds = (st.assignees && st.assignees.length > 0)
+    ? st.assignees.map(a => a.userId)
+    : (st.assigneeId ? [st.assigneeId] : [])
+  const subDue = toYMD(st.dueDate)
+  return {
+    id: st.id,
+    name: st.title,
+    status: convertAPIStatusToStatus(st.status),
+    inheritsAssignee: subAssigneeIds.length === 0,
+    inheritsDueDate: !subDue,
+    assigneeIds: subAssigneeIds,
+    dueDate: subDue,
+    order: typeof (st as any).orderIndex === 'number' ? (st as any).orderIndex : indexFallback,
+  }
+}
+
 const getInitials = (firstName: string, lastName: string): string => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
@@ -92,18 +111,43 @@ const convertStatusToAPIStatus = (status: Status): APIStatus => {
   }
 };
 
-const convertAPITaskToTask = (apiTask: APITask, order: number, project?: APIProject): Task => ({
-  id: apiTask.id,
-  name: apiTask.title,
-  status: convertAPIStatusToStatus(apiTask.status),
-  assigneeIds: apiTask.assigneeId ? [apiTask.assigneeId] : [],
-  dueDate: null, // TODO: Add dueDate to backend schema
-  expanded: false,
-  subtasks: [], // TODO: Add subtasks support to backend
-  order,
-  projectId: project?.id,
-  projectName: project?.name,
-});
+const convertAPITaskToTask = (apiTask: APITask, fallbackOrder: number, project?: APIProject): Task => {
+  const assigneeIds = (apiTask.assignees && apiTask.assignees.length > 0)
+    ? apiTask.assignees.map(a => a.userId)
+    : (apiTask.assigneeId ? [apiTask.assigneeId] : [])
+
+  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+
+  const subtasks: Subtask[] = (apiTask.subtasks ?? []).map((st, idx) => {
+    const subAssigneeIds = (st.assignees && st.assignees.length > 0)
+      ? st.assignees.map(a => a.userId)
+      : (st.assigneeId ? [st.assigneeId] : [])
+    const subDue = toYMD(st.dueDate)
+    return {
+      id: st.id,
+      name: st.title,
+      status: convertAPIStatusToStatus(st.status),
+      inheritsAssignee: subAssigneeIds.length === 0,
+      inheritsDueDate: !subDue,
+      assigneeIds: subAssigneeIds,
+      dueDate: subDue,
+      order: typeof (st as any).orderIndex === 'number' ? (st as any).orderIndex : idx,
+    }
+  })
+
+  return {
+    id: apiTask.id,
+    name: apiTask.title,
+    status: convertAPIStatusToStatus(apiTask.status),
+    assigneeIds,
+    dueDate: toYMD(apiTask.dueDate),
+    expanded: false,
+    subtasks,
+    order: typeof apiTask.orderIndex === 'number' ? apiTask.orderIndex : fallbackOrder,
+    projectId: apiTask.projectId ?? project?.id,
+    projectName: apiTask.project?.name ?? project?.name,
+  }
+};
 
 // ——— UI helpers ———
 const statusPillClasses: Record<Status, string> = {
@@ -240,10 +284,10 @@ function MultiAssigneeSelect({ users, values, onChange, disabled, unassignedLabe
   const selectedUsers = users.filter(u => values.includes(u.id))
   
   return (
-    <div className="relative">
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
         disabled={disabled}
       >
         <div className="flex -space-x-1">
@@ -404,12 +448,31 @@ export default function TasksList(){
   // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = () => {
+      setEditingStatus(null)
       setEditingAssignee(null)
       setEditingDue(null)
     }
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
+
+  // Filters
+  type FilterState = { noDate: boolean; oneAssigned: boolean; status: 'All' | Status; assignee: 'All' | 'Unassigned' | string; search: string }
+  const [filters, setFilters] = useState<FilterState>({ noDate: false, oneAssigned: false, status: 'All', assignee: 'All', search: '' })
+
+  const filteredTasks = useMemo(() => {
+    let list = tasks.slice()
+    if (filters.noDate) list = list.filter(t => !t.dueDate)
+    if (filters.oneAssigned) list = list.filter(t => t.assigneeIds.length === 1)
+    if (filters.status !== 'All') list = list.filter(t => displayStatusFrom(t.status, t.dueDate) === filters.status)
+    if (filters.assignee === 'Unassigned') list = list.filter(t => t.assigneeIds.length === 0)
+    else if (filters.assignee !== 'All') list = list.filter(t => t.assigneeIds.includes(filters.assignee))
+    if (filters.search.trim()) {
+      const q = filters.search.trim().toLowerCase()
+      list = list.filter(t => t.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [tasks, filters])
 
   const userById = useMemo(()=>Object.fromEntries(users.map(u=>[u.id,u])),[users])
 
@@ -438,11 +501,29 @@ export default function TasksList(){
     }
   }
 
-  const addSubtask = (taskId: string) => {
-    setTasks(prev => prev.map(t => t.id===taskId ? {
-      ...t,
-      subtasks: [...t.subtasks, { id: `s${Date.now()}`, name: tr('pages.tasks.newSubtask'), status:'New', inheritsAssignee: true, inheritsDueDate: true, assigneeIds: [], order: t.subtasks.length }]
-    } : t))
+  const addSubtask = async (taskId: string) => {
+    try {
+      const parent = tasks.find(t => t.id === taskId)
+      const projId = parent?.projectId ?? defaultProject?.id
+      if (!projId) {
+        setError('No project available. Please try refreshing the page.')
+        return
+      }
+      const apiSub = await tasksService.createSubtask(taskId, {
+        title: tr('pages.tasks.newSubtask'),
+        status: 'PENDING' as APIStatus,
+        projectId: projId,
+      })
+      const newSub = convertAPISubtaskToSubtask(apiSub, parent ? parent.subtasks.length : 0)
+      setTasks(prev => prev.map(t => t.id===taskId ? {
+        ...t,
+        expanded: true,
+        subtasks: [...t.subtasks, newSub]
+      } : t))
+    } catch (err) {
+      console.error('Error adding subtask:', err)
+      setError('Failed to create subtask. Please try again.')
+    }
   }
 
   const updateTask = async (taskId: string, patch: Partial<Task>) => {
@@ -450,30 +531,59 @@ export default function TasksList(){
     setTasks(prev => prev.map(t => t.id===taskId ? { ...t, ...patch } : t))
     
     try {
-      // Convert the patch to API format
+      const promises: Promise<any>[] = []
       const apiPatch: any = {}
       if (patch.name) apiPatch.title = patch.name
       if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
-      if (patch.assigneeIds !== undefined) apiPatch.assigneeId = patch.assigneeIds[0] || null
-      
-      await tasksService.updateTask(taskId, apiPatch)
+
+      if (Object.keys(apiPatch).length > 0) {
+        promises.push(tasksService.updateTask(taskId, apiPatch))
+      }
+      if (patch.assigneeIds !== undefined) {
+        promises.push(tasksService.updateTaskAssignees(taskId, patch.assigneeIds))
+      }
+
+      await Promise.all(promises)
     } catch (err) {
       console.error('Error updating task:', err)
       setError('Failed to update task. Please try again.')
-      // Revert the optimistic update by reloading data
-      // TODO: Implement more sophisticated error handling
+      // TODO: Consider reverting optimistic update if necessary
     }
   }
 
-  const updateSubtask = (taskId: string, subId: string, patch: Partial<Subtask>) => {
-    setTasks(prev => prev.map(t => t.id===taskId ? {
+  const updateSubtask = async (taskId: string, subId: string, patch: Partial<Subtask>) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id===taskId ? ({
       ...t,
       subtasks: t.subtasks.map(s => s.id===subId ? { ...s, ...patch } : s)
-    } : t))
+    }) : t))
+    try {
+      const promises: Promise<any>[] = []
+      const apiPatch: any = {}
+      if (patch.name) apiPatch.title = patch.name
+      if (patch.status) apiPatch.status = convertStatusToAPIStatus(patch.status)
+      if (Object.keys(apiPatch).length > 0) {
+        promises.push(tasksService.updateSubtask(subId, apiPatch))
+      }
+      if (patch.assigneeIds !== undefined) {
+        promises.push(tasksService.updateTaskAssignees(subId, patch.assigneeIds))
+      }
+      await Promise.all(promises)
+    } catch (err) {
+      console.error('Error updating subtask:', err)
+      setError('Failed to update subtask. Please try again.')
+    }
   }
 
-  const removeSubtask = (taskId: string, subId: string) => {
+  const removeSubtask = async (taskId: string, subId: string) => {
+    // Optimistic remove
     setTasks(prev => prev.map(t => t.id===taskId ? { ...t, subtasks: t.subtasks.filter(s=>s.id!==subId) } : t))
+    try {
+      await tasksService.deleteTask(subId)
+    } catch (err) {
+      console.error('Error removing subtask:', err)
+      setError('Failed to remove subtask. Please try again.')
+    }
   }
 
   const sectionHeader = (name: string, newLabel: string) => (
@@ -486,10 +596,10 @@ export default function TasksList(){
   )
 
   // ——— DnD helpers ———
-  const taskItemIds = useMemo(() => tasks
+  const taskItemIds = useMemo(() => filteredTasks
     .slice()
     .sort((a,b)=>a.order-b.order)
-    .map(t=>`task-${t.id}`), [tasks])
+    .map(t=>`task-${t.id}`), [filteredTasks])
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -504,6 +614,10 @@ export default function TasksList(){
       const newIndex = ordered.findIndex(t=>t.id===oid)
       const moved = arrayMove(ordered, oldIndex, newIndex).map((t: Task, i: number)=>({ ...t, order: i }))
       setTasks(moved)
+      // Persist reorder to backend (optimistic)
+      tasksService.reorderTasks(moved.map((t: Task) => t.id)).catch(err => {
+        console.error('Error reordering tasks:', err)
+      })
       return
     }
     if (a.startsWith('sub-') && o.startsWith('sub-')) {
@@ -514,14 +628,17 @@ export default function TasksList(){
       const { tid: ta, sid: sa } = parse(a)
       const { tid: to, sid: so } = parse(o)
       if (ta !== to) return // cross-parent moves not supported in v1
-      setTasks(prev => prev.map(t => {
-        if (t.id !== ta) return t
-        const orderedSubs = t.subtasks.slice().sort((x,y)=>x.order-y.order)
-        const oldIndex = orderedSubs.findIndex(s=>s.id===sa)
-        const newIndex = orderedSubs.findIndex(s=>s.id===so)
-        const moved = arrayMove(orderedSubs, oldIndex, newIndex).map((s: Subtask, i: number)=>({ ...s, order: i }))
-        return { ...t, subtasks: moved }
-      }))
+      // Compute new subtask order from current state, update optimistically, then persist
+      const parent = tasks.find(t => t.id === ta)
+      if (!parent) return
+      const orderedSubs = parent.subtasks.slice().sort((x,y)=>x.order-y.order)
+      const oldIndex = orderedSubs.findIndex(s=>s.id===sa)
+      const newIndex = orderedSubs.findIndex(s=>s.id===so)
+      const moved = arrayMove(orderedSubs, oldIndex, newIndex).map((s: Subtask, i: number)=>({ ...s, order: i }))
+      setTasks(prev => prev.map(t => t.id===ta ? ({ ...t, subtasks: moved }) : t))
+      tasksService.reorderSubtasks(ta, moved.map(s => s.id)).catch(err => {
+        console.error('Error reordering subtasks:', err)
+      })
     }
   }
 
@@ -597,6 +714,94 @@ export default function TasksList(){
           <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavByStatus')}</button>
           <button className="px-2 py-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">{tr('pages.tasks.subnavMore')}</button>
         </div>
+        {/* Filters */}
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Filters:</span>
+            <button
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs transition-colors ${
+                filters.noDate
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                  : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              }`}
+              onClick={() => setFilters(prev => ({ ...prev, noDate: !prev.noDate }))}
+            >
+              {tr('common.noDate')}
+              {filters.noDate && (
+                <svg className="w-3 h-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </button>
+            <button
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs transition-colors ${
+                filters.oneAssigned
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                  : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              }`}
+              onClick={() => setFilters(prev => ({ ...prev, oneAssigned: !prev.oneAssigned }))}
+            >
+              1 assigned
+              {filters.oneAssigned && (
+                <svg className="w-3 h-3 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </button>
+            {/* Status filter */}
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-neutral-500 dark:text-neutral-400">Status:</span>
+              <select
+                className="input py-1 text-xs"
+                value={filters.status}
+                onChange={e => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
+              >
+                {(['All','New','In Progress','Completed','Overdue'] as const).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            {/* Assignee filter */}
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-neutral-500 dark:text-neutral-400">Assignee:</span>
+              <select
+                className="input py-1 text-xs"
+                value={filters.assignee}
+                onChange={e => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
+              >
+                <option value="All">All</option>
+                <option value="Unassigned">Unassigned</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            {/* Search */}
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-neutral-500 dark:text-neutral-400">Search:</span>
+              <input
+                type="text"
+                className="input py-1 text-xs"
+                placeholder="Search tasks..."
+                value={filters.search}
+                onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              />
+            </div>
+            {(filters.noDate || filters.oneAssigned || filters.status !== 'All' || filters.assignee !== 'All' || filters.search.trim()) && (
+              <div className="ml-2 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                <span>
+                  Showing {filteredTasks.length} of {tasks.length}
+                </span>
+                <button
+                  className="underline hover:text-neutral-700 dark:hover:text-neutral-300"
+                  onClick={() => setFilters({ noDate: false, oneAssigned: false, status: 'All', assignee: 'All', search: '' })}
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="max-h-[65vh] overflow-auto">
           {/* Sticky header */}
           <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
@@ -612,7 +817,7 @@ export default function TasksList(){
           <DndContext onDragEnd={onDragEnd}>
           <SortableContext items={taskItemIds} strategy={verticalListSortingStrategy}>
           <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
-          {tasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
+          {filteredTasks.slice().sort((a,b)=>a.order-b.order).map((t) => (
             <div key={t.id} className="">
               {/* Parent row */}
               <SortableTaskRow id={`task-${t.id}`}>
@@ -649,7 +854,7 @@ export default function TasksList(){
                   </div>
                   <div className="col-span-2">
                     {editingDue === `task:${t.id}` ? (
-                      <div className="relative">
+                      <div className="relative" onClick={(e) => e.stopPropagation()}>
                         <AdvancedDatePicker
                           value={t.dueDate ?? null}
                           onChange={(date) => updateTask(t.id, { dueDate: date })}
@@ -659,7 +864,7 @@ export default function TasksList(){
                     ) : (
                       <button
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(t.dueDate, t.status==='Completed')}`}
-                        onClick={()=>setEditingDue(`task:${t.id}`)}
+                        onClick={(e)=>{ e.stopPropagation(); setEditingDue(`task:${t.id}`) }}
                       >
                         {formatDate(t.dueDate, tr)}
                       </button>
@@ -696,7 +901,7 @@ export default function TasksList(){
                     ) : (
                       <button
                         className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left"
-                        onClick={()=>setEditingAssignee(`task:${t.id}`)}
+                        onClick={(e)=>{ e.stopPropagation(); setEditingAssignee(`task:${t.id}`) }}
                       >
                         <div className="flex -space-x-1">
                           {t.assigneeIds.length === 0 ? (
@@ -769,7 +974,7 @@ export default function TasksList(){
                           <div className="col-span-2">
                             <div className="flex items-center">
                               {editingDue === `sub:${t.id}:${s.id}` && !s.inheritsDueDate ? (
-                                <div className="relative">
+                                <div className="relative" onClick={(e) => e.stopPropagation()}>
                                   <AdvancedDatePicker
                                     value={effectiveDueDate}
                                     onChange={(date) => updateSubtask(t.id, s.id, { dueDate: date, inheritsDueDate: false })}
@@ -777,9 +982,10 @@ export default function TasksList(){
                                   />
                                 </div>
                               ) : (
-                                <button
+                              <button
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getDueTone(effectiveDueDate, s.status==='Completed')} ${s.inheritsDueDate ? 'opacity-60' : ''}`}
-                                  onClick={()=>{
+                                  onClick={(e)=>{
+                                    e.stopPropagation()
                                     if (s.inheritsDueDate) {
                                       updateSubtask(t.id, s.id, { inheritsDueDate: false, dueDate: effectiveDueDate })
                                     }
@@ -826,7 +1032,8 @@ export default function TasksList(){
                               ) : (
                                 <button
                                   className={`inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 w-full text-left ${s.inheritsAssignee ? 'opacity-60' : ''}`}
-                                  onClick={()=>{
+                                  onClick={(e)=>{
+                                    e.stopPropagation()
                                     if (s.inheritsAssignee) {
                                       updateSubtask(t.id, s.id, { inheritsAssignee: false, assigneeIds: effectiveAssigneeIds })
                                     }

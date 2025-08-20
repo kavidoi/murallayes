@@ -159,16 +159,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install jq
-      run: sudo apt-get update && sudo apt-get install -y jq
-
-    - name: Trigger Railway deploy (staging)
+    - name: Trigger Render deploy (backend, staging)
       env:
-        RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_NAME: murallayes
-        RAILWAY_ENVIRONMENT: staging
-      run: bash ./scripts/deploy_via_api.sh
+        DEPLOY_HOOK: ${{ secrets.RENDER_BACKEND_STAGING_DEPLOY_HOOK }}
+      run: |
+        if [ -n "$DEPLOY_HOOK" ]; then
+          echo "POST $DEPLOY_HOOK"
+          curl -fsS -X POST "$DEPLOY_HOOK"
+        else
+          echo "No RENDER_BACKEND_STAGING_DEPLOY_HOOK secret set; skipping backend deploy."
+        fi
+    - name: Trigger Render deploy (frontend, staging)
+      env:
+        DEPLOY_HOOK: ${{ secrets.RENDER_FRONTEND_STAGING_DEPLOY_HOOK }}
+      run: |
+        if [ -n "$DEPLOY_HOOK" ]; then
+          echo "POST $DEPLOY_HOOK"
+          curl -fsS -X POST "$DEPLOY_HOOK"
+        else
+          echo "No RENDER_FRONTEND_STAGING_DEPLOY_HOOK secret set; skipping frontend deploy."
+        fi
 
   deploy-production:
     needs: build-and-push
@@ -180,13 +190,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install jq
-      run: sudo apt-get update && sudo apt-get install -y jq
-
-    - name: Trigger Railway deploy (production)
+    - name: Trigger Render deploy (backend, production)
       env:
-        RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_NAME: murallayes
-        RAILWAY_ENVIRONMENT: production
-      run: bash ./scripts/deploy_via_api.sh
+        DEPLOY_HOOK: ${{ secrets.RENDER_BACKEND_PROD_DEPLOY_HOOK }}
+      run: |
+        if [ -n "$DEPLOY_HOOK" ]; then
+          echo "POST $DEPLOY_HOOK"
+          curl -fsS -X POST "$DEPLOY_HOOK"
+        else
+          echo "No RENDER_BACKEND_PROD_DEPLOY_HOOK secret set; skipping backend deploy."
+        fi
+    - name: Trigger Render deploy (frontend, production)
+      env:
+        DEPLOY_HOOK: ${{ secrets.RENDER_FRONTEND_PROD_DEPLOY_HOOK }}
+      run: |
+        if [ -n "$DEPLOY_HOOK" ]; then
+          echo "POST $DEPLOY_HOOK"
+          curl -fsS -X POST "$DEPLOY_HOOK"
+        else
+          echo "No RENDER_FRONTEND_PROD_DEPLOY_HOOK secret set; skipping frontend deploy."
+        fi

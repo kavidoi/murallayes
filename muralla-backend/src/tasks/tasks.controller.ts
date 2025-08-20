@@ -56,6 +56,12 @@ export class TasksController {
     return this.tasksService.updateSubtask(id, dto);
   }
 
+  // Reorder subtasks under a parent task
+  @Patch(':id/subtasks/reorder')
+  reorderSubtasks(@Param('id') parentId: string, @Body() body: { subtaskIds: string[] }) {
+    return this.tasksService.reorderSubtasks(parentId, body.subtaskIds);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);

@@ -147,7 +147,6 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         { name: t('nav.tasksList'), path: '/projects/tasks' },
         { name: t('nav.kanban'), path: '/projects/kanban' },
         { name: t('nav.timeline'), path: '/projects/timeline' },
-        { name: t('nav.calendar'), path: '/projects/calendar' },
         { name: t('nav.backlog'), path: '/projects/backlog' },
         { name: t('nav.goals'), path: '/projects/goals' },
       ]
@@ -173,32 +172,28 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         { name: t('nav.revenueExpenses'), path: '/finance/revenue-expenses' },
         { name: t('nav.taxes'), path: '/finance/taxes' },
         { name: t('nav.budgets'), path: '/finance/budgets' },
-        { name: t('nav.kpis'), path: '/finance/kpis' },
-        { name: t('nav.forecasts'), path: '/finance/forecasts' },
       ]
     },
     {
-      name: t('nav.pipeline'),
-      path: '/pipeline',
-      icon: <InventoryIcon />,
+      name: t('nav.analytics'),
+      path: '/analytics',
+      icon: <FinanceIcon />,
       children: [
-        { name: t('nav.products'), path: '/pipeline/products' },
-        { name: t('nav.inventory'), path: '/pipeline/inventory' },
-        { name: t('nav.purchaseOrders'), path: '/pipeline/purchase-orders' },
-        { name: t('nav.costs'), path: '/pipeline/costs' },
-        { name: t('nav.production'), path: '/pipeline/production' },
-        { name: t('nav.banking'), path: '/pipeline/banking' },
-        { name: t('nav.reports'), path: '/pipeline/reports' },
+        { name: t('nav.kpis'), path: '/analytics/kpis' },
+        { name: t('nav.forecasts'), path: '/analytics/forecasts' },
+        { name: t('nav.reports'), path: '/analytics/reports' },
       ]
     },
     {
-      name: t('nav.inventory'),
-      path: '/inventory',
+      name: t('nav.operations'),
+      path: '/operations',
       icon: <InventoryIcon />,
       children: [
-        { name: t('nav.products'), path: '/inventory/products' },
-        { name: t('nav.sales'), path: '/inventory/sales' },
-        { name: t('nav.stock'), path: '/inventory/stock' },
+        { name: t('nav.products'), path: '/operations/products' },
+        { name: t('nav.inventory'), path: '/operations/inventory' },
+        { name: t('nav.purchaseOrders'), path: '/operations/purchase-orders' },
+        { name: t('nav.costs'), path: '/operations/costs' },
+        { name: t('nav.production'), path: '/operations/production' },
       ]
     },
     {
@@ -213,13 +208,13 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       ]
     },
     {
-      name: t('nav.events'),
-      path: '/events',
+      name: t('nav.scheduling'),
+      path: '/schedule',
       icon: <EventsIcon />,
       children: [
-        { name: t('routes.eventsCalendar.title'), path: '/events/calendar' },
-        { name: t('nav.bookings'), path: '/events/bookings' },
-        { name: t('nav.resources'), path: '/events/resources' },
+        { name: t('routes.eventsCalendar.title'), path: '/schedule/calendar' },
+        { name: t('nav.bookings'), path: '/schedule/bookings' },
+        { name: t('nav.resources'), path: '/schedule/resources' },
       ]
     },
     {

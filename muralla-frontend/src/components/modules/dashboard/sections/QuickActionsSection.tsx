@@ -31,7 +31,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'Create new task',
-      href: '/projects/new',
+      href: '/projects/tasks',
       color: 'text-blue-600 dark:text-blue-400'
     },
     {
@@ -41,7 +41,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'New knowledge document',
-      href: '/knowledge/new',
+      href: '/knowledge',
       color: 'text-green-600 dark:text-green-400'
     },
     {
@@ -51,7 +51,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'Schedule event',
-      href: '/events/new',
+      href: '/schedule/calendar',
       color: 'text-purple-600 dark:text-purple-400'
     },
     {
@@ -62,7 +62,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'Record sale',
-      href: '/sales/new',
+      href: '/finance/revenue-expenses?tab=revenue&action=add',
       color: 'text-yellow-600 dark:text-yellow-400'
     },
     {
@@ -72,7 +72,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'Add team member',
-      href: '/people/new',
+      href: '/staff/directory',
       color: 'text-pink-600 dark:text-pink-400'
     },
     {
@@ -82,7 +82,7 @@ const QuickActionsSection: React.FC = () => {
         </svg>
       ),
       label: 'Add inventory item',
-      href: '/inventory/new',
+      href: '/operations/products',
       color: 'text-indigo-600 dark:text-indigo-400'
     }
   ];
