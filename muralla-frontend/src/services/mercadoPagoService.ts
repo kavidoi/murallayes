@@ -199,7 +199,9 @@ export class MercadoPagoService {
       customization: { ...defaultCustomization, ...customization },
       callbacks: {
         onReady: () => {
-          console.log('Payment Brick ready');
+          if (import.meta.env.DEV) {
+            console.log('Payment Brick ready');
+          }
           callbacks.onReady?.();
         },
         onError: (error: any) => {
@@ -207,11 +209,15 @@ export class MercadoPagoService {
           callbacks.onError?.(error);
         },
         onSubmit: async (formData: any) => {
-          console.log('Payment Brick submit:', formData);
+          if (import.meta.env.DEV) {
+            console.log('Payment Brick submit:', formData);
+          }
           return callbacks.onSubmit?.(formData) || Promise.resolve();
         },
         onBinChange: (bin: string) => {
-          console.log('Payment Brick BIN change:', bin);
+          if (import.meta.env.DEV) {
+            console.log('Payment Brick BIN change:', bin);
+          }
           callbacks.onBinChange?.(bin);
         }
       }

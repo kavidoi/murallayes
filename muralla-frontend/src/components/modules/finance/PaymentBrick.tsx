@@ -64,7 +64,9 @@ export default function PaymentBrick({
         },
         {
           onReady: () => {
-            console.log('Payment Brick ready');
+            if (import.meta.env.DEV) {
+              console.log('Payment Brick ready');
+            }
             setReady(true);
           },
           onError: (error: any) => {
@@ -72,7 +74,9 @@ export default function PaymentBrick({
             setError('Error loading payment form');
           },
           onSubmit: async (formData: any) => {
-            console.log('PaymentBrick submit data', formData);
+            if (import.meta.env.DEV) {
+              console.log('PaymentBrick submit data', formData);
+            }
             
             if (onPaymentSubmit) {
               try {

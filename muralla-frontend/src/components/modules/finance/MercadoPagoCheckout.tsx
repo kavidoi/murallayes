@@ -99,16 +99,22 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         payer: customerEmail ? { email: customerEmail } : undefined,
       } as any;
 
-      console.log('Creating preference with data:', data);
+      if (import.meta.env.DEV) {
+        console.log('Creating preference with data:', data);
+      }
       const resp = await AuthService.apiCall('/finance/mercadopago/preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      console.log('Preference response:', resp);
+      if (import.meta.env.DEV) {
+        console.log('Preference response:', resp);
+      }
       
       if (resp?.id) {
-        console.log('Preference created successfully:', resp.id);
+        if (import.meta.env.DEV) {
+          console.log('Preference created successfully:', resp.id);
+        }
         setPrefId(resp.id as string);
         return resp.id as string;
       } else {
@@ -166,8 +172,11 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       // For Payment Brick, do not use preferenceId to avoid SDK coupling issues
       const effectivePreferenceId = undefined;
 
-      console.log('Effective preference ID (unused for Payment Brick):', effectivePreferenceId);
-      console.log('Amount:', capturedAmount);
+      // Debug logs only in development
+      if (import.meta.env.DEV) {
+        console.log('Effective preference ID (unused for Payment Brick):', effectivePreferenceId);
+        console.log('Amount:', capturedAmount);
+      }
 
       // Prepare payer information
       const payer: any = {};
@@ -187,7 +196,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
         ...(Object.keys(payer).length ? { payer } : {})
       };
 
-      console.log('Final initialization object:', initialization);
+      if (import.meta.env.DEV) {
+        console.log('Final initialization object:', initialization);
+      }
 
       // Validate initialization has required properties
       if (!initialization.amount) {
@@ -211,7 +222,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
           initialization,
           {
             onReady: () => {
-              console.log('Payment brick ready');
+              if (import.meta.env.DEV) {
+                console.log('Payment brick ready');
+              }
               setIsLoading(false);
             },
             onError: (error) => {
@@ -220,7 +233,9 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
               onError?.(error);
             },
             onSubmit: async (data) => {
-              console.log('Payment form submitted:', data);
+              if (import.meta.env.DEV) {
+                console.log('Payment form submitted:', data);
+              }
               const submission = (data && (data as any).formData) ? (data as any).formData : data;
               // production flow expects MercadoPago redirect or OP
               try {
