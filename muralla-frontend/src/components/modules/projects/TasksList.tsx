@@ -53,6 +53,32 @@ const getColorForUser = (index: number): string => {
   return colors[index % colors.length];
 };
 
+// Task expanded state persistence
+const EXPANDED_TASKS_KEY = 'muralla-expanded-tasks'
+
+const getExpandedStates = (): Record<string, boolean> => {
+  try {
+    const stored = localStorage.getItem(EXPANDED_TASKS_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+const setExpandedState = (taskId: string, expanded: boolean) => {
+  try {
+    const states = getExpandedStates()
+    if (expanded) {
+      states[taskId] = true
+    } else {
+      delete states[taskId] // Only store expanded=true to save space
+    }
+    localStorage.setItem(EXPANDED_TASKS_KEY, JSON.stringify(states))
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 const getInitials = (firstName: string, lastName: string): string => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
@@ -93,13 +119,17 @@ const convertAPITaskToTask = (apiTask: APITask, _users: User[], projects: APIPro
   const taskDue = toYMD(apiTask.dueDate)
   const project = projects.find(p => p.id === apiTask.projectId)
   
+  const hasSubtasks = (apiTask.subtasks || []).length > 0
+  const expandedStates = getExpandedStates()
+  const isExpanded = hasSubtasks ? (expandedStates[apiTask.id] !== undefined ? expandedStates[apiTask.id] : true) : false
+  
   return {
     id: apiTask.id,
     name: apiTask.title,
     status: convertAPIStatusToStatus(apiTask.status, taskDue || undefined),
     assigneeIds: taskAssigneeIds,
     dueDate: taskDue,
-    expanded: false,
+    expanded: isExpanded,
     subtasks: (apiTask.subtasks || []).map((st, idx) => {
       const subAssigneeIds = (st.assignees && st.assignees.length > 0)
         ? st.assignees.map(a => a.userId)
@@ -570,15 +600,17 @@ const SortableTaskRow: React.FC<{
   
   const toggleExpanded = () => {
     if (task.subtasks.length > 0) {
-      onTaskUpdate(task.id, { expanded: !task.expanded })
+      const newExpanded = !task.expanded
+      setExpandedState(task.id, newExpanded)
+      onTaskUpdate(task.id, { expanded: newExpanded })
     }
   }
   
   return (
     <div ref={setNodeRef} style={style} className={isSubtask ? 'ml-6' : ''}>
-      <div className={`grid grid-cols-12 gap-4 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-900'}`}>
+      <div className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-900'}`}>
         {/* Drag handle + Expand/Collapse + Name */}
-        <div className="col-span-3 flex items-center space-x-2">
+        <div className="col-span-4 flex items-center space-x-2">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
             ⋮⋮
           </div>
@@ -613,7 +645,7 @@ const SortableTaskRow: React.FC<{
         </div>
         
         {/* Status */}
-        <div className="col-span-2 flex items-center">
+        <div className="col-span-1 flex items-center">
           <StatusSelector
             status={task.status}
             onChange={(status) => onTaskUpdate(task.id, { status })}
@@ -621,7 +653,7 @@ const SortableTaskRow: React.FC<{
         </div>
         
         {/* Assignees */}
-        <div className="col-span-2 flex items-center">
+        <div className="col-span-1 flex items-center">
           <AssigneeSelector
             selectedUserIds={task.assigneeIds}
             users={users}
@@ -630,7 +662,7 @@ const SortableTaskRow: React.FC<{
         </div>
         
         {/* Project */}
-        <div className="col-span-1 flex items-center">
+        <div className="col-span-2 flex items-center">
           <ProjectSelector
             projectId={task.projectId}
             projects={projects}
@@ -1070,12 +1102,12 @@ const TasksList: React.FC = () => {
         {/* Tasks table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Headers */}
-          <div className="grid grid-cols-12 gap-4 p-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 font-medium text-gray-700 dark:text-gray-300 text-sm sticky top-0">
-            <div className="col-span-3">{t('pages.tasks.columns.name')}</div>
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 font-medium text-gray-700 dark:text-gray-300 text-sm sticky top-0">
+            <div className="col-span-4">{t('pages.tasks.columns.name')}</div>
             <div className="col-span-2">{t('pages.tasks.columns.dueDate')}</div>
-            <div className="col-span-2">{t('pages.tasks.columns.status')}</div>
-            <div className="col-span-2">{t('pages.tasks.columns.assignee')}</div>
-            <div className="col-span-1">{t('pages.tasks.columns.project')}</div>
+            <div className="col-span-1">{t('pages.tasks.columns.status')}</div>
+            <div className="col-span-1">{t('pages.tasks.columns.assignee')}</div>
+            <div className="col-span-2">{t('pages.tasks.columns.project')}</div>
             <div className="col-span-2">{t('pages.tasks.columns.actions')}</div>
           </div>
           
