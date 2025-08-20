@@ -93,7 +93,7 @@ class ProjectsService {
   async updateProject(id: string, updates: UpdateProjectDto): Promise<Project> {
     try {
       await AuthService.ensureValidToken();
-      const response = await axios.put(`${API_BASE_URL}/projects/${id}`, updates, {
+      const response = await axios.patch(`${API_BASE_URL}/projects/${id}`, updates, {
         headers: this.getAuthHeaders(),
       });
       return response.data;
