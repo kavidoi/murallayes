@@ -9,13 +9,13 @@ export class HttpsRedirectMiddleware implements NestMiddleware {
       return next();
     }
 
-    // Allow health and metrics endpoints over HTTP (Railway healthcheck)
+    // Allow health and metrics endpoints over HTTP (platform healthchecks)
     if (req.path.startsWith('/health') || req.path.startsWith('/metrics')) {
       return next();
     }
 
     // Check if request is not secure (not HTTPS)
-    // Railway sets x-forwarded-proto header
+    // Most reverse proxies (Render, Nginx, etc.) set x-forwarded-proto / x-forwarded-ssl
     const isSecure = req.secure || 
                     req.headers['x-forwarded-proto'] === 'https' ||
                     req.headers['x-forwarded-ssl'] === 'on';

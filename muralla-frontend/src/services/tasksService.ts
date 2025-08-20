@@ -204,6 +204,18 @@ class TasksService {
     }
   }
 
+  async reorderSubtasks(parentTaskId: string, subtaskIds: string[]): Promise<void> {
+    try {
+      await AuthService.ensureValidToken();
+      await axios.patch(`${API_BASE_URL}/tasks/${parentTaskId}/subtasks/reorder`, { subtaskIds }, {
+        headers: this.getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error('Error reordering subtasks:', error);
+      throw error;
+    }
+  }
+
   async addTaskAssignee(taskId: string, userId: string, role: string = 'assignee'): Promise<TaskAssignee> {
     try {
       await AuthService.ensureValidToken();

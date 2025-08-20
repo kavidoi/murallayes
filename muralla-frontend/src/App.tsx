@@ -18,13 +18,12 @@ import PlaceholderPage from './components/common/PlaceholderPage'
 import PTO from './components/modules/people/PTO'
 import { AuthService } from './services/authService'
 import TasksList from './components/modules/projects/TasksList'
-import ProjectsOverview from './components/modules/projects/ProjectsOverview.tsx'
+import ProjectsOverview from './components/modules/projects/ProjectsOverview'
 import Settings from './components/modules/settings/Settings'
 import ProductCatalog from './components/modules/pipeline/ProductCatalog'
 import InventoryDashboard from './components/modules/pipeline/InventoryDashboard'
 import CostsPurchases from './components/modules/pipeline/CostsPurchases'
 import ProductionWorkOrders from './components/modules/pipeline/ProductionWorkOrders'
-import BankingTransactions from './components/modules/pipeline/BankingTransactions'
 import ReportsAnalytics from './components/modules/pipeline/ReportsAnalytics'
 import PurchaseOrders from './components/modules/pipeline/PurchaseOrders'
 import { useTranslation } from 'react-i18next'
@@ -136,7 +135,8 @@ function App() {
               <Route path="/projects/tasks" element={<TasksList />} />
               <Route path="/projects/kanban" element={<PlaceholderPage title={t('routes.kanban.title')} description={t('routes.kanban.description')} icon="📊" />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
-              <Route path="/projects/calendar" element={<PlaceholderPage title={t('routes.calendar.title')} description={t('routes.calendar.description')} icon="🗓️" />} />
+              {/* Redirect project calendar to unified schedule calendar */}
+              <Route path="/projects/calendar" element={<Navigate to="/schedule/calendar" replace />} />
               <Route path="/projects/backlog" element={<PlaceholderPage title={t('routes.backlog.title')} description={t('routes.backlog.description')} icon="📝" />} />
               <Route path="/projects/goals" element={<PlaceholderPage title={t('routes.goals.title')} description={t('routes.goals.description')} icon="🎯" />} />
               
@@ -147,7 +147,7 @@ function App() {
               <Route path="/staff/pto" element={<PlaceholderPage title={t('routes.staffPto.title')} description={t('routes.staffPto.description')} icon="🏖️" />} />
               <Route path="/staff/finances" element={<StaffFinances />} />
               
-              {/* Finance & Analytics Routes */}
+              {/* Finance Routes */}
               <Route path="/finance" element={<FinanceDashboard />} />
               <Route path="/finance/bank" element={<BankAccount />} />
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
@@ -155,27 +155,35 @@ function App() {
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title={t('routes.taxes.title')} description={t('routes.taxes.description')} icon="🧾" />} />
               <Route path="/finance/budgets" element={<BudgetManager />} />
-              <Route path="/finance/kpis" element={<PlaceholderPage title={t('routes.kpis.title')} description={t('routes.kpis.description')} icon="📈" />} />
-              <Route path="/finance/forecasts" element={<PlaceholderPage title={t('routes.forecasts.title')} description={t('routes.forecasts.description')} icon="🔮" />} />
+              {/* Redirect old analytics under finance to new analytics section */}
+              <Route path="/finance/kpis" element={<Navigate to="/analytics/kpis" replace />} />
+              <Route path="/finance/forecasts" element={<Navigate to="/analytics/forecasts" replace />} />
               
-              {/* Product Pipeline Routes */}
-              <Route path="/pipeline" element={<ProductCatalog />} />
-              <Route path="/pipeline/products" element={<ProductCatalog />} />
-              <Route path="/pipeline/inventory" element={<InventoryDashboard />} />
-              <Route path="/pipeline/purchase-orders" element={<PurchaseOrders />} />
-              <Route path="/pipeline/costs" element={<CostsPurchases />} />
-              <Route path="/pipeline/production" element={<ProductionWorkOrders />} />
-              <Route path="/pipeline/banking" element={<BankingTransactions />} />
-              <Route path="/pipeline/reports" element={<ReportsAnalytics />} />
+              {/* Operations Routes (formerly Pipeline) */}
+              <Route path="/operations" element={<ProductCatalog />} />
+              <Route path="/operations/products" element={<ProductCatalog />} />
+              <Route path="/operations/inventory" element={<InventoryDashboard />} />
+              <Route path="/operations/purchase-orders" element={<PurchaseOrders />} />
+              <Route path="/operations/costs" element={<CostsPurchases />} />
+              <Route path="/operations/production" element={<ProductionWorkOrders />} />
+              {/* Redirect old pipeline routes to operations */}
+              <Route path="/pipeline" element={<Navigate to="/operations" replace />} />
+              <Route path="/pipeline/products" element={<Navigate to="/operations/products" replace />} />
+              <Route path="/pipeline/inventory" element={<Navigate to="/operations/inventory" replace />} />
+              <Route path="/pipeline/purchase-orders" element={<Navigate to="/operations/purchase-orders" replace />} />
+              <Route path="/pipeline/costs" element={<Navigate to="/operations/costs" replace />} />
+              <Route path="/pipeline/production" element={<Navigate to="/operations/production" replace />} />
+              <Route path="/pipeline/banking" element={<Navigate to="/finance/bank" replace />} />
+              <Route path="/pipeline/reports" element={<Navigate to="/analytics/reports" replace />} />
 
               {/* Mobile quick upload route */}
               <Route path="/celu" element={<CeluReceipt />} />
               
-              {/* Legacy Inventory & Sales Routes (redirect to pipeline) */}
-              <Route path="/inventory" element={<InventoryDashboard />} />
-              <Route path="/inventory/products" element={<ProductCatalog />} />
-              <Route path="/inventory/sales" element={<PlaceholderPage title={t('routes.sales.title')} description={t('routes.sales.description')} icon="💰" />} />
-              <Route path="/inventory/stock" element={<InventoryDashboard />} />
+              {/* Legacy Inventory & Sales Routes -> redirect to operations/finance */}
+              <Route path="/inventory" element={<Navigate to="/operations/inventory" replace />} />
+              <Route path="/inventory/products" element={<Navigate to="/operations/products" replace />} />
+              <Route path="/inventory/sales" element={<Navigate to="/finance/revenue-expenses" replace />} />
+              <Route path="/inventory/stock" element={<Navigate to="/operations/inventory" replace />} />
               
               {/* CRM & Community Routes */}
               <Route path="/crm" element={<PlaceholderPage title={t('routes.crm.title')} description={t('routes.crm.description')} icon="👥" />} />
@@ -184,17 +192,28 @@ function App() {
               <Route path="/crm/logs" element={<PlaceholderPage title={t('routes.activityLogs.title')} description={t('routes.activityLogs.description')} icon="📝" />} />
               <Route path="/crm/feedback" element={<PlaceholderPage title={t('routes.feedback.title')} description={t('routes.feedback.description')} icon="💬" />} />
               
-              {/* Events & Scheduling Routes */}
-              <Route path="/events" element={<PlaceholderPage title={t('routes.events.title')} description={t('routes.events.description')} icon="🎉" />} />
-              <Route path="/events/calendar" element={<PlaceholderPage title={t('routes.eventsCalendar.title')} description={t('routes.eventsCalendar.description')} icon="📅" />} />
-              <Route path="/events/bookings" element={<PlaceholderPage title={t('routes.bookings.title')} description={t('routes.bookings.description')} icon="🎫" />} />
-              <Route path="/events/resources" element={<PlaceholderPage title={t('routes.resources.title')} description={t('routes.resources.description')} icon="🛠️" />} />
+              {/* Scheduling (unified calendars) */}
+              <Route path="/schedule" element={<Navigate to="/schedule/calendar" replace />} />
+              <Route path="/schedule/calendar" element={<PlaceholderPage title={t('routes.eventsCalendar.title')} description={t('routes.eventsCalendar.description')} icon="📅" />} />
+              <Route path="/schedule/bookings" element={<PlaceholderPage title={t('routes.bookings.title')} description={t('routes.bookings.description')} icon="🎫" />} />
+              <Route path="/schedule/resources" element={<PlaceholderPage title={t('routes.resources.title')} description={t('routes.resources.description')} icon="🛠️" />} />
+              {/* Redirect Events to Scheduling */}
+              <Route path="/events" element={<Navigate to="/schedule" replace />} />
+              <Route path="/events/calendar" element={<Navigate to="/schedule/calendar" replace />} />
+              <Route path="/events/bookings" element={<Navigate to="/schedule/bookings" replace />} />
+              <Route path="/events/resources" element={<Navigate to="/schedule/resources" replace />} />
               
               {/* Notifications Routes */}
               <Route path="/notifications" element={<PlaceholderPage title={t('routes.notifications.title')} description={t('routes.notifications.description')} icon="🔔" />} />
               <Route path="/notifications/inbox" element={<PlaceholderPage title={t('routes.inbox.title')} description={t('routes.inbox.description')} icon="📥" />} />
               <Route path="/notifications/rules" element={<PlaceholderPage title={t('routes.rules.title')} description={t('routes.rules.description')} icon="⚙️" />} />
               <Route path="/notifications/templates" element={<PlaceholderPage title={t('routes.templates.title')} description={t('routes.templates.description')} icon="📄" />} />
+
+              {/* Analytics Routes */}
+              <Route path="/analytics" element={<Navigate to="/analytics/kpis" replace />} />
+              <Route path="/analytics/kpis" element={<PlaceholderPage title={t('routes.kpis.title')} description={t('routes.kpis.description')} icon="📈" />} />
+              <Route path="/analytics/forecasts" element={<PlaceholderPage title={t('routes.forecasts.title')} description={t('routes.forecasts.description')} icon="🔮" />} />
+              <Route path="/analytics/reports" element={<ReportsAnalytics />} />
               
               {/* Settings */}
               <Route path="/settings" element={<Settings />} />

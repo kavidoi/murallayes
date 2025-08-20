@@ -10,11 +10,11 @@ import * as express from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Trust Railway's proxy for proper HTTPS handling
+  // Trust reverse proxy (Render, Nginx, etc.) for proper HTTPS handling
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
-  // Debug logging for healthcheck traffic (helps diagnose Railway healthchecks)
+  // Debug logging for healthcheck traffic (platform healthchecks)
   expressApp.use((req: any, _res: any, next: any) => {
     if (req.path && req.path.startsWith('/health')) {
       // eslint-disable-next-line no-console
@@ -27,7 +27,7 @@ async function bootstrap() {
     next();
   });
 
-  // Express-level fallback health endpoints to guarantee 200 for Railway
+  // Express-level fallback health endpoints to guarantee 200 for the platform
   // These are safe and mirror Nest's health endpoints; they respond even if Nest routing changes.
   expressApp.get('/health/healthz', (_req: any, res: any) => {
     // eslint-disable-next-line no-console
@@ -96,8 +96,8 @@ async function bootstrap() {
     ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000']),
     // Production HTTPS origins
     'https://admin.murallacafe.cl',
-    // Railway automatic domains (HTTPS only)
-    ...(process.env.RAILWAY_PUBLIC_DOMAIN ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`] : []),
+    // Include the deployed backend URL if provided by the platform
+    ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
   ];
 
   app.enableCors({
@@ -144,9 +144,9 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   
   const protocol = isProd ? 'https' : 'http';
-  const domain = process.env.RAILWAY_PUBLIC_DOMAIN || `localhost:${port}`;
-  console.log(`🚀 Muralla backend running on ${protocol}://${domain}`);
-  console.log(`🔒 SSL/TLS: ${isProd ? 'Enabled (Railway managed)' : 'Development mode'}`);
+  const externalUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `${protocol}://localhost:${port}`;
+  console.log(`🚀 Muralla backend running on ${externalUrl}`);
+  console.log(`🔒 SSL/TLS: ${isProd ? 'Enabled (reverse proxy)' : 'Development mode'}`);
   console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
 }
 

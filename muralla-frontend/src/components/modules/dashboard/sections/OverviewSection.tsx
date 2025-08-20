@@ -85,7 +85,7 @@ const TaskWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/projects" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/projects/tasks" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
         View all tasks (12) →
       </a>
     </div>
@@ -129,7 +129,7 @@ const PeopleWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/people" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/staff/directory" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
         View team directory →
       </a>
     </div>
@@ -163,7 +163,7 @@ const InventoryWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/inventory" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/operations/inventory" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
         View inventory →
       </a>
     </div>
@@ -203,7 +203,7 @@ const EventWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/events" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/schedule" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
         View all events →
       </a>
     </div>

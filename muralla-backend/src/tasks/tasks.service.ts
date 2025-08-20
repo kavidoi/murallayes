@@ -189,6 +189,34 @@ export class TasksService {
     });
   }
 
+  async reorderSubtasks(parentId: string, subtaskIds: string[]) {
+    // Validate that all ids correspond to subtasks of the given parent and are not deleted
+    const existing = await this.prisma.task.findMany({
+      where: {
+        id: { in: subtaskIds },
+        parentTaskId: parentId,
+        NOT: { isDeleted: true },
+      },
+      select: { id: true },
+    });
+
+    if (existing.length !== subtaskIds.length) {
+      throw new Error('One or more subtasks not found for the specified parent');
+    }
+
+    // Update orderIndex in a transaction to reflect the provided order
+    await this.prisma.$transaction(
+      subtaskIds.map((id, index) =>
+        this.prisma.task.update({
+          where: { id },
+          data: { orderIndex: index },
+        })
+      )
+    );
+
+    return { success: true } as const;
+  }
+
   async remove(id: string) {
     return this.prisma.task.delete({ where: { id } });
   }
