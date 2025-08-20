@@ -168,12 +168,17 @@ export class FinanceController {
     unit_price: number;
     currency_id?: string;
     external_reference?: string;
+    // Enhanced fields for fraud prevention and approval rates
     description?: string;
+    category_id?: string;
+    item_id?: string;
     payer?: {
       email?: string;
       first_name?: string;
       last_name?: string;
     };
+    // Binary mode for instant approval
+    binary_mode?: boolean;
   }) {
     return this.mercadoPagoService.createPreference(data);
   }
