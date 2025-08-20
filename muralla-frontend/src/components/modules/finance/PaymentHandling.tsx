@@ -350,7 +350,9 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
                     description={testPayment.description}
                     customerEmail={testPayment.customerEmail}
                     onSuccess={(result) => {
-                      console.log('Payment successful:', result);
+                      if (import.meta.env.DEV) {
+                        console.log('Payment successful:', result);
+                      }
                       onPaymentComplete?.(result);
                       // Refresh transactions
                       loadTransactions();
@@ -362,7 +364,9 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
                       onPaymentError?.(error);
                     }}
                     onPending={(result) => {
-                      console.log('Payment pending:', result);
+                      if (import.meta.env.DEV) {
+                        console.log('Payment pending:', result);
+                      }
                       // Refresh transactions
                       loadTransactions();
                     }}
