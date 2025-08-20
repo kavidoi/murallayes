@@ -39,6 +39,13 @@ export interface CreateProjectDto {
   deadline?: string; // ISO string when kind === 'DEADLINE'
 }
 
+export interface UpdateProjectDto {
+  name?: string;
+  description?: string;
+  kind?: ProjectKind;
+  deadline?: string; // ISO string when kind === 'DEADLINE'
+}
+
 class ProjectsService {
   private getAuthHeaders() {
     return AuthService.getAuthHeaders() as Record<string, string>;
@@ -79,6 +86,31 @@ class ProjectsService {
       return response.data;
     } catch (error) {
       console.error('Error creating project:', error);
+      throw error;
+    }
+  }
+
+  async updateProject(id: string, updates: UpdateProjectDto): Promise<Project> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.put(`${API_BASE_URL}/projects/${id}`, updates, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    try {
+      await AuthService.ensureValidToken();
+      await axios.delete(`${API_BASE_URL}/projects/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error('Error deleting project:', error);
       throw error;
     }
   }

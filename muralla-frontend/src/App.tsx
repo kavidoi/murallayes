@@ -23,7 +23,7 @@ const RevenueExpenses = lazy(() => import('./components/modules/finance/RevenueE
 const BudgetManager = lazy(() => import('./components/modules/finance/BudgetManager'))
 const PTO = lazy(() => import('./components/modules/people/PTO'))
 const TasksList = lazy(() => import('./components/modules/projects/TasksList'))
-const ProjectsOverview = lazy(() => import('./components/modules/projects/ProjectsOverview'))
+const ProjectsManager = lazy(() => import('./components/modules/projects/ProjectsManager'))
 const Settings = lazy(() => import('./components/modules/settings/Settings'))
 const ProductCatalog = lazy(() => import('./components/modules/pipeline/ProductCatalog'))
 const InventoryDashboard = lazy(() => import('./components/modules/pipeline/InventoryDashboard'))
@@ -146,7 +146,7 @@ function App() {
               
               {/* Projects & Tasks Routes */}
               <Route path="/projects" element={<Navigate to="/projects/overview" replace />} />
-              <Route path="/projects/overview" element={<ProjectsOverview />} />
+              <Route path="/projects/overview" element={<ProjectsManager />} />
               <Route path="/projects/tasks" element={<TasksList />} />
               <Route path="/projects/kanban" element={<PlaceholderPage title={t('routes.kanban.title')} description={t('routes.kanban.description')} icon="📊" />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
