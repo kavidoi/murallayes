@@ -12,6 +12,9 @@ import PlaceholderPage from './components/common/PlaceholderPage'
 // Lazy load non-critical components for code splitting
 const PaymentBrick = lazy(() => import('./components/modules/finance/PaymentBrick'))
 const PaymentHandling = lazy(() => import('./components/modules/finance/PaymentHandling'))
+const PaymentSuccess = lazy(() => import('./components/modules/finance/PaymentSuccess'))
+const PaymentFailure = lazy(() => import('./components/modules/finance/PaymentFailure'))
+const PaymentPending = lazy(() => import('./components/modules/finance/PaymentPending'))
 const FinanceDashboard = lazy(() => import('./components/modules/finance/FinanceDashboard'))
 const PeopleOverview = lazy(() => import('./components/modules/people/PeopleOverview'))
 const TeamDirectory = lazy(() => import('./components/modules/people/TeamDirectory'))
@@ -167,6 +170,9 @@ function App() {
               <Route path="/finance/bank" element={<BankAccount />} />
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
               <Route path="/finance/payments" element={<PaymentHandling />} />
+              <Route path="/finance/payment/success" element={<PaymentSuccess />} />
+              <Route path="/finance/payment/failure" element={<PaymentFailure />} />
+              <Route path="/finance/payment/pending" element={<PaymentPending />} />
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title={t('routes.taxes.title')} description={t('routes.taxes.description')} icon="🧾" />} />
               <Route path="/finance/budgets" element={<BudgetManager />} />

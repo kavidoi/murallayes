@@ -207,3 +207,9 @@ muralla-backend/uploads/
 
 # Misc repo artifacts
 ts-errors.txt
+
+# Additional build optimization exclusions
+scripts/render-api-examples/
+*.backup
+*.bak
+.history/

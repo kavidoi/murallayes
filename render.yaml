@@ -50,8 +50,9 @@ staticSites:
     rootDir: .
     buildCommand: |
       corepack enable && corepack prepare pnpm@8.15.0 --activate && \
-      pnpm install --no-frozen-lockfile && \
-      pnpm -w -r build
+      pnpm install --frozen-lockfile --prefer-offline && \
+      pnpm --filter @muralla/common build && \
+      pnpm --filter muralla-frontend build
     publishPath: muralla-frontend/dist
     envVars:
       - key: VITE_API_BASE_URL

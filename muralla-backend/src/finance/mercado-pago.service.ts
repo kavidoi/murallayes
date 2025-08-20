@@ -203,53 +203,110 @@ export class MercadoPagoService {
     unit_price: number;
     currency_id?: string;
     external_reference?: string;
-    // Quality recommendations
+    // Quality recommendations for fraud prevention and approval rates
     category_id?: string;
     description?: string;
+    item_id?: string;
     payer?: {
       email?: string;
       first_name?: string;
       last_name?: string;
     };
+    // Additional options for instant approval
+    binary_mode?: boolean;
   }): Promise<any> {
     try {
       const preference = new Preference(this.client);
       
+      // Generate unique external reference if not provided
+      const externalRef = data.external_reference || `muralla-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       const preferenceData = {
         items: [
           {
-            id: 'item-' + Date.now(),
+            // Required: Unique item identifier for correlation
+            id: data.item_id || `item-${Date.now()}`,
+            // Required: Item name/title
             title: data.title,
+            // Required: Product quantity
             quantity: data.quantity,
+            // Required: Unit price per item
             unit_price: data.unit_price,
+            // Currency (defaults to Chilean Peso)
             currency_id: data.currency_id || process.env.MP_CURRENCY || 'CLP',
+            // Item category for fraud prevention (improves approval rates)
             category_id: data.category_id || 'others',
+            // Detailed item description for fraud prevention
             description: data.description || data.title,
           },
         ],
-        external_reference: data.external_reference,
+        // External reference for payment correlation with internal system
+        external_reference: externalRef,
+        
+        // Webhook notification URL for payment status updates
         notification_url: `${process.env.BACKEND_URL}/api/finance/mercadopago/webhook`,
+        
+        // Redirect URLs after payment completion
         back_urls: {
           success: `${process.env.FRONTEND_URL}/finance/payment/success`,
           failure: `${process.env.FRONTEND_URL}/finance/payment/failure`,
           pending: `${process.env.FRONTEND_URL}/finance/payment/pending`,
         },
         auto_return: 'approved',
+        
+        // Binary mode for instant approval requirement
+        binary_mode: data.binary_mode !== false, // Default to true unless explicitly disabled
+        
+        // Payer information for fraud prevention (improves approval rates)
         payer: data.payer && {
           email: data.payer.email,
+          // Use 'name' and 'surname' for preference API (different from payment API)
           name: data.payer.first_name,
           surname: data.payer.last_name,
         },
-        // Descripción-Resumen de tarjeta para evitar contracargos
+        
+        // Payment timeout and preferences
+        expires: true,
+        expiration_date_from: new Date().toISOString(),
+        expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        
+        // Statement descriptor to prevent chargebacks
         statement_descriptor: process.env.MP_STATEMENT_DESCRIPTOR || 'MURALLA',
+        
+        // Additional metadata for tracking
+        metadata: {
+          source: 'muralla-system',
+          created_at: new Date().toISOString(),
+          external_reference: externalRef,
+        },
       } as any;
 
+      // Clean undefined values to avoid API validation errors
+      this.cleanUndefinedValues(preferenceData);
+
+      this.logger.log(`Creating preference with external_reference: ${externalRef}`);
       const result = await preference.create({ body: preferenceData });
+      
+      this.logger.log(`Preference created successfully: ${result.id}`);
       return result;
     } catch (error) {
       this.logger.error('Error creating Mercado Pago preference:', error);
       throw error;
     }
+  }
+
+  private cleanUndefinedValues(obj: any): void {
+    Object.keys(obj).forEach(key => {
+      if (obj[key] === undefined) {
+        delete obj[key];
+      } else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+        this.cleanUndefinedValues(obj[key]);
+        // Remove empty objects
+        if (Object.keys(obj[key]).length === 0) {
+          delete obj[key];
+        }
+      }
+    });
   }
 
   async getPayment(paymentId: string): Promise<any> {
