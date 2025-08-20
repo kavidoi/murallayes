@@ -409,6 +409,76 @@ const DueDateSelector: React.FC<{
   )
 }
 
+// Project selector
+const ProjectSelector: React.FC<{
+  projectId?: string
+  projects: APIProject[]
+  onChange: (projectId: string) => void
+}> = ({ projectId, projects, onChange }) => {
+  const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const selectedProject = projects.find(p => p.id === projectId)
+
+  const getDropdownPosition = () => {
+    if (!buttonRef) return { top: 0, left: 0 }
+    const rect = buttonRef.getBoundingClientRect()
+    return {
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.right + window.scrollX - 200
+    }
+  }
+
+  const dropdownPosition = getDropdownPosition()
+
+  return (
+    <div className="relative">
+      <button
+        ref={setButtonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-w-[80px]"
+      >
+        <span className="truncate text-left flex-1">
+          {selectedProject?.name || 'Sin proyecto'}
+        </span>
+        <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className="fixed z-50 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              minWidth: '200px'
+            }}
+          >
+            {projects.map(project => (
+              <button
+                key={project.id}
+                onClick={() => {
+                  onChange(project.id)
+                  setIsOpen(false)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
+              >
+                <span className="truncate">{project.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Inline text editor
 const InlineTextEditor: React.FC<{
   value: string
@@ -473,13 +543,14 @@ const InlineTextEditor: React.FC<{
 const SortableTaskRow: React.FC<{
   task: Task
   users: User[]
+  projects: APIProject[]
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
   onSubtaskUpdate: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => void
   onAddSubtask: (taskId: string) => void
   onDeleteSubtask: (subtaskId: string) => void
   onDeleteTask?: (taskId: string) => void
   isSubtask?: boolean
-}> = ({ task, users, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
+}> = ({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -507,12 +578,12 @@ const SortableTaskRow: React.FC<{
     <div ref={setNodeRef} style={style} className={isSubtask ? 'ml-6' : ''}>
       <div className={`grid grid-cols-12 gap-4 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-900'}`}>
         {/* Drag handle + Expand/Collapse + Name */}
-        <div className="col-span-4 flex items-center space-x-2">
+        <div className="col-span-3 flex items-center space-x-2">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
             ⋮⋮
           </div>
           
-          {!isSubtask && (
+          {!isSubtask && task.subtasks.length > 0 && (
             <button
               onClick={toggleExpanded}
               className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
@@ -560,13 +631,15 @@ const SortableTaskRow: React.FC<{
         
         {/* Project */}
         <div className="col-span-1 flex items-center">
-          <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
-            {task.projectName}
-          </span>
+          <ProjectSelector
+            projectId={task.projectId}
+            projects={projects}
+            onChange={(projectId) => onTaskUpdate(task.id, { projectId })}
+          />
         </div>
         
         {/* Actions */}
-        <div className="col-span-1 flex items-center space-x-1">
+        <div className="col-span-2 flex items-center space-x-1">
           {!isSubtask && (
             <button
               onClick={() => onAddSubtask(task.id)}
@@ -588,7 +661,7 @@ const SortableTaskRow: React.FC<{
           {!isSubtask && (
             <button
               onClick={() => onDeleteTask?.(task.id)}
-              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded border border-red-200 hover:border-red-300 dark:border-red-600 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1"
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded border border-red-200 hover:border-red-300 dark:border-red-600 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               title="Eliminar tarea"
             >
               Eliminar
@@ -611,6 +684,7 @@ const SortableTaskRow: React.FC<{
                 subtasks: []
               }}
               users={users}
+              projects={projects}
               onTaskUpdate={(subtaskId, updates) => {
                 onSubtaskUpdate(task.id, subtaskId, updates as Partial<Subtask>)
               }}
@@ -632,6 +706,7 @@ const TasksList: React.FC = () => {
   const { t } = useTranslation()
   const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [projects, setProjects] = useState<APIProject[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -664,6 +739,7 @@ const TasksList: React.FC = () => {
       
       setUsers(mappedUsers)
       setTasks(mappedTasks)
+      setProjects(projectsData)
       setError(null)
     } catch (err) {
       console.error('Failed to load tasks:', err)
@@ -730,6 +806,7 @@ const TasksList: React.FC = () => {
         return // updateTaskAssignees returns the full updated task
       }
       if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
+      if ('projectId' in updates) apiUpdates.projectId = updates.projectId
       
       if (Object.keys(apiUpdates).length > 0) {
         await tasksService.updateTask(taskId, apiUpdates)
@@ -994,12 +1071,12 @@ const TasksList: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Headers */}
           <div className="grid grid-cols-12 gap-4 p-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 font-medium text-gray-700 dark:text-gray-300 text-sm sticky top-0">
-            <div className="col-span-4">{t('pages.tasks.columns.name')}</div>
+            <div className="col-span-3">{t('pages.tasks.columns.name')}</div>
             <div className="col-span-2">{t('pages.tasks.columns.dueDate')}</div>
             <div className="col-span-2">{t('pages.tasks.columns.status')}</div>
             <div className="col-span-2">{t('pages.tasks.columns.assignee')}</div>
             <div className="col-span-1">{t('pages.tasks.columns.project')}</div>
-            <div className="col-span-1">{t('pages.tasks.columns.actions')}</div>
+            <div className="col-span-2">{t('pages.tasks.columns.actions')}</div>
           </div>
           
           {/* Task rows */}
@@ -1017,6 +1094,7 @@ const TasksList: React.FC = () => {
                       key={task.id}
                       task={task}
                       users={users}
+                      projects={projects}
                       onTaskUpdate={handleTaskUpdate}
                       onSubtaskUpdate={handleSubtaskUpdate}
                       onAddSubtask={handleAddSubtask}
