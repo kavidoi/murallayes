@@ -5,6 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false,
     rollupOptions: {
       input: {
         main: '/index.html',
@@ -24,5 +27,8 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1000 // Increase warning limit to 1MB
+  },
+  esbuild: {
+    drop: ['console', 'debugger']
   }
 })
