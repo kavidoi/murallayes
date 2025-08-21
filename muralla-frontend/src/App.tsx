@@ -36,6 +36,7 @@ const ReportsAnalytics = lazy(() => import('./components/modules/pipeline/Report
 const PurchaseOrders = lazy(() => import('./components/modules/pipeline/PurchaseOrders'))
 const Insumos = lazy(() => import('./components/modules/pipeline/Insumos'))
 const Contactos = lazy(() => import('./components/modules/crm/Contactos'))
+const SupplierPortal = lazy(() => import('./components/modules/supplier-portal/SupplierPortal'))
 const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
 
 // Loading fallback component
@@ -127,6 +128,12 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+        {/* Public Supplier Portal Route */}
+        <Route path="/supplier-portal/:token" element={
+          <Suspense fallback={<LoadingFallback />}>
+            <SupplierPortal />
+          </Suspense>
+        } />
         <Route path="*" element={
           <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
             <Suspense fallback={<LoadingFallback />}>

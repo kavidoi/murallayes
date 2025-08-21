@@ -3,6 +3,33 @@ import { useTranslation } from 'react-i18next';
 import AddContact from './AddContact';
 import ContactProfile from './ContactProfile';
 
+interface SupplierStockItem {
+  id: string;
+  name: string;
+  category: string;
+  currentStock: number;
+  unit: string;
+  lastPurchaseDate: string;
+  lastPurchaseAmount: number;
+  reorderLevel: number;
+  status: 'sufficient' | 'low' | 'critical';
+}
+
+interface PendingOrder {
+  id: string;
+  orderNumber: string;
+  items: {
+    name: string;
+    quantity: number;
+    unit: string;
+  }[];
+  orderDate: string;
+  expectedDelivery?: string;
+  totalAmount: number;
+  status: 'pending' | 'confirmed' | 'in_transit' | 'delivered';
+  notes?: string;
+}
+
 interface Contact {
   id: string;
   name: string;
@@ -21,6 +48,19 @@ interface Contact {
   // Business-specific fields
   contactPersonName?: string; // For businesses: name of the contact person
   giro?: string; // Business activity/industry
+  // Bank account details
+  bankDetails?: {
+    bankName?: string;
+    accountType?: 'checking' | 'savings' | 'business';
+    accountNumber?: string;
+    accountHolder?: string; // Name on the account
+    rutAccount?: string; // RUT of account holder
+  };
+  // Supplier portal access
+  portalToken?: string; // Random token for supplier portal access
+  portalEnabled?: boolean; // Whether portal access is enabled
+  currentStock?: SupplierStockItem[]; // Current stock of items from this supplier
+  pendingOrders?: PendingOrder[]; // Current orders with this supplier
   // Analytics data
   totalPurchases?: number;
   totalSales?: number;
@@ -44,6 +84,26 @@ interface Transaction {
   reference?: string;
 }
 
+interface HistoryEntry {
+  id: string;
+  contactId: string;
+  type: 'automated' | 'manual';
+  category: 'order' | 'payment' | 'communication' | 'meeting' | 'note' | 'system';
+  title: string;
+  description: string;
+  amount?: number;
+  date: string;
+  author?: string; // For manual entries
+  linkedTransactionId?: string; // Link to related transaction
+  linkedOrderId?: string; // Link to related order
+  metadata?: {
+    orderNumber?: string;
+    paymentMethod?: string;
+    meetingType?: string;
+    urgency?: 'low' | 'medium' | 'high';
+  };
+}
+
 const Contactos: React.FC = () => {
   const { t } = useTranslation();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -53,6 +113,7 @@ const Contactos: React.FC = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   // Mock data - replace with actual API calls
   useEffect(() => {
@@ -70,6 +131,65 @@ const Contactos: React.FC = () => {
         address: 'Av. Providencia 1234, Santiago',
         contactPersonName: 'Roberto Muñoz',
         giro: 'Comercialización de café y productos gourmet',
+        bankDetails: {
+          bankName: 'Banco de Chile',
+          accountType: 'business',
+          accountNumber: '001-1234567-89',
+          accountHolder: 'Café Central S.A.',
+          rutAccount: '76.123.456-7'
+        },
+        portalToken: '375dsfgeF',
+        portalEnabled: true,
+        currentStock: [
+          {
+            id: 's1',
+            name: 'Café Arábica Premium',
+            category: 'Café',
+            currentStock: 25,
+            unit: 'kg',
+            lastPurchaseDate: '2025-01-20',
+            lastPurchaseAmount: 420000,
+            reorderLevel: 10,
+            status: 'sufficient'
+          },
+          {
+            id: 's2',
+            name: 'Café Robusta',
+            category: 'Café',
+            currentStock: 5,
+            unit: 'kg',
+            lastPurchaseDate: '2025-01-15',
+            lastPurchaseAmount: 180000,
+            reorderLevel: 8,
+            status: 'low'
+          },
+          {
+            id: 's3',
+            name: 'Café Orgánico',
+            category: 'Café',
+            currentStock: 2,
+            unit: 'kg',
+            lastPurchaseDate: '2025-01-10',
+            lastPurchaseAmount: 350000,
+            reorderLevel: 5,
+            status: 'critical'
+          }
+        ],
+        pendingOrders: [
+          {
+            id: 'o1',
+            orderNumber: 'PO-2025-003',
+            items: [
+              { name: 'Café Arábica Premium', quantity: 50, unit: 'kg' },
+              { name: 'Café Orgánico', quantity: 20, unit: 'kg' }
+            ],
+            orderDate: '2025-01-22',
+            expectedDelivery: '2025-01-25',
+            totalAmount: 1200000,
+            status: 'confirmed',
+            notes: 'Entrega en la mañana, contactar a Roberto'
+          }
+        ],
         notes: 'Proveedor principal de café arábica premium',
         tags: ['café', 'premium', 'confiable'],
         createdAt: '2024-01-15',
@@ -165,6 +285,40 @@ const Contactos: React.FC = () => {
         address: 'Camino Rural 456, Melipilla',
         contactPersonName: 'Carlos Jiménez',
         giro: 'Producción y distribución de lácteos',
+        bankDetails: {
+          bankName: 'Banco Estado',
+          accountType: 'business',
+          accountNumber: '600-7891234-56',
+          accountHolder: 'Lechería del Valle Ltda.',
+          rutAccount: '78.456.789-1'
+        },
+        portalToken: '8kL9mN3pQ',
+        portalEnabled: true,
+        currentStock: [
+          {
+            id: 's4',
+            name: 'Leche Entera',
+            category: 'Lácteos',
+            currentStock: 8,
+            unit: 'litros',
+            lastPurchaseDate: '2025-01-19',
+            lastPurchaseAmount: 120000,
+            reorderLevel: 15,
+            status: 'low'
+          },
+          {
+            id: 's5',
+            name: 'Mantequilla',
+            category: 'Lácteos',
+            currentStock: 3,
+            unit: 'kg',
+            lastPurchaseDate: '2025-01-18',
+            lastPurchaseAmount: 84000,
+            reorderLevel: 8,
+            status: 'critical'
+          }
+        ],
+        pendingOrders: [],
         notes: 'Proveedor de lácteos frescos',
         tags: ['lácteos', 'frescos', 'diario'],
         createdAt: '2024-01-20',
@@ -210,9 +364,140 @@ const Contactos: React.FC = () => {
       }
     ];
 
+    const mockHistory: HistoryEntry[] = [
+      // Café Central S.A. history
+      {
+        id: 'h1',
+        contactId: '1',
+        type: 'automated',
+        category: 'order',
+        title: 'Orden creada',
+        description: 'Nueva orden de compra PO-2025-001 por $420.000',
+        amount: 420000,
+        date: '2025-01-20T10:30:00',
+        linkedTransactionId: '1',
+        metadata: {
+          orderNumber: 'PO-2025-001'
+        }
+      },
+      {
+        id: 'h2',
+        contactId: '1',
+        type: 'manual',
+        category: 'communication',
+        title: 'Confirmación telefónica',
+        description: 'Llamé y confirmaron la entrega para el martes. Roberto estará disponible en la mañana.',
+        date: '2025-01-19T14:15:00',
+        author: 'Darwin'
+      },
+      {
+        id: 'h3',
+        contactId: '1',
+        type: 'automated',
+        category: 'payment',
+        title: 'Pago procesado',
+        description: 'Transferencia bancaria completada - Orden PO-2025-001',
+        amount: 420000,
+        date: '2025-01-21T09:00:00',
+        linkedTransactionId: '1',
+        metadata: {
+          paymentMethod: 'Transferencia',
+          orderNumber: 'PO-2025-001'
+        }
+      },
+      // María González history
+      {
+        id: 'h4',
+        contactId: '2',
+        type: 'automated',
+        category: 'order',
+        title: 'Compra realizada',
+        description: 'Venta por $12.000 - Café + Pasteles',
+        amount: 12000,
+        date: '2025-01-21T16:45:00',
+        linkedTransactionId: '2'
+      },
+      {
+        id: 'h5',
+        contactId: '2',
+        type: 'manual',
+        category: 'note',
+        title: 'Preferencias del cliente',
+        description: 'María prefiere café sin azúcar y le gustan mucho los croissants. Mencionar promociones de pasteles.',
+        date: '2025-01-15T12:00:00',
+        author: 'Ana',
+        metadata: {
+          urgency: 'low'
+        }
+      },
+      // TechCorp S.A. history
+      {
+        id: 'h6',
+        contactId: '3',
+        type: 'automated',
+        category: 'order',
+        title: 'Catering completado',
+        description: 'Evento corporativo facturado por $250.000',
+        amount: 250000,
+        date: '2025-01-18T18:00:00',
+        linkedTransactionId: '3',
+        metadata: {
+          orderNumber: 'FACT-2025-015'
+        }
+      },
+      {
+        id: 'h7',
+        contactId: '3',
+        type: 'manual',
+        category: 'meeting',
+        title: 'Reunión de planificación',
+        description: 'Nos reunimos con Ana Martínez para planificar el evento. Acordamos menú vegetariano y servicio de 150 personas.',
+        date: '2025-01-10T15:30:00',
+        author: 'Carlos',
+        metadata: {
+          meetingType: 'presencial',
+          urgency: 'high'
+        }
+      },
+      {
+        id: 'h8',
+        contactId: '3',
+        type: 'manual',
+        category: 'communication',
+        title: 'Feedback del evento',
+        description: 'Ana llamó para agradecer. Muy satisfechos con el servicio. Están interesados en catering mensual.',
+        date: '2025-01-19T11:00:00',
+        author: 'Darwin',
+        metadata: {
+          urgency: 'medium'
+        }
+      },
+      // Lechería del Valle history
+      {
+        id: 'h9',
+        contactId: '6',
+        type: 'automated',
+        category: 'system',
+        title: 'Contacto agregado',
+        description: 'Nuevo proveedor registrado en el sistema',
+        date: '2024-01-20T08:00:00'
+      },
+      {
+        id: 'h10',
+        contactId: '6',
+        type: 'manual',
+        category: 'note',
+        title: 'Condiciones de pago',
+        description: 'Carlos confirmó que aceptan pago a 30 días. Entregas lunes, miércoles y viernes antes de las 8 AM.',
+        date: '2024-01-22T10:30:00',
+        author: 'Sofia'
+      }
+    ];
+
     setContacts(mockContacts);
     setFilteredContacts(mockContacts);
     setTransactions(mockTransactions);
+    setHistory(mockHistory);
   }, []);
 
   // Filter logic
@@ -553,11 +838,26 @@ const Contactos: React.FC = () => {
       {selectedContact && (
         <ContactProfile
           contact={selectedContact}
+          history={history.filter(h => h.contactId === selectedContact.id)}
           onClose={() => setSelectedContact(null)}
           onEdit={(contact) => {
             // Update contact in the list
             setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
             setSelectedContact(contact);
+          }}
+          onAddNote={(note) => {
+            // Add new history entry
+            const newHistoryEntry: HistoryEntry = {
+              id: `h-${Date.now()}`,
+              contactId: selectedContact.id,
+              type: 'manual',
+              category: 'note',
+              title: 'Nota agregada',
+              description: note,
+              date: new Date().toISOString(),
+              author: 'Usuario', // In real app, get from auth context
+            };
+            setHistory(prev => [...prev, newHistoryEntry]);
           }}
         />
       )}

@@ -18,6 +18,19 @@ interface Contact {
   // Business-specific fields
   contactPersonName?: string;
   giro?: string;
+  // Bank account details
+  bankDetails?: {
+    bankName?: string;
+    accountType?: 'checking' | 'savings' | 'business';
+    accountNumber?: string;
+    accountHolder?: string;
+    rutAccount?: string;
+  };
+  // Supplier portal access
+  portalToken?: string;
+  portalEnabled?: boolean;
+  currentStock?: any[];
+  pendingOrders?: any[];
   totalPurchases?: number;
   totalSales?: number;
   averagePurchase?: number;
@@ -40,15 +53,63 @@ interface Transaction {
   reference?: string;
 }
 
-interface ContactProfileProps {
-  contact: Contact;
-  onClose: () => void;
-  onEdit?: (contact: Contact) => void;
+interface HistoryEntry {
+  id: string;
+  contactId: string;
+  type: 'automated' | 'manual';
+  category: 'order' | 'payment' | 'communication' | 'meeting' | 'note' | 'system';
+  title: string;
+  description: string;
+  amount?: number;
+  date: string;
+  author?: string;
+  linkedTransactionId?: string;
+  linkedOrderId?: string;
+  metadata?: {
+    orderNumber?: string;
+    paymentMethod?: string;
+    meetingType?: string;
+    urgency?: 'low' | 'medium' | 'high';
+  };
 }
 
-const ContactProfile: React.FC<ContactProfileProps> = ({ contact, onClose, onEdit }) => {
+interface ContactProfileProps {
+  contact: Contact;
+  history: HistoryEntry[];
+  onClose: () => void;
+  onEdit?: (contact: Contact) => void;
+  onAddNote?: (note: string) => void;
+}
+
+// Helper functions for history display
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'order': return '📦';
+    case 'payment': return '💳';
+    case 'communication': return '📞';
+    case 'meeting': return '🤝';
+    case 'note': return '📝';
+    case 'system': return '⚙️';
+    default: return '📄';
+  }
+};
+
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'order': return 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300';
+    case 'payment': return 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300';
+    case 'communication': return 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300';
+    case 'meeting': return 'bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300';
+    case 'note': return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300';
+    case 'system': return 'bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300';
+    default: return 'bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300';
+  }
+};
+
+const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClose, onEdit, onAddNote }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'analytics'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'analytics' | 'history'>('info');
+  const [newNote, setNewNote] = useState('');
 
   useEffect(() => {
     // Mock transaction data - replace with actual API call
@@ -202,6 +263,7 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, onClose, onEdi
             {[
               { id: 'info', label: 'Información', icon: '📋' },
               { id: 'transactions', label: 'Transacciones', icon: '💰' },
+              { id: 'history', label: 'Historial', icon: '📝' },
               { id: 'analytics', label: 'Analítica', icon: '📊' }
             ].map(tab => (
               <button
@@ -311,6 +373,152 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, onClose, onEdi
                     </span>
                   </div>
                 </div>
+
+                {/* Bank Details Section */}
+                {contact.bankDetails && (
+                  <div className="mt-6">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                      Datos Bancarios
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-3">
+                      {contact.bankDetails.bankName && (
+                        <div className="flex items-center">
+                          <span className="w-8 text-gray-400">🏦</span>
+                          <span className="text-gray-900 dark:text-white">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Banco: </span>
+                            {contact.bankDetails.bankName}
+                          </span>
+                        </div>
+                      )}
+                      {contact.bankDetails.accountType && (
+                        <div className="flex items-center">
+                          <span className="w-8 text-gray-400">💳</span>
+                          <span className="text-gray-900 dark:text-white">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Tipo: </span>
+                            {contact.bankDetails.accountType === 'checking' ? 'Cuenta Corriente' :
+                             contact.bankDetails.accountType === 'savings' ? 'Cuenta de Ahorros' : 'Cuenta Empresa'}
+                          </span>
+                        </div>
+                      )}
+                      {contact.bankDetails.accountNumber && (
+                        <div className="flex items-center">
+                          <span className="w-8 text-gray-400">🔢</span>
+                          <span className="text-gray-900 dark:text-white">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Número: </span>
+                            {contact.bankDetails.accountNumber}
+                          </span>
+                        </div>
+                      )}
+                      {contact.bankDetails.accountHolder && (
+                        <div className="flex items-center">
+                          <span className="w-8 text-gray-400">👤</span>
+                          <span className="text-gray-900 dark:text-white">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Titular: </span>
+                            {contact.bankDetails.accountHolder}
+                          </span>
+                        </div>
+                      )}
+                      {contact.bankDetails.rutAccount && (
+                        <div className="flex items-center">
+                          <span className="w-8 text-gray-400">🆔</span>
+                          <span className="text-gray-900 dark:text-white">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">RUT Titular: </span>
+                            {contact.bankDetails.rutAccount}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Supplier Portal Section */}
+                {contact.type === 'supplier' && (
+                  <div className="mt-6">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                      Portal del Proveedor
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Estado del Portal:</span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          contact.portalEnabled 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        }`}>
+                          {contact.portalEnabled ? '✅ Activo' : '❌ Inactivo'}
+                        </span>
+                      </div>
+                      
+                      {contact.portalToken && contact.portalEnabled && (
+                        <>
+                          <div className="flex items-start">
+                            <span className="w-8 text-gray-400">🔗</span>
+                            <div className="flex-1">
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Enlace de Acceso: </span>
+                              <div className="mt-1">
+                                <code className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded font-mono">
+                                  admin.murallacafe.cl/supplier-portal/{contact.portalToken}
+                                </code>
+                                <button
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/supplier-portal/${contact.portalToken}`;
+                                    navigator.clipboard.writeText(url);
+                                    alert('Enlace copiado al portapapeles');
+                                  }}
+                                  className="ml-2 text-blue-600 hover:text-blue-700 text-xs"
+                                >
+                                  📋 Copiar
+                                </button>
+                                <a
+                                  href={`/supplier-portal/${contact.portalToken}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-2 text-blue-600 hover:text-blue-700 text-xs"
+                                >
+                                  🔗 Abrir
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {contact.currentStock && (
+                            <div className="flex items-center">
+                              <span className="w-8 text-gray-400">📦</span>
+                              <span className="text-gray-900 dark:text-gray-100">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Productos en Stock: </span>
+                                {contact.currentStock.length} productos
+                              </span>
+                            </div>
+                          )}
+                          
+                          {contact.pendingOrders && (
+                            <div className="flex items-center">
+                              <span className="w-8 text-gray-400">📋</span>
+                              <span className="text-gray-900 dark:text-gray-100">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Órdenes Pendientes: </span>
+                                {contact.pendingOrders.length} órdenes
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      
+                      {!contact.portalToken && (
+                        <div className="text-center py-2">
+                          <button
+                            onClick={() => {
+                              const token = Math.random().toString(36).substring(2, 15);
+                              alert(`Token generado: ${token}\nEsto debería integrarse con el backend para guardar el token.`);
+                            }}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded"
+                          >
+                            🔑 Generar Acceso al Portal
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {contact.notes && (
                   <div className="mt-6">
@@ -570,6 +778,92 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, onClose, onEdi
                   • Predicción de próximas compras<br/>
                   • Comparación con otros contactos similares
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Historial de Actividad
+                </h3>
+                {onAddNote && (
+                  <button
+                    onClick={() => {
+                      const note = prompt('Agregar nota:');
+                      if (note && note.trim()) {
+                        onAddNote(note.trim());
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    ➕ Agregar Nota
+                  </button>
+                )}
+              </div>
+
+              {/* History Timeline */}
+              <div className="space-y-4">
+                {history.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-4 block">📝</span>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Sin historial
+                    </h4>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No hay actividades registradas para este contacto
+                    </p>
+                  </div>
+                ) : (
+                  history
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((entry) => (
+                      <div key={entry.id} className="bg-white dark:bg-gray-700 rounded-lg border p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className={`p-2 rounded-full ${getCategoryColor(entry.category)}`}>
+                              <span className="text-sm">{getCategoryIcon(entry.category)}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {entry.title}
+                                </h4>
+                                {entry.type === 'automated' && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full">
+                                    🤖 Automático
+                                  </span>
+                                )}
+                                {entry.metadata?.urgency && (
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    entry.metadata.urgency === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                    entry.metadata.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300'
+                                  }`}>
+                                    {entry.metadata.urgency === 'high' ? '🔴' : entry.metadata.urgency === 'medium' ? '🟡' : '🟢'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {entry.description}
+                              </p>
+                              <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                <span>📅 {new Date(entry.date).toLocaleString('es-CL')}</span>
+                                {entry.author && <span>👤 {entry.author}</span>}
+                                {entry.amount && (
+                                  <span className="font-medium">💰 {formatCurrency(entry.amount)}</span>
+                                )}
+                                {entry.metadata?.orderNumber && (
+                                  <span>📄 {entry.metadata.orderNumber}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                )}
               </div>
             </div>
           )}
