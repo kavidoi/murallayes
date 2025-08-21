@@ -8,13 +8,63 @@ interface Product {
   sku: string
   name: string
   description?: string
-  type: 'INSUMO' | 'TERMINADO' | 'SERVICIO'
+  type: 'TERMINADO' | 'MANUFACTURED' | 'PURCHASED'
   uom: string
   category?: string
   unitCost?: number
   isActive: boolean
   bomComponents?: number
   stockLevel?: number
+  fechaElaboracion?: string
+  duracion?: number // in days, null means indefinida
+  vencimiento?: string
+}
+
+interface ProductFormData {
+  name: string
+  description: string
+  sku: string
+  category: string
+  unitCost: number
+  uom: string
+  fechaElaboracion: string
+  duracion: number | null // null means indefinida
+  vencimiento: string
+  locationId: string
+  initialStock: number
+}
+
+// Available locations
+const LOCATIONS = [
+  { id: '1', name: 'Muralla Café', isDefault: true },
+  { id: '2', name: 'Bodega Principal', isDefault: false },
+  { id: '3', name: 'Tienda Centro', isDefault: false },
+  { id: '4', name: 'Producción', isDefault: false }
+]
+
+// Utility function to generate automatic internal SKU
+const generateInternalSku = (productType: 'MANUFACTURED' | 'PURCHASED', sequence: number): string => {
+  const prefix = productType === 'MANUFACTURED' ? 'MFG' : 'PUR'
+  const year = new Date().getFullYear().toString().slice(-2)
+  const paddedSequence = sequence.toString().padStart(4, '0')
+  return `${prefix}-${year}-${paddedSequence}`
+}
+
+// Utility functions for expiration calculations
+const calculateVencimiento = (fechaElaboracion: string, duracion: number | null): string => {
+  if (!fechaElaboracion || duracion === null) return ''
+  const fecha = new Date(fechaElaboracion)
+  fecha.setDate(fecha.getDate() + duracion)
+  return fecha.toISOString().split('T')[0]
+}
+
+const calculateDuracion = (fechaElaboracion: string, vencimiento: string): number | null => {
+  if (!fechaElaboracion || !vencimiento) return null
+  const fecha1 = new Date(fechaElaboracion)
+  const fecha2 = new Date(vencimiento)
+  const diffTime = fecha2.getTime() - fecha1.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays >= 0 ? diffDays : null
 }
 
 const ProductCatalog: React.FC = () => {
@@ -22,11 +72,25 @@ const ProductCatalog: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [, setShowCreateModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState<ProductFormData>({
+    name: '',
+    description: '',
+    sku: '',
+    category: '',
+    unitCost: 0,
+    uom: 'UN',
+    fechaElaboracion: new Date().toISOString().split('T')[0],
+    duracion: null,
+    vencimiento: '',
+    locationId: '1', // Default to Muralla Café
+    initialStock: 0
+  })
 
   useEffect(() => {
     const load = async () => {
@@ -37,7 +101,7 @@ const ProductCatalog: React.FC = () => {
           sku: p.sku,
           name: p.name,
           description: p.description,
-          type: p.type || 'TERMINADO',
+          type: p.type || 'PURCHASED',
           uom: p.uom || 'UN',
           category: p.category?.name,
           unitCost: p.unitCost ?? p.price ?? 0,
@@ -65,18 +129,18 @@ const ProductCatalog: React.FC = () => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'INSUMO': return <BeakerIcon className="h-5 w-5" />
+      case 'MANUFACTURED': return <CubeIcon className="h-5 w-5" />
+      case 'PURCHASED': return <TagIcon className="h-5 w-5" />
       case 'TERMINADO': return <CubeIcon className="h-5 w-5" />
-      case 'SERVICIO': return <TagIcon className="h-5 w-5" />
       default: return <CubeIcon className="h-5 w-5" />
     }
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'INSUMO': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      case 'MANUFACTURED': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'PURCHASED': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
       case 'TERMINADO': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      case 'SERVICIO': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
   }
@@ -86,6 +150,62 @@ const ProductCatalog: React.FC = () => {
     if (level < 20) return { color: 'bg-red-100 text-red-800', label: 'Stock bajo' }
     if (level < 50) return { color: 'bg-yellow-100 text-yellow-800', label: 'Stock medio' }
     return { color: 'bg-green-100 text-green-800', label: 'Stock alto' }
+  }
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      // Generate automatic internal SKU
+      const sequence = products.length + 1
+      const internalSku = generateInternalSku('PURCHASED', sequence)
+      
+      const selectedLocation = LOCATIONS.find(loc => loc.id === formData.locationId)
+      
+      const newProduct: Product = {
+        id: Date.now().toString(),
+        sku: formData.sku,
+        name: formData.name,
+        description: formData.description,
+        type: 'PURCHASED',
+        uom: formData.uom,
+        category: formData.category,
+        unitCost: formData.unitCost,
+        isActive: true,
+        stockLevel: formData.initialStock,
+        fechaElaboracion: formData.fechaElaboracion,
+        duracion: formData.duracion,
+        vencimiento: formData.vencimiento
+      }
+      
+      setProducts(prev => [...prev, newProduct])
+      setShowCreateModal(false)
+      resetForm()
+      
+      // Show success message with internal SKU
+      alert(`Producto creado exitosamente!\nSKU Interno: ${internalSku}\nUbicación: ${selectedLocation?.name}`)
+    } catch (e) {
+      console.error('Error creating product:', e)
+      alert('Error al crear el producto. Por favor intenta de nuevo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      sku: '',
+      category: '',
+      unitCost: 0,
+      uom: 'UN',
+      fechaElaboracion: new Date().toISOString().split('T')[0],
+      duracion: null,
+      vencimiento: '',
+      locationId: '1', // Default to Muralla Café
+      initialStock: 0
+    })
   }
 
   return (
@@ -99,7 +219,7 @@ const ProductCatalog: React.FC = () => {
                 Catálogo de Productos
               </h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Gestiona insumos, productos terminados y servicios
+                Gestiona productos manufacturados (creados en Producción) y productos comprados
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -129,9 +249,8 @@ const ProductCatalog: React.FC = () => {
               <div className="hidden md:flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                 {[
                   { id: 'all', label: 'Todos' },
-                  { id: 'INSUMO', label: 'Insumos' },
-                  { id: 'TERMINADO', label: 'Productos Terminados' },
-                  { id: 'SERVICIO', label: 'Servicios' },
+                  { id: 'MANUFACTURED', label: 'Manufacturados' },
+                  { id: 'PURCHASED', label: 'Comprados' },
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -151,7 +270,7 @@ const ProductCatalog: React.FC = () => {
                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
-                Nuevo Producto
+                Producto Comprado
               </button>
             </div>
           </div>
@@ -175,9 +294,8 @@ const ProductCatalog: React.FC = () => {
                 className="px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todos los tipos</option>
-                <option value="INSUMO">Insumos</option>
-                <option value="TERMINADO">Productos Terminados</option>
-                <option value="SERVICIO">Servicios</option>
+                <option value="MANUFACTURED">Manufacturados</option>
+                <option value="PURCHASED">Comprados</option>
               </select>
               <div className="flex items-center gap-2">
                 <select
@@ -198,6 +316,23 @@ const ProductCatalog: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Info Panel */}
+      <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 dark:text-blue-400 text-xs font-bold">i</span>
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Dos formas de crear productos:</strong> Los productos <span className="font-semibold">manufacturados</span> se crean en la sección de Producción con sus recetas de insumos. 
+              Los productos <span className="font-semibold">comprados</span> se crean aquí directamente con sus precios de compra.
+            </p>
           </div>
         </div>
       </div>
@@ -239,7 +374,9 @@ const ProductCatalog: React.FC = () => {
                     
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Costo promedio</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {product.type === 'MANUFACTURED' ? 'Costo estimado' : 'Costo unitario'}
+                        </span>
                         <span className="font-medium text-gray-900 dark:text-white">
                           ${product.unitCost?.toLocaleString()} / {product.uom}
                         </span>
@@ -262,6 +399,42 @@ const ProductCatalog: React.FC = () => {
                           </span>
                         </div>
                       )}
+
+                      {/* Expiration Information */}
+                      {product.fechaElaboracion && (
+                        <div className="border-t pt-2 mt-2 space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Elaboración</span>
+                            <span className="text-xs text-gray-700 dark:text-gray-300">
+                              {new Date(product.fechaElaboracion).toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          {product.duracion !== undefined && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Duración</span>
+                              <span className="text-xs text-gray-700 dark:text-gray-300">
+                                {product.duracion === null ? 'Indefinida' : `${product.duracion} días`}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {product.vencimiento && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Vencimiento</span>
+                              <span className={`text-xs font-medium ${
+                                new Date(product.vencimiento) < new Date() 
+                                  ? 'text-red-600 dark:text-red-400' 
+                                  : new Date(product.vencimiento) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-green-600 dark:text-green-400'
+                              }`}>
+                                {new Date(product.vencimiento).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )
@@ -281,10 +454,13 @@ const ProductCatalog: React.FC = () => {
                       Tipo
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Costo promedio
+                      Costo unitario
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Stock
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Vencimiento
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Estado
@@ -325,6 +501,26 @@ const ProductCatalog: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          {product.vencimiento ? (
+                            <div className="text-sm">
+                              <div className={`font-medium ${
+                                new Date(product.vencimiento) < new Date() 
+                                  ? 'text-red-600 dark:text-red-400' 
+                                  : new Date(product.vencimiento) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-green-600 dark:text-green-400'
+                              }`}>
+                                {new Date(product.vencimiento).toLocaleDateString()}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {product.duracion === null ? 'Indefinida' : `${product.duracion} días`}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-500">Sin definir</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                             product.isActive 
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -349,7 +545,7 @@ const ProductCatalog: React.FC = () => {
               No se encontraron productos
             </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Intenta ajustar los filtros o crear un nuevo producto.
+              Intenta ajustar los filtros o crear un producto comprado.
             </p>
           </div>
         )}
@@ -394,6 +590,280 @@ const ProductCatalog: React.FC = () => {
                   Crear
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Product Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Nuevo Producto Comprado
+              </h3>
+              
+              <form onSubmit={handleCreateProduct} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nombre del producto"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    SKU *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.sku}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="SKU único del producto"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Descripción del producto"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Categoría
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Seleccionar categoría</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Costo unitario *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={formData.unitCost}
+                      onChange={(e) => setFormData(prev => ({ ...prev, unitCost: parseFloat(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Unidad *
+                    </label>
+                    <select
+                      value={formData.uom}
+                      onChange={(e) => setFormData(prev => ({ ...prev, uom: e.target.value }))}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="UN">Unidad</option>
+                      <option value="kg">Kilogramo</option>
+                      <option value="g">Gramo</option>
+                      <option value="L">Litro</option>
+                      <option value="ml">Mililitro</option>
+                      <option value="m">Metro</option>
+                      <option value="cm">Centímetro</option>
+                      <option value="m2">Metro cuadrado</option>
+                      <option value="pack">Paquete</option>
+                      <option value="caja">Caja</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Location and Stock Fields */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Ubicación y Stock
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Ubicación *
+                      </label>
+                      <select
+                        value={formData.locationId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, locationId: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {LOCATIONS.map(location => (
+                          <option key={location.id} value={location.id}>
+                            {location.name} {location.isDefault ? '(Principal)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Stock inicial
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.initialStock}
+                        onChange={(e) => setFormData(prev => ({ ...prev, initialStock: parseFloat(e.target.value) || 0 }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded mt-3">
+                    <strong>Nota:</strong> Se generará automáticamente un SKU interno único para este producto.
+                    La ubicación por defecto es "Muralla Café".
+                  </div>
+                </div>
+
+                {/* Expiration Fields */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Información de Vencimiento
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Fecha de Elaboración *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.fechaElaboracion}
+                        onChange={(e) => {
+                          const newFecha = e.target.value
+                          setFormData(prev => {
+                            const newData = { ...prev, fechaElaboracion: newFecha }
+                            // Auto-calculate vencimiento if duracion exists
+                            if (prev.duracion !== null) {
+                              newData.vencimiento = calculateVencimiento(newFecha, prev.duracion)
+                            }
+                            return newData
+                          })
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Duración (días)
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.duracion || ''}
+                            onChange={(e) => {
+                              const newDuracion = e.target.value === '' ? null : parseInt(e.target.value)
+                              setFormData(prev => {
+                                const newData = { ...prev, duracion: newDuracion }
+                                // Auto-calculate vencimiento if duracion is set
+                                if (newDuracion !== null && prev.fechaElaboracion) {
+                                  newData.vencimiento = calculateVencimiento(prev.fechaElaboracion, newDuracion)
+                                }
+                                return newData
+                              })
+                            }}
+                            className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Indefinida"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, duracion: null, vencimiento: '' }))}
+                            className="px-2 py-2 text-sm bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                            title="Marcar como indefinida"
+                          >
+                            ∞
+                          </button>
+                        </div>
+                        {formData.duracion === null && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Duración indefinida</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha de Vencimiento
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.vencimiento}
+                          onChange={(e) => {
+                            const newVencimiento = e.target.value
+                            setFormData(prev => {
+                              const newData = { ...prev, vencimiento: newVencimiento }
+                              // Auto-calculate duracion if vencimiento is set
+                              if (newVencimiento && prev.fechaElaboracion) {
+                                newData.duracion = calculateDuracion(prev.fechaElaboracion, newVencimiento)
+                              }
+                              return newData
+                            })
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                      <strong>Nota:</strong> La duración y fecha de vencimiento se calculan automáticamente una con la otra. 
+                      Puedes ingresar cualquiera de los dos valores.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      resetForm()
+                    }}
+                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Creando...' : 'Crear Producto'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
