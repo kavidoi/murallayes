@@ -16,6 +16,14 @@ interface Contact {
   // Business-specific fields
   contactPersonName?: string;
   giro?: string;
+  // Bank account details
+  bankDetails?: {
+    bankName?: string;
+    accountType?: 'checking' | 'savings' | 'business';
+    accountNumber?: string;
+    accountHolder?: string;
+    rutAccount?: string;
+  };
 }
 
 interface AddContactProps {
@@ -37,7 +45,13 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
     address: '',
     contactPersonName: '',
     giro: '',
-    notes: ''
+    notes: '',
+    // Bank details
+    bankName: '',
+    accountType: 'checking' as 'checking' | 'savings' | 'business',
+    accountNumber: '',
+    accountHolder: '',
+    rutAccount: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -84,9 +98,19 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
     const cleanedInstagram = formData.instagram ? 
       (formData.instagram.startsWith('@') ? formData.instagram : `@${formData.instagram}`) : '';
 
+    // Prepare bank details if any field is filled
+    const bankDetails = (formData.bankName || formData.accountNumber || formData.accountHolder) ? {
+      bankName: formData.bankName || undefined,
+      accountType: formData.accountType,
+      accountNumber: formData.accountNumber || undefined,
+      accountHolder: formData.accountHolder || undefined,
+      rutAccount: formData.rutAccount || undefined,
+    } : undefined;
+
     const contactData = {
-      ...formData,
-      instagram: cleanedInstagram,
+      name: formData.name,
+      type: formData.type,
+      entityType: formData.entityType,
       // Remove empty fields
       phone: formData.phone || undefined,
       email: formData.email || undefined,
@@ -96,6 +120,7 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
       address: formData.address || undefined,
       contactPersonName: formData.contactPersonName || undefined,
       giro: formData.giro || undefined,
+      bankDetails,
       notes: formData.notes || undefined,
     };
 
@@ -342,6 +367,88 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
               />
             </div>
           )}
+
+          {/* Bank Details Section */}
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Datos Bancarios (Opcional)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Banco
+                </label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Nombre del banco"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tipo de Cuenta
+                </label>
+                <select
+                  name="accountType"
+                  value={formData.accountType}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="checking">Cuenta Corriente</option>
+                  <option value="savings">Cuenta de Ahorros</option>
+                  <option value="business">Cuenta Empresa</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Número de Cuenta
+                </label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData.accountNumber}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="000-1234567-89"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Titular de la Cuenta
+                </label>
+                <input
+                  type="text"
+                  name="accountHolder"
+                  value={formData.accountHolder}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Nombre del titular"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                RUT del Titular
+              </label>
+              <input
+                type="text"
+                name="rutAccount"
+                value={formData.rutAccount}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="12.345.678-9"
+              />
+            </div>
+          </div>
 
           {/* Notes */}
           <div>
