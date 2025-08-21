@@ -244,7 +244,7 @@ export class MercadoPagoService {
         external_reference: externalRef,
         
         // Webhook notification URL for payment status updates
-        notification_url: `${process.env.BACKEND_URL}/api/finance/mercadopago/webhook`,
+        notification_url: `${process.env.BACKEND_URL}/finance/mercadopago/webhook`,
         
         // Redirect URLs after payment completion
         back_urls: {
@@ -284,10 +284,26 @@ export class MercadoPagoService {
       // Clean undefined values to avoid API validation errors
       this.cleanUndefinedValues(preferenceData);
 
-      this.logger.log(`Creating preference with external_reference: ${externalRef}`);
+      // Log the complete preference data being sent (without sensitive info)
+      const logData = { ...preferenceData };
+      if (logData.payer?.email) logData.payer.email = '[REDACTED]';
+      this.logger.log(`Creating preference with data: ${JSON.stringify(logData, null, 2)}`);
+      this.logger.log(`External reference: ${externalRef}`);
+
       const result = await preference.create({ body: preferenceData });
       
       this.logger.log(`Preference created successfully: ${result.id}`);
+      
+      // Log key fields that affect MercadoPago score
+      this.logger.log(`MercadoPago Score Enhancement Fields:
+        - Payer name: ${data.payer?.first_name ? 'PROVIDED' : 'MISSING'}
+        - Payer surname: ${data.payer?.last_name ? 'PROVIDED' : 'MISSING'}
+        - Item category: ${data.category_id || 'others'}
+        - Item description: ${data.description ? 'PROVIDED' : 'MISSING'}
+        - Item ID: ${data.item_id ? 'PROVIDED' : 'AUTO-GENERATED'}
+        - Binary mode: ${data.binary_mode !== false ? 'ENABLED' : 'DISABLED'}
+      `);
+      
       return result;
     } catch (error) {
       this.logger.error('Error creating Mercado Pago preference:', error);
