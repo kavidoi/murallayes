@@ -35,6 +35,7 @@ const ProductionWorkOrders = lazy(() => import('./components/modules/pipeline/Pr
 const ReportsAnalytics = lazy(() => import('./components/modules/pipeline/ReportsAnalytics'))
 const PurchaseOrders = lazy(() => import('./components/modules/pipeline/PurchaseOrders'))
 const Insumos = lazy(() => import('./components/modules/pipeline/Insumos'))
+const Contactos = lazy(() => import('./components/modules/crm/Contactos'))
 const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
 
 // Loading fallback component
@@ -210,8 +211,8 @@ function App() {
               <Route path="/inventory/stock" element={<Navigate to="/operations/inventory" replace />} />
               
               {/* CRM & Community Routes */}
-              <Route path="/crm" element={<PlaceholderPage title={t('routes.crm.title')} description={t('routes.crm.description')} icon="👥" />} />
-              <Route path="/crm/contacts" element={<PlaceholderPage title={t('routes.contacts.title')} description={t('routes.contacts.description')} icon="📞" />} />
+              <Route path="/crm" element={<Contactos />} />
+              <Route path="/crm/contacts" element={<Contactos />} />
               <Route path="/crm/segments" element={<PlaceholderPage title={t('routes.segments.title')} description={t('routes.segments.description')} icon="🎯" />} />
               <Route path="/crm/logs" element={<PlaceholderPage title={t('routes.activityLogs.title')} description={t('routes.activityLogs.description')} icon="📝" />} />
               <Route path="/crm/feedback" element={<PlaceholderPage title={t('routes.feedback.title')} description={t('routes.feedback.description')} icon="💬" />} />
