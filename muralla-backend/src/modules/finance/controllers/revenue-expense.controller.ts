@@ -300,6 +300,61 @@ export class RevenueExpenseController {
     }
   }
 
+  @Get('transactions')
+  @Roles('admin', 'finance_manager', 'manager')
+  async getTransactions(
+    @Query('type') type?: 'revenue' | 'expense',
+    @Query('category') category?: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string
+  ) {
+    try {
+      // Get revenue data
+      const revenueResponse = await this.getRevenue(status, category);
+      const expenseResponse = await this.getExpenses(status, category);
+      
+      let transactions = [];
+      
+      if (!type || type === 'revenue') {
+        const revenueTransactions = revenueResponse.revenue?.map((rev: any) => ({
+          ...rev,
+          type: 'revenue',
+          date: rev.revenueDate
+        })) || [];
+        transactions.push(...revenueTransactions);
+      }
+      
+      if (!type || type === 'expense') {
+        const expenseTransactions = expenseResponse.expenses?.map((exp: any) => ({
+          ...exp,
+          type: 'expense', 
+          date: exp.expenseDate
+        })) || [];
+        transactions.push(...expenseTransactions);
+      }
+      
+      // Sort by date (newest first)
+      transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Apply limit if specified
+      if (limit) {
+        const limitNum = parseInt(limit);
+        transactions = transactions.slice(0, limitNum);
+      }
+      
+      return {
+        success: true,
+        transactions,
+        totalCount: transactions.length,
+        revenueCount: transactions.filter(t => t.type === 'revenue').length,
+        expenseCount: transactions.filter(t => t.type === 'expense').length
+      };
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      return { success: false, error: 'Error al obtener transacciones' };
+    }
+  }
+
   @Get('categories')
   async getCategories() {
     return {
