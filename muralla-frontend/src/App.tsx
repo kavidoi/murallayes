@@ -34,6 +34,7 @@ const CostsPurchases = lazy(() => import('./components/modules/pipeline/CostsPur
 const ProductionWorkOrders = lazy(() => import('./components/modules/pipeline/ProductionWorkOrders'))
 const ReportsAnalytics = lazy(() => import('./components/modules/pipeline/ReportsAnalytics'))
 const PurchaseOrders = lazy(() => import('./components/modules/pipeline/PurchaseOrders'))
+const Insumos = lazy(() => import('./components/modules/pipeline/Insumos'))
 const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
 
 // Loading fallback component
@@ -180,13 +181,15 @@ function App() {
               <Route path="/finance/kpis" element={<Navigate to="/analytics/kpis" replace />} />
               <Route path="/finance/forecasts" element={<Navigate to="/analytics/forecasts" replace />} />
               
-              {/* Operations Routes (formerly Pipeline) */}
-              <Route path="/operations" element={<ProductCatalog />} />
-              <Route path="/operations/products" element={<ProductCatalog />} />
-              <Route path="/operations/inventory" element={<InventoryDashboard />} />
+              {/* Operations Routes (formerly Pipeline) - New logical order */}
+              <Route path="/operations" element={<PurchaseOrders />} />
               <Route path="/operations/purchase-orders" element={<PurchaseOrders />} />
-              <Route path="/operations/costs" element={<CostsPurchases />} />
+              <Route path="/operations/insumos" element={<Insumos />} />
               <Route path="/operations/production" element={<ProductionWorkOrders />} />
+              <Route path="/operations/products" element={<ProductCatalog />} />
+              {/* Legacy routes - kept for compatibility */}
+              <Route path="/operations/inventory" element={<InventoryDashboard />} />
+              <Route path="/operations/costs" element={<CostsPurchases />} />
               {/* Redirect old pipeline routes to operations */}
               <Route path="/pipeline" element={<Navigate to="/operations" replace />} />
               <Route path="/pipeline/products" element={<Navigate to="/operations/products" replace />} />
