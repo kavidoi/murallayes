@@ -189,11 +189,10 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
       path: '/operations',
       icon: <InventoryIcon />,
       children: [
-        { name: t('nav.products'), path: '/operations/products' },
-        { name: t('nav.inventory'), path: '/operations/inventory' },
         { name: t('nav.purchaseOrders'), path: '/operations/purchase-orders' },
-        { name: t('nav.costs'), path: '/operations/costs' },
+        { name: t('nav.insumos'), path: '/operations/insumos' },
         { name: t('nav.production'), path: '/operations/production' },
+        { name: t('nav.products'), path: '/operations/products' },
       ]
     },
     {
