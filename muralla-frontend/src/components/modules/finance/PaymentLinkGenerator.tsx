@@ -55,7 +55,7 @@ const PaymentLinkGenerator: React.FC = () => {
         } : undefined
       };
 
-      const response = await AuthService.apiCall('/api/finance/mercadopago/preference', {
+      const response = await AuthService.apiCall('/finance/mercadopago/preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentData)
