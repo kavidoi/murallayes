@@ -86,6 +86,29 @@ export const PurchaseOrdersService = {
     })
   },
 
+  async update(id: string, data: Partial<CostDTO>): Promise<CostDTO> {
+    return AuthService.apiCall<CostDTO>(`/costs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  },
+
+  async approve(id: string): Promise<CostDTO> {
+    return AuthService.apiCall<CostDTO>(`/costs/${id}/approve`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
+
+  async cancel(id: string, reason?: string): Promise<CostDTO> {
+    return AuthService.apiCall<CostDTO>(`/costs/${id}/cancel`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+  },
+
   async uploadReceipt(file: File) {
     const fd = new FormData()
     fd.append('file', file)

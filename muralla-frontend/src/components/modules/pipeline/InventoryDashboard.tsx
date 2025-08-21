@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, AdjustmentsHorizontalIcon, MapPinIcon, CubeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, AdjustmentsHorizontalIcon, MapPinIcon, CubeIcon, ExclamationTriangleIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
+
+// Utility function to generate automatic internal SKU
+const generateInternalSku = (productType: 'MANUFACTURED' | 'PURCHASED', sequence: number): string => {
+  const prefix = productType === 'MANUFACTURED' ? 'MFG' : 'PUR'
+  const year = new Date().getFullYear().toString().slice(-2)
+  const paddedSequence = sequence.toString().padStart(4, '0')
+  return `${prefix}-${year}-${paddedSequence}`
+}
+
+// Available locations
+const LOCATIONS = [
+  { id: '1', name: 'Muralla Café', isDefault: true },
+  { id: '2', name: 'Bodega Principal', isDefault: false },
+  { id: '3', name: 'Tienda Centro', isDefault: false },
+  { id: '4', name: 'Producción', isDefault: false }
+]
 
 interface StockItem {
   id: string
   productId: string
   productName: string
   productSku: string
+  internalSku: string
   locationId: string
   locationName: string
   quantity: number
@@ -15,6 +32,9 @@ interface StockItem {
   totalValue: number
   lastMovement: Date
   stockStatus: 'high' | 'medium' | 'low' | 'out'
+  productType: 'MANUFACTURED' | 'PURCHASED'
+  fechaElaboracion?: string
+  vencimiento?: string
 }
 
 interface InventoryMove {
@@ -47,42 +67,68 @@ const InventoryDashboard: React.FC = () => {
         productId: '1',
         productName: 'Café Arábica Premium',
         productSku: 'CF-001',
+        internalSku: generateInternalSku('PURCHASED', 1),
         locationId: '1',
-        locationName: 'Bodega Principal',
+        locationName: 'Muralla Café',
         quantity: 150,
         uom: 'kg',
         unitCost: 8500,
         totalValue: 1275000,
         lastMovement: new Date('2024-01-15'),
-        stockStatus: 'high'
+        stockStatus: 'high',
+        productType: 'PURCHASED'
       },
       {
         id: '2',
         productId: '2',
-        productName: 'Espresso Muralla',
-        productSku: 'ESP-001',
+        productName: 'Espresso Muralla Premium',
+        productSku: 'ESP-MUR-001',
+        internalSku: generateInternalSku('MANUFACTURED', 1),
         locationId: '1',
-        locationName: 'Bodega Principal',
+        locationName: 'Muralla Café',
         quantity: 15,
         uom: 'kg',
         unitCost: 12000,
         totalValue: 180000,
         lastMovement: new Date('2024-01-14'),
-        stockStatus: 'low'
+        stockStatus: 'low',
+        productType: 'MANUFACTURED',
+        fechaElaboracion: '2025-01-01',
+        vencimiento: '2025-01-31'
       },
       {
         id: '3',
         productName: 'Leche Entera',
         productSku: 'MILK-001',
+        internalSku: generateInternalSku('PURCHASED', 2),
         productId: '3',
-        locationId: '2',
+        locationId: '3',
         locationName: 'Tienda Centro',
         quantity: 0,
         uom: 'L',
         unitCost: 950,
         totalValue: 0,
         lastMovement: new Date('2024-01-13'),
-        stockStatus: 'out'
+        stockStatus: 'out',
+        productType: 'PURCHASED'
+      },
+      {
+        id: '4',
+        productId: '4',
+        productName: 'Latte Mix Murallita',
+        productSku: 'LAT-MUR-001',
+        internalSku: generateInternalSku('MANUFACTURED', 2),
+        locationId: '2',
+        locationName: 'Bodega Principal',
+        quantity: 25,
+        uom: 'kg',
+        unitCost: 15000,
+        totalValue: 375000,
+        lastMovement: new Date('2025-01-20'),
+        stockStatus: 'medium',
+        productType: 'MANUFACTURED',
+        fechaElaboracion: '2025-01-10',
+        vencimiento: '2025-01-25'
       }
     ]
 
@@ -92,29 +138,41 @@ const InventoryDashboard: React.FC = () => {
         type: 'ENTRADA_COMPRA',
         productName: 'Café Arábica Premium',
         productSku: 'CF-001',
-        toLocation: 'Bodega Principal',
+        toLocation: 'Muralla Café',
         quantity: 50,
         uom: 'kg',
         unitCost: 8500,
         reason: 'Compra a proveedor ABC',
-        createdAt: new Date('2024-01-15T10:30:00'),
+        createdAt: new Date('2025-01-20T10:30:00'),
         createdBy: 'Juan Pérez'
       },
       {
         id: '2',
-        type: 'TRASLADO',
-        productName: 'Espresso Muralla',
-        productSku: 'ESP-001',
-        fromLocation: 'Bodega Principal',
-        toLocation: 'Tienda Centro',
-        quantity: 5,
+        type: 'ENTRADA_PRODUCCION',
+        productName: 'Espresso Muralla Premium',
+        productSku: 'ESP-MUR-001',
+        toLocation: 'Muralla Café',
+        quantity: 15,
         uom: 'kg',
-        reason: 'Reposición tienda',
-        createdAt: new Date('2024-01-14T15:45:00'),
+        reason: 'Producción terminada',
+        createdAt: new Date('2025-01-19T15:45:00'),
         createdBy: 'María García'
       },
       {
         id: '3',
+        type: 'TRASLADO',
+        productName: 'Latte Mix Murallita',
+        productSku: 'LAT-MUR-001',
+        fromLocation: 'Producción',
+        toLocation: 'Bodega Principal',
+        quantity: 25,
+        uom: 'kg',
+        reason: 'Traslado post-producción',
+        createdAt: new Date('2025-01-18T09:15:00'),
+        createdBy: 'Carlos López'
+      },
+      {
+        id: '4',
         type: 'SALIDA_VENTA',
         productName: 'Leche Entera',
         productSku: 'MILK-001',
@@ -122,8 +180,8 @@ const InventoryDashboard: React.FC = () => {
         quantity: 12,
         uom: 'L',
         reason: 'Venta cliente',
-        createdAt: new Date('2024-01-13T09:15:00'),
-        createdBy: 'Carlos López'
+        createdAt: new Date('2025-01-17T14:20:00'),
+        createdBy: 'Ana Martínez'
       }
     ]
 
@@ -201,6 +259,10 @@ const InventoryDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center space-x-3">
+              <button className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Recibir Stock
+              </button>
               <button
                 onClick={() => setShowTransferModal(true)}
                 className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -223,9 +285,11 @@ const InventoryDashboard: React.FC = () => {
               className="px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Todas las ubicaciones</option>
-              <option value="1">Bodega Principal</option>
-              <option value="2">Tienda Centro</option>
-              <option value="3">Producción</option>
+              {LOCATIONS.map(location => (
+                <option key={location.id} value={location.id}>
+                  {location.name} {location.isDefault ? '(Principal)' : ''}
+                </option>
+              ))}
             </select>
             <select
               value={stockFilter}
@@ -275,7 +339,7 @@ const InventoryDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Ubicaciones</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">3</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-white">{LOCATIONS.length}</p>
               </div>
             </div>
           </motion.div>
@@ -332,10 +396,16 @@ const InventoryDashboard: React.FC = () => {
                         Producto
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Tipo
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Ubicación
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Cantidad
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Vencimiento
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Valor
@@ -353,10 +423,19 @@ const InventoryDashboard: React.FC = () => {
                             <div className="text-sm font-medium text-gray-900 dark:text-white">
                               {item.productName}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {item.productSku}
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              SKU: {item.productSku} | ID: {item.internalSku}
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            item.productType === 'MANUFACTURED' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          }`}>
+                            {item.productType === 'MANUFACTURED' ? 'Manufacturado' : 'Comprado'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -368,6 +447,23 @@ const InventoryDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {item.quantity} {item.uom}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {item.vencimiento ? (
+                            <div className="text-sm">
+                              <div className={`font-medium ${
+                                new Date(item.vencimiento) < new Date() 
+                                  ? 'text-red-600 dark:text-red-400' 
+                                  : new Date(item.vencimiento) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-green-600 dark:text-green-400'
+                              }`}>
+                                {new Date(item.vencimiento).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-500">Sin vencimiento</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           ${item.totalValue.toLocaleString()}
