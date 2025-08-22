@@ -218,6 +218,14 @@ export const ShiftsService = {
     return AuthService.apiCall<Shift[]>(`/shifts${buildQuery(params)}`);
   },
 
+  async getMyScheduledShifts(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    includeCompleted?: boolean;
+  } = {}): Promise<Shift[]> {
+    return AuthService.apiCall<Shift[]>(`/shifts/my-schedule${buildQuery(params)}`);
+  },
+
   async getShift(id: string): Promise<Shift> {
     return AuthService.apiCall<Shift>(`/shifts/${id}`);
   },

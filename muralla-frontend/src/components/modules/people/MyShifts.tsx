@@ -21,8 +21,20 @@ interface WorkSession {
   elapsedTime: number; // in minutes
 }
 
+interface ScheduledShift {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: 'in-person' | 'remote';
+  status: 'upcoming' | 'today' | 'missed' | 'completed';
+  notes?: string;
+  canClockIn?: boolean;
+  isFlexible?: boolean;
+}
+
 const MyShifts: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'clock' | 'history' | 'manual'>('clock');
+  const [activeTab, setActiveTab] = useState<'clock' | 'schedule' | 'history' | 'manual'>('clock');
   const [currentSession, setCurrentSession] = useState<WorkSession | null>(null);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([
     {
@@ -66,6 +78,64 @@ const MyShifts: React.FC = () => {
     type: 'in-person' as 'in-person' | 'remote',
     notes: ''
   });
+
+  const [scheduledShifts] = useState<ScheduledShift[]>([
+    {
+      id: '1',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '09:00',
+      endTime: '17:00',
+      type: 'in-person',
+      status: 'today',
+      notes: 'Turno regular de mañana',
+      canClockIn: true,
+      isFlexible: false
+    },
+    {
+      id: '2',
+      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      startTime: '10:00',
+      endTime: '18:00',
+      type: 'remote',
+      status: 'upcoming',
+      notes: 'Trabajo desde casa - reuniones de planificación',
+      canClockIn: false,
+      isFlexible: true
+    },
+    {
+      id: '3',
+      date: new Date(Date.now() + 172800000).toISOString().split('T')[0],
+      startTime: '08:00',
+      endTime: '16:00',
+      type: 'in-person',
+      status: 'upcoming',
+      notes: 'Turno de apertura',
+      canClockIn: false,
+      isFlexible: false
+    },
+    {
+      id: '4',
+      date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+      startTime: '09:00',
+      endTime: '17:00',
+      type: 'in-person',
+      status: 'completed',
+      notes: 'Turno completado exitosamente',
+      canClockIn: false,
+      isFlexible: false
+    },
+    {
+      id: '5',
+      date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+      startTime: '14:00',
+      endTime: '22:00',
+      type: 'in-person',
+      status: 'missed',
+      notes: 'No se registró asistencia',
+      canClockIn: false,
+      isFlexible: false
+    }
+  ]);
 
   // Timer logic
   useEffect(() => {
@@ -189,6 +259,189 @@ const MyShifts: React.FC = () => {
     // Implementation for editing time entries
     console.log('Edit time entry:', id);
   };
+
+  const startShiftFromSchedule = (shift: ScheduledShift) => {
+    if (!shift.canClockIn) return;
+    
+    const now = new Date();
+    const session: WorkSession = {
+      id: `scheduled-${shift.id}`,
+      startTime: now.toTimeString().slice(0, 5),
+      type: shift.type,
+      isActive: true,
+      elapsedTime: 0
+    };
+    setCurrentSession(session);
+    setActiveTab('clock');
+  };
+
+  const formatShiftDate = (date: string) => {
+    const shiftDate = new Date(date);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    if (shiftDate.toDateString() === today.toDateString()) {
+      return 'Hoy';
+    } else if (shiftDate.toDateString() === tomorrow.toDateString()) {
+      return 'Mañana';
+    } else if (shiftDate.toDateString() === yesterday.toDateString()) {
+      return 'Ayer';
+    } else {
+      return shiftDate.toLocaleDateString('es-ES', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  const renderScheduledShifts = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Turnos Programados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {scheduledShifts
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .map(shift => {
+                const shiftHours = (() => {
+                  const start = new Date(`1970-01-01T${shift.startTime}:00`);
+                  const end = new Date(`1970-01-01T${shift.endTime}:00`);
+                  return (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                })();
+
+                return (
+                  <div key={shift.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-l-blue-500">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center min-w-[80px]">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatShiftDate(shift.date)}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(shift.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {shift.startTime} - {shift.endTime}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            shift.type === 'remote' 
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                          }`}>
+                            {shift.type === 'remote' ? 'Remoto' : 'Presencial'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            shift.status === 'today' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                            shift.status === 'upcoming' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                            shift.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                          }`}>
+                            {shift.status === 'today' ? 'Hoy' :
+                             shift.status === 'upcoming' ? 'Próximo' :
+                             shift.status === 'completed' ? 'Completado' : 'Perdido'}
+                          </span>
+                          {shift.isFlexible && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                              Flexible
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {shiftHours.toFixed(1)} horas programadas
+                        </div>
+                        {shift.notes && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {shift.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {shift.canClockIn && (
+                        <button
+                          onClick={() => startShiftFromSchedule(shift)}
+                          className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                        >
+                          ▶️ Iniciar
+                        </button>
+                      )}
+                      {shift.status === 'missed' && (
+                        <button
+                          onClick={() => {
+                            setManualEntry({
+                              date: shift.date,
+                              startTime: shift.startTime,
+                              endTime: shift.endTime,
+                              type: shift.type,
+                              notes: `Entrada manual para turno programado: ${shift.notes || ''}`
+                            });
+                            setActiveTab('manual');
+                          }}
+                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 rounded-lg transition-colors"
+                        >
+                          📝 Registrar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumen de Turnos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                {scheduledShifts.filter(s => s.status === 'upcoming').length}
+              </div>
+              <div className="text-sm text-blue-600 dark:text-blue-400">
+                Próximos
+              </div>
+            </div>
+            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                {scheduledShifts.filter(s => s.status === 'completed').length}
+              </div>
+              <div className="text-sm text-green-600 dark:text-green-400">
+                Completados
+              </div>
+            </div>
+            <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+                {scheduledShifts.filter(s => s.status === 'today').length}
+              </div>
+              <div className="text-sm text-yellow-600 dark:text-yellow-400">
+                Hoy
+              </div>
+            </div>
+            <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                {scheduledShifts.filter(s => s.status === 'missed').length}
+              </div>
+              <div className="text-sm text-red-600 dark:text-red-400">
+                Perdidos
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   const renderClockInterface = () => (
     <div className="space-y-6">
@@ -505,6 +758,7 @@ const MyShifts: React.FC = () => {
         <nav className="-mb-px flex space-x-8">
           {([
             { key: 'clock', label: 'Reloj', icon: '⏰' },
+            { key: 'schedule', label: 'Mis Turnos', icon: '📅' },
             { key: 'history', label: 'Historial', icon: '📋' },
             { key: 'manual', label: 'Entrada Manual', icon: '✏️' }
           ] as const).map(tab => (
@@ -526,6 +780,7 @@ const MyShifts: React.FC = () => {
 
       {/* Tab Content */}
       {activeTab === 'clock' && renderClockInterface()}
+      {activeTab === 'schedule' && renderScheduledShifts()}
       {activeTab === 'history' && renderHistory()}
       {activeTab === 'manual' && renderManualEntry()}
 
