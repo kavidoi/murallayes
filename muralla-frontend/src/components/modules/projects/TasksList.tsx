@@ -608,7 +608,7 @@ const SortableTaskRow: React.FC<{
   
   return (
     <div ref={setNodeRef} style={style} className={isSubtask ? 'ml-6' : ''}>
-      <div className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-900'}`}>
+      <div className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-800'}`}>
         {/* Drag handle + Expand/Collapse + Name */}
         <div className="col-span-4 flex items-center space-x-2">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
@@ -972,7 +972,7 @@ const TasksList: React.FC = () => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">{t('pages.tasks.loadingTasks')}</p>
@@ -983,7 +983,7 @@ const TasksList: React.FC = () => {
   
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button 
@@ -998,7 +998,7 @@ const TasksList: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
