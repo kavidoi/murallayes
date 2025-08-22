@@ -89,7 +89,7 @@ const TimeClockWidget: React.FC<TimeClockWidgetProps> = ({ className = '' }) => 
   };
 
   return (
-    <div className={`card bg-gradient-to-br from-blue-50 to-white dark:from-blue-900 dark:to-neutral-800 ${className}`}>
+    <div className={`card bg-gradient-to-br from-electric-cyan/20 to-electric-blue/10 dark:from-electric-blue/20 dark:to-electric-cyan/10 border-electric-cyan/30 dark:border-electric-blue/30 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Reloj de Trabajo</h2>
         <div className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
@@ -112,7 +112,7 @@ const TimeClockWidget: React.FC<TimeClockWidgetProps> = ({ className = '' }) => 
               {currentSession.isActive ? 'En Turno' : 'En Descanso'}
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <div className="text-2xl font-bold text-electric-blue dark:text-electric-cyan">
                 {formatElapsedTime(currentSession.elapsedTime)}
               </div>
               <div className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -166,14 +166,14 @@ const TimeClockWidget: React.FC<TimeClockWidgetProps> = ({ className = '' }) => 
           <div className="space-y-2">
             <button
               onClick={() => startShift('in-person')}
-              className="w-full px-4 py-3 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center"
+              className="w-full px-4 py-3 text-sm font-medium text-electric-blue bg-electric-blue/20 border border-electric-blue/30 rounded-lg hover:bg-electric-blue/30 dark:bg-electric-blue/20 dark:border-electric-blue/30 dark:text-electric-cyan dark:hover:bg-electric-blue/30 transition-colors flex items-center justify-center"
             >
               <span className="mr-2">🏢</span>
               Iniciar Turno Presencial
             </button>
             <button
               onClick={() => startShift('remote')}
-              className="w-full px-4 py-3 text-sm font-medium text-purple-700 bg-purple-100 border border-purple-300 rounded-lg hover:bg-purple-200 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors flex items-center justify-center"
+              className="w-full px-4 py-3 text-sm font-medium text-electric-purple bg-electric-purple/20 border border-electric-purple/30 rounded-lg hover:bg-electric-purple/30 dark:bg-electric-purple/20 dark:border-electric-purple/30 dark:text-electric-purple dark:hover:bg-electric-purple/30 transition-colors flex items-center justify-center"
             >
               <span className="mr-2">🏠</span>
               Iniciar Trabajo Remoto
@@ -186,7 +186,7 @@ const TimeClockWidget: React.FC<TimeClockWidgetProps> = ({ className = '' }) => 
       <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
         <a 
           href="/me/shifts" 
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline block text-center"
+          className="text-sm text-electric-cyan dark:text-electric-blue hover:underline block text-center"
         >
           Ver historial completo →
         </a>

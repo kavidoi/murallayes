@@ -39,6 +39,16 @@ export default {
           DEFAULT: '#10b981',
           dark: '#059669',
         },
+        electric: {
+          blue: '#00d4ff',
+          cyan: '#00ffff',
+          purple: '#8b5cf6',
+          pink: '#f472b6',
+          green: '#10b981',
+          yellow: '#fbbf24',
+          orange: '#fb923c',
+          red: '#ef4444',
+        },
         success: {
           light: '#d1fae5',
           DEFAULT: '#10b981',
