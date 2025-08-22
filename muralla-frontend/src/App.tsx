@@ -40,6 +40,7 @@ const SupplierPortal = lazy(() => import('./components/modules/supplier-portal/S
 const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
 const ShiftsAttendance = lazy(() => import('./components/modules/people/ShiftsAttendance'))
 const MyShifts = lazy(() => import('./components/modules/people/MyShifts'))
+const MisTareas = lazy(() => import('./components/modules/personal/MisTareas'))
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -144,6 +145,7 @@ function App() {
               
               {/* My (user-centric) Routes */}
               <Route path="/me" element={<PlaceholderPage title={t('routes.me.title')} description={t('routes.me.description')} icon="🙋" />} />
+              <Route path="/me/tasks" element={<MisTareas />} />
               <Route path="/me/pto" element={<PTO />} />
               <Route path="/me/finances" element={<MyFinances />} />
               <Route path="/me/shifts" element={<MyShifts />} />

@@ -129,7 +129,7 @@ const MiDashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <a href="/projects/tasks" className="text-sm text-electric-cyan hover:underline">Ver todas mis tareas →</a>
+            <a href="/me/tasks" className="text-sm text-electric-cyan hover:underline">Ver todas mis tareas →</a>
           </div>
         </div>
 
