@@ -253,6 +253,19 @@ class TasksService {
       throw error;
     }
   }
+
+  async getMyTasks(): Promise<Task[]> {
+    try {
+      await AuthService.ensureValidToken();
+      const response = await axios.get(`${API_BASE_URL}/tasks/my-tasks`, {
+        headers: this.getAuthHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my tasks:', error);
+      throw error;
+    }
+  }
 }
 
 export const tasksService = new TasksService();
