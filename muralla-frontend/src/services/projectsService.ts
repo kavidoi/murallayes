@@ -119,15 +119,21 @@ class ProjectsService {
     try {
       const projects = await this.getAllProjects();
       
-      // Return the first project if any exist
+      // Look for "Muralla Café" project specifically
+      const murallaProject = projects.find(p => p.name === 'Muralla Café');
+      if (murallaProject) {
+        return murallaProject;
+      }
+      
+      // Return the first project if any exist (fallback)
       if (projects.length > 0) {
         return projects[0];
       }
       
-      // Create a default project if none exist
+      // Create the "Muralla Café" project if none exist
       return await this.createProject({
-        name: 'Default Project',
-        description: 'Default project for tasks'
+        name: 'Muralla Café',
+        description: 'Proyecto principal de Muralla Café'
       });
     } catch (error) {
       console.error('Error getting or creating default project:', error);
