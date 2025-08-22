@@ -27,8 +27,31 @@ interface PurchaseOrderRow {
   updatedAt?: Date
 }
 
+interface Supplier {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  rut?: string
+  address?: string
+  isActive: boolean
+}
+
+interface Product {
+  id: string
+  sku: string
+  name: string
+  description?: string
+  type: 'PURCHASED' | 'MANUFACTURED'
+  unitCost?: number
+  uom: string
+  category?: string
+  isActive: boolean
+}
+
 interface PurchaseOrderFormData {
   vendorName: string
+  vendorId?: string
   docType: string
   docNumber?: string
   date: string
@@ -41,6 +64,7 @@ interface PurchaseOrderFormData {
     totalCost: number
     isInventory: boolean
     productId?: string
+    productName?: string
   }[]
 }
 
@@ -574,6 +598,7 @@ const PurchaseOrderModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, editingOrder, currentUser, loading }) => {
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     vendorName: editingOrder?.vendorName || '',
+    vendorId: '',
     docType: editingOrder?.docType || 'OC',
     docNumber: editingOrder?.docNumber || '',
     date: editingOrder?.date.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
@@ -585,15 +610,130 @@ const PurchaseOrderModal: React.FC<{
       unitCost: Number(line.unitCost) || 0,
       totalCost: Number(line.totalCost) || 0,
       isInventory: !!line.isInventory,
-      productId: line.productId || undefined
+      productId: line.productId || undefined,
+      productName: line.description || ''
     })) || [{
       description: '',
       quantity: 1,
       unitCost: 0,
       totalCost: 0,
-      isInventory: true
+      isInventory: true,
+      productName: ''
     }]
   })
+
+  // State for search functionality
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [supplierSearch, setSupplierSearch] = useState('')
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false)
+  const [productSearches, setProductSearches] = useState<{ [key: number]: string }>({})
+  const [showProductDropdowns, setShowProductDropdowns] = useState<{ [key: number]: boolean }>({})
+
+  // Mock data - in real app this would come from API
+  React.useEffect(() => {
+    const mockSuppliers: Supplier[] = [
+      { id: '1', name: 'Proveedor ABC S.A.', email: 'contacto@abc.cl', phone: '+56912345678', rut: '12345678-9', isActive: true },
+      { id: '2', name: 'Distribuidora XYZ Ltda.', email: 'ventas@xyz.cl', phone: '+56987654321', rut: '87654321-0', isActive: true },
+      { id: '3', name: 'Café Premium Import', email: 'info@cafeimport.cl', phone: '+56956789123', rut: '11223344-5', isActive: true }
+    ]
+    
+    const mockProducts: Product[] = [
+      { id: '1', sku: 'CF-001', name: 'Café Arábica Premium', type: 'PURCHASED', unitCost: 8500, uom: 'kg', category: 'Café', isActive: true },
+      { id: '2', sku: 'MILK-001', name: 'Leche Entera', type: 'PURCHASED', unitCost: 950, uom: 'L', category: 'Lácteos', isActive: true },
+      { id: '3', sku: 'SUG-001', name: 'Azúcar Blanca', type: 'PURCHASED', unitCost: 850, uom: 'kg', category: 'Endulzantes', isActive: true }
+    ]
+    
+    setSuppliers(mockSuppliers)
+    setProducts(mockProducts)
+  }, [])
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.relative')) {
+        setShowSupplierDropdown(false)
+        setShowProductDropdowns({})
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Helper functions for search and selection
+  const filteredSuppliers = suppliers.filter(supplier =>
+    supplier.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.rut?.toLowerCase().includes(supplierSearch.toLowerCase())
+  )
+
+  const getFilteredProducts = (searchTerm: string) => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }
+
+  const handleSupplierSelect = (supplier: Supplier) => {
+    setFormData(prev => ({ ...prev, vendorName: supplier.name, vendorId: supplier.id }))
+    setSupplierSearch(supplier.name)
+    setShowSupplierDropdown(false)
+  }
+
+  const handleProductSelect = (lineIndex: number, product: Product) => {
+    setFormData(prev => ({
+      ...prev,
+      lines: prev.lines.map((line, index) => 
+        index === lineIndex 
+          ? { 
+              ...line, 
+              productId: product.id, 
+              productName: product.name,
+              description: product.name,
+              unitCost: product.unitCost || line.unitCost,
+              totalCost: line.quantity * (product.unitCost || line.unitCost)
+            }
+          : line
+      )
+    }))
+    setProductSearches(prev => ({ ...prev, [lineIndex]: product.name }))
+    setShowProductDropdowns(prev => ({ ...prev, [lineIndex]: false }))
+  }
+
+  const openSupplierCreationToast = () => {
+    // Open in a popup window with appropriate sizing
+    const popup = window.open(
+      'https://admin.murallacafe.cl/crm/contacts', 
+      'supplier-creation',
+      'width=900,height=700,scrollbars=yes,resizable=yes,location=yes'
+    )
+    
+    if (popup) {
+      popup.focus()
+      // You could add a listener here to refresh suppliers when the window closes
+      // popup.addEventListener('beforeunload', () => { /* refresh suppliers */ })
+    } else {
+      alert('Por favor permite ventanas emergentes para crear un nuevo proveedor')
+    }
+  }
+
+  const openProductCreationToast = () => {
+    // Open in a popup window with appropriate sizing
+    const popup = window.open(
+      'https://admin.murallacafe.cl/operations/products', 
+      'product-creation',
+      'width=900,height=700,scrollbars=yes,resizable=yes,location=yes'
+    )
+    
+    if (popup) {
+      popup.focus()
+      // You could add a listener here to refresh products when the window closes
+      // popup.addEventListener('beforeunload', () => { /* refresh products */ })
+    } else {
+      alert('Por favor permite ventanas emergentes para crear un nuevo producto')
+    }
+  }
 
   const updateLineTotal = (index: number) => {
     const line = formData.lines[index]
@@ -612,7 +752,8 @@ const PurchaseOrderModal: React.FC<{
         quantity: 1,
         unitCost: 0,
         totalCost: 0,
-        isInventory: true
+        isInventory: true,
+        productName: ''
       }]
     }))
   }
@@ -640,29 +781,92 @@ const PurchaseOrderModal: React.FC<{
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
         
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+        <div className="inline-block align-bottom bg-white bg-opacity-95 dark:bg-gray-800 dark:bg-opacity-95 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
           <form onSubmit={handleSubmit}>
-            <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="bg-white bg-opacity-95 dark:bg-gray-800 dark:bg-opacity-95 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
               <div className="sm:flex sm:items-start">
                 <div className="w-full">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-6">
                     {editingOrder ? 'Editar Orden de Compra' : 'Crear Orden de Compra'}
                   </h3>
                   
+                  {/* Info Panel */}
+                  <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 dark:text-blue-400 text-xs font-bold">i</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          <strong>Búsqueda inteligente:</strong> Busca proveedores y productos existentes escribiendo su nombre o SKU. 
+                          Si no existen, puedes crearlos directamente desde los enlaces o botones disponibles.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Header Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Proveedor *
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.vendorName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Nombre del proveedor"
-                      />
+                      <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            required
+                            value={supplierSearch || formData.vendorName}
+                            onChange={(e) => {
+                              setSupplierSearch(e.target.value)
+                              setFormData(prev => ({ ...prev, vendorName: e.target.value, vendorId: '' }))
+                              setShowSupplierDropdown(true)
+                            }}
+                            onFocus={() => setShowSupplierDropdown(true)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            placeholder="Buscar proveedor..."
+                          />
+                          
+                          {showSupplierDropdown && (supplierSearch || formData.vendorName) && (
+                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+                              {filteredSuppliers.length > 0 ? (
+                                filteredSuppliers.map(supplier => (
+                                  <div
+                                    key={supplier.id}
+                                    onClick={() => handleSupplierSelect(supplier)}
+                                    className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/50 cursor-pointer transition-colors"
+                                  >
+                                    <div className="font-medium text-gray-900 dark:text-white">{supplier.name}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      {supplier.rut} • {supplier.email}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                                  No se encontraron proveedores
+                                </div>
+                              )}
+                              <div 
+                                onClick={openSupplierCreationToast}
+                                className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900 cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
+                              >
+                                + Crear nuevo proveedor
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openSupplierCreationToast}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
+                          title="Crear nuevo proveedor"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                     
                     <div>
@@ -740,23 +944,67 @@ const PurchaseOrderModal: React.FC<{
                     <div className="space-y-4 max-h-60 overflow-y-auto">
                       {formData.lines.map((line, index) => (
                         <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                          <div className="col-span-4">
+                          <div className="col-span-4 relative">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Descripción *
+                              Producto *
                             </label>
-                            <input
-                              type="text"
-                              required
-                              value={line.description}
-                              onChange={(e) => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  lines: prev.lines.map((l, i) => i === index ? { ...l, description: e.target.value } : l)
-                                }))
-                              }}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                              placeholder="Descripción del producto"
-                            />
+                            <div className="flex gap-1">
+                              <div className="flex-1 relative">
+                                <input
+                                  type="text"
+                                  required
+                                  value={productSearches[index] || line.productName || line.description}
+                                  onChange={(e) => {
+                                    setProductSearches(prev => ({ ...prev, [index]: e.target.value }))
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      lines: prev.lines.map((l, i) => i === index ? { ...l, description: e.target.value, productName: e.target.value } : l)
+                                    }))
+                                    setShowProductDropdowns(prev => ({ ...prev, [index]: true }))
+                                  }}
+                                  onFocus={() => setShowProductDropdowns(prev => ({ ...prev, [index]: true }))}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
+                                  placeholder="Buscar producto..."
+                                />
+                                
+                                {showProductDropdowns[index] && (productSearches[index] || line.productName || line.description) && (
+                                  <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-40 overflow-auto">
+                                    {getFilteredProducts(productSearches[index] || line.productName || line.description).length > 0 ? (
+                                      getFilteredProducts(productSearches[index] || line.productName || line.description).map(product => (
+                                        <div
+                                          key={product.id}
+                                          onClick={() => handleProductSelect(index, product)}
+                                          className="px-2 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/50 cursor-pointer transition-colors"
+                                        >
+                                          <div className="font-medium text-gray-900 dark:text-white text-sm">{product.name}</div>
+                                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                                            {product.sku} • ${product.unitCost?.toLocaleString()} / {product.uom}
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="px-2 py-2 text-gray-500 dark:text-gray-400 text-sm">
+                                        No se encontraron productos
+                                      </div>
+                                    )}
+                                    <div 
+                                      onClick={openProductCreationToast}
+                                      className="px-2 py-2 border-t border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900 cursor-pointer text-blue-600 dark:text-blue-400 font-medium text-sm"
+                                    >
+                                      + Crear nuevo producto
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={openProductCreationToast}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs"
+                                title="Crear nuevo producto"
+                              >
+                                <PlusIcon className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                           
                           <div className="col-span-2">
@@ -864,7 +1112,7 @@ const PurchaseOrderModal: React.FC<{
               </div>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <div className="bg-gray-50 bg-opacity-95 dark:bg-gray-700 dark:bg-opacity-95 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="submit"
                 disabled={loading}
