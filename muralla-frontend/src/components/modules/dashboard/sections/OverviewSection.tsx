@@ -2,7 +2,7 @@ import React from 'react';
 
 // Widget components
 const FinancialWidget = () => (
-  <div className="card bg-gradient-to-br from-accent-light to-white dark:from-accent-dark dark:to-neutral-800">
+  <div className="card bg-gradient-to-br from-electric-cyan/20 to-electric-blue/10 dark:from-electric-blue/20 dark:to-electric-cyan/10 border-electric-cyan/30 dark:border-electric-blue/30">
     <div className="flex items-center justify-between mb-2">
       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Financial Snapshot</h3>
       <div className="flex space-x-2">
@@ -51,7 +51,7 @@ const FinancialWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/finance/revenue-expenses" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/finance/revenue-expenses" className="text-sm text-electric-cyan dark:text-electric-blue hover:underline">
         View financial reports →
       </a>
     </div>
@@ -100,13 +100,13 @@ const PeopleWidget = () => (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">On shift today</p>
         <div className="flex items-center mt-1">
           <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900 dark:text-primary-300 flex items-center justify-center border-2 border-white dark:border-neutral-800">
+            <div className="w-8 h-8 rounded-full bg-electric-blue/20 text-electric-blue dark:bg-electric-blue/30 dark:text-electric-cyan flex items-center justify-center border-2 border-white dark:border-neutral-800">
               <span className="text-xs font-medium">JD</span>
             </div>
-            <div className="w-8 h-8 rounded-full bg-secondary-100 text-secondary-600 dark:bg-secondary-900 dark:text-secondary-300 flex items-center justify-center border-2 border-white dark:border-neutral-800">
+            <div className="w-8 h-8 rounded-full bg-electric-purple/20 text-electric-purple dark:bg-electric-purple/30 dark:text-electric-pink flex items-center justify-center border-2 border-white dark:border-neutral-800">
               <span className="text-xs font-medium">AM</span>
             </div>
-            <div className="w-8 h-8 rounded-full bg-accent-light text-accent-dark dark:bg-accent-dark dark:text-accent-light flex items-center justify-center border-2 border-white dark:border-neutral-800">
+            <div className="w-8 h-8 rounded-full bg-electric-green/20 text-electric-green dark:bg-electric-green/30 dark:text-electric-green flex items-center justify-center border-2 border-white dark:border-neutral-800">
               <span className="text-xs font-medium">RK</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300 flex items-center justify-center border-2 border-white dark:border-neutral-800">
@@ -129,7 +129,7 @@ const PeopleWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/staff/directory" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/staff/directory" className="text-sm text-electric-cyan dark:text-electric-blue hover:underline">
         View team directory →
       </a>
     </div>
@@ -163,7 +163,7 @@ const InventoryWidget = () => (
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/operations/inventory" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/operations/inventory" className="text-sm text-electric-cyan dark:text-electric-blue hover:underline">
         View inventory →
       </a>
     </div>
@@ -197,13 +197,13 @@ const EventWidget = () => (
           <p className="text-neutral-800 dark:text-neutral-200 font-medium">Poetry Reading</p>
           <p className="text-xs text-neutral-600 dark:text-neutral-400">Jul 25, 6:30 PM</p>
         </div>
-        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+        <span className="px-2 py-1 text-xs rounded-full bg-electric-blue/20 text-electric-blue dark:bg-electric-blue/30 dark:text-electric-cyan">
           Planning
         </span>
       </div>
     </div>
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-      <a href="/schedule" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+      <a href="/schedule" className="text-sm text-electric-cyan dark:text-electric-blue hover:underline">
         View all events →
       </a>
     </div>

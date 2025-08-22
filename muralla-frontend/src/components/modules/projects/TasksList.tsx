@@ -46,9 +46,9 @@ interface Task {
 // ——— Helper functions ———
 const getColorForUser = (index: number): string => {
   const colors = [
-    'bg-blue-500', 'bg-emerald-500', 'bg-fuchsia-500', 
-    'bg-amber-500', 'bg-cyan-500', 'bg-purple-500', 
-    'bg-rose-500', 'bg-indigo-500', 'bg-green-500', 'bg-orange-500'
+    'bg-electric-blue', 'bg-emerald-500', 'bg-electric-purple', 
+    'bg-electric-yellow', 'bg-electric-cyan', 'bg-violet-500', 
+    'bg-rose-500', 'bg-indigo-500', 'bg-electric-green', 'bg-electric-orange'
   ];
   return colors[index % colors.length];
 };
@@ -262,11 +262,11 @@ const StatusSelector: React.FC<{
   
   const getStatusColor = (s: Status) => {
     switch (s) {
-      case 'New': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-      case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200'
-      case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200'
-      case 'Overdue': return 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'New': return 'bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-gray-300'
+      case 'In Progress': return 'bg-electric-blue/20 text-electric-cyan dark:bg-electric-blue/10 dark:text-electric-cyan'
+      case 'Completed': return 'bg-electric-green/20 text-green-800 dark:bg-electric-green/10 dark:text-electric-green'
+      case 'Overdue': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-gray-300'
     }
   }
   
@@ -675,7 +675,7 @@ const SortableTaskRow: React.FC<{
           {!isSubtask && (
             <button
               onClick={() => onAddSubtask(task.id)}
-              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 rounded border border-blue-200 hover:border-blue-300 dark:border-blue-600 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="px-2 py-1 text-xs text-electric-cyan hover:text-electric-blue dark:text-electric-cyan dark:hover:text-electric-blue rounded border border-electric-cyan/30 hover:border-electric-cyan/50 dark:border-electric-cyan/30 dark:hover:border-electric-cyan/50 hover:bg-electric-cyan/10 dark:hover:bg-electric-cyan/10 transition-colors"
               title={t('pages.tasks.actions.addSubtask')}
             >
               + Subtarea
@@ -1091,7 +1091,7 @@ const TasksList: React.FC = () => {
               
               <button
                 onClick={resetFilters}
-                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                className="text-sm text-electric-cyan hover:text-electric-blue dark:text-electric-cyan dark:hover:text-electric-blue px-2 py-1 rounded hover:bg-electric-cyan/10 dark:hover:bg-electric-cyan/10 transition-colors"
               >
                 Limpiar
               </button>

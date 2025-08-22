@@ -5,7 +5,7 @@ interface StatCardProps {
   title: string;
   value: React.ReactNode;
   subtitle?: string;
-  color?: 'blue' | 'green' | 'red' | 'purple';
+  color?: 'blue' | 'green' | 'red' | 'purple' | 'electric-blue' | 'electric-green' | 'electric-purple' | 'electric-cyan' | 'electric-pink';
 }
 
 const colorMap = {
@@ -33,9 +33,39 @@ const colorMap = {
     value: 'text-purple-700 dark:text-purple-300',
     subtitle: 'text-purple-600 dark:text-purple-400',
   },
+  'electric-blue': {
+    container: 'from-electric-blue/20 to-electric-cyan/10 dark:from-electric-blue/20 dark:to-electric-cyan/10 border-electric-blue/30 dark:border-electric-cyan/30',
+    title: 'text-electric-blue dark:text-electric-cyan',
+    value: 'text-electric-blue dark:text-electric-cyan',
+    subtitle: 'text-electric-blue dark:text-electric-cyan',
+  },
+  'electric-green': {
+    container: 'from-electric-green/20 to-electric-green/10 dark:from-electric-green/20 dark:to-electric-green/10 border-electric-green/30 dark:border-electric-green/30',
+    title: 'text-electric-green dark:text-electric-green',
+    value: 'text-electric-green dark:text-electric-green',
+    subtitle: 'text-electric-green dark:text-electric-green',
+  },
+  'electric-purple': {
+    container: 'from-electric-purple/20 to-electric-pink/10 dark:from-electric-purple/20 dark:to-electric-pink/10 border-electric-purple/30 dark:border-electric-pink/30',
+    title: 'text-electric-purple dark:text-electric-pink',
+    value: 'text-electric-purple dark:text-electric-pink',
+    subtitle: 'text-electric-purple dark:text-electric-pink',
+  },
+  'electric-cyan': {
+    container: 'from-electric-cyan/20 to-electric-blue/10 dark:from-electric-cyan/20 dark:to-electric-blue/10 border-electric-cyan/30 dark:border-electric-blue/30',
+    title: 'text-electric-cyan dark:text-electric-blue',
+    value: 'text-electric-cyan dark:text-electric-blue',
+    subtitle: 'text-electric-cyan dark:text-electric-blue',
+  },
+  'electric-pink': {
+    container: 'from-electric-pink/20 to-electric-purple/10 dark:from-electric-pink/20 dark:to-electric-purple/10 border-electric-pink/30 dark:border-electric-purple/30',
+    title: 'text-electric-pink dark:text-electric-purple',
+    value: 'text-electric-pink dark:text-electric-purple',
+    subtitle: 'text-electric-pink dark:text-electric-purple',
+  },
 };
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color = 'blue' }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color = 'electric-blue' }) => {
   const c = colorMap[color];
   return (
     <Card className={`bg-gradient-to-br ${c.container}`}>

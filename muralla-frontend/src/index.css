@@ -52,8 +52,24 @@
     @apply btn bg-accent hover:bg-accent-dark text-white focus:ring-accent;
   }
   
+  .btn-electric {
+    @apply btn bg-electric-blue hover:bg-electric-cyan text-white focus:ring-electric-blue shadow-lg shadow-electric-blue/25;
+  }
+  
+  .btn-electric-green {
+    @apply btn bg-electric-green hover:bg-green-400 text-white focus:ring-electric-green shadow-lg shadow-electric-green/25;
+  }
+  
+  .btn-electric-purple {
+    @apply btn bg-electric-purple hover:bg-purple-400 text-white focus:ring-electric-purple shadow-lg shadow-electric-purple/25;
+  }
+  
   .btn-outline {
     @apply btn border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:ring-neutral-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-red-500 hover:bg-red-600 text-white focus:ring-red-500;
   }
   
   .input {
