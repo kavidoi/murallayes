@@ -122,33 +122,67 @@ const MyShifts: React.FC = () => {
   };
 
   const submitManualEntry = () => {
-    if (!manualEntry.startTime || !manualEntry.endTime) return;
+    console.log('Manual entry data:', manualEntry);
+    
+    // Validate required fields
+    if (!manualEntry.startTime || !manualEntry.endTime) {
+      console.log('Missing required fields:', { startTime: manualEntry.startTime, endTime: manualEntry.endTime });
+      return;
+    }
 
-    const start = new Date(`1970-01-01T${manualEntry.startTime}:00`);
-    const end = new Date(`1970-01-01T${manualEntry.endTime}:00`);
-    const totalHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    // Validate time format (should be HH:MM)
+    const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timePattern.test(manualEntry.startTime) || !timePattern.test(manualEntry.endTime)) {
+      console.log('Invalid time format:', { startTime: manualEntry.startTime, endTime: manualEntry.endTime });
+      alert('Por favor ingresa tiempos válidos en formato HH:MM (ej: 09:00)');
+      return;
+    }
 
-    const newEntry: TimeEntry = {
-      id: Date.now().toString(),
-      date: manualEntry.date,
-      startTime: manualEntry.startTime,
-      endTime: manualEntry.endTime,
-      type: manualEntry.type,
-      status: 'manual-entry',
-      totalHours,
-      notes: manualEntry.notes,
-      isEditable: false
-    };
+    try {
+      const start = new Date(`1970-01-01T${manualEntry.startTime}:00`);
+      const end = new Date(`1970-01-01T${manualEntry.endTime}:00`);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.log('Invalid date objects created');
+        alert('Tiempos inválidos. Por favor verifica el formato.');
+        return;
+      }
 
-    setTimeEntries(prev => [newEntry, ...prev]);
-    setManualEntry({
-      date: new Date().toISOString().split('T')[0],
-      startTime: '',
-      endTime: '',
-      type: 'in-person',
-      notes: ''
-    });
-    setShowManualEntry(false);
+      if (end <= start) {
+        alert('La hora de fin debe ser posterior a la hora de inicio.');
+        return;
+      }
+
+      const totalHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+      const newEntry: TimeEntry = {
+        id: Date.now().toString(),
+        date: manualEntry.date,
+        startTime: manualEntry.startTime,
+        endTime: manualEntry.endTime,
+        type: manualEntry.type,
+        status: 'manual-entry',
+        totalHours,
+        notes: manualEntry.notes,
+        isEditable: false
+      };
+
+      console.log('Creating new entry:', newEntry);
+      setTimeEntries(prev => [newEntry, ...prev]);
+      setManualEntry({
+        date: new Date().toISOString().split('T')[0],
+        startTime: '',
+        endTime: '',
+        type: 'in-person',
+        notes: ''
+      });
+      setShowManualEntry(false);
+      
+      alert('Registro creado exitosamente. Puede requerir aprobación del administrador.');
+    } catch (error) {
+      console.error('Error creating manual entry:', error);
+      alert('Error al crear el registro. Por favor intenta de nuevo.');
+    }
   };
 
   const editTimeEntry = (id: string) => {
@@ -409,11 +443,20 @@ const MyShifts: React.FC = () => {
           />
         </div>
 
+        {/* Debug Info */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+          <p>Debug: Start: "{manualEntry.startTime}" | End: "{manualEntry.endTime}"</p>
+          <p>Button disabled: {(!manualEntry.startTime || !manualEntry.endTime) ? 'YES' : 'NO'}</p>
+        </div>
+
         <div className="flex space-x-3">
           <button
-            onClick={submitManualEntry}
+            onClick={() => {
+              console.log('Button clicked!', manualEntry);
+              submitManualEntry();
+            }}
             disabled={!manualEntry.startTime || !manualEntry.endTime}
-            className="btn-primary"
+            className={`btn-primary ${(!manualEntry.startTime || !manualEntry.endTime) ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Guardar Registro
           </button>
