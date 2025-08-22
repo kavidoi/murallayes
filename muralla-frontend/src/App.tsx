@@ -38,6 +38,8 @@ const Insumos = lazy(() => import('./components/modules/pipeline/Insumos'))
 const Contactos = lazy(() => import('./components/modules/crm/Contactos'))
 const SupplierPortal = lazy(() => import('./components/modules/supplier-portal/SupplierPortal'))
 const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt'))
+const ShiftsAttendance = lazy(() => import('./components/modules/people/ShiftsAttendance'))
+const MyShifts = lazy(() => import('./components/modules/people/MyShifts'))
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -144,7 +146,7 @@ function App() {
               <Route path="/me" element={<PlaceholderPage title={t('routes.me.title')} description={t('routes.me.description')} icon="🙋" />} />
               <Route path="/me/pto" element={<PTO />} />
               <Route path="/me/finances" element={<MyFinances />} />
-              <Route path="/me/shifts" element={<PlaceholderPage title={t('routes.meShifts.title')} description={t('routes.meShifts.description')} icon="⏰" />} />
+              <Route path="/me/shifts" element={<MyShifts />} />
               <Route path="/me/data" element={<PlaceholderPage title={t('routes.meData.title')} description={t('routes.meData.description')} icon="🪪" />} />
               <Route path="/me/sales" element={<PlaceholderPage title={t('routes.meSales.title')} description={t('routes.meSales.description')} icon="📈" />} />
               <Route path="/me/products" element={<PlaceholderPage title={t('routes.meProducts.title')} description={t('routes.meProducts.description')} icon="🏷️" />} />
@@ -170,7 +172,7 @@ function App() {
               {/* Staff Routes (organization perspective) */}
               <Route path="/staff" element={<PeopleOverview />} />
               <Route path="/staff/directory" element={<TeamDirectory />} />
-              <Route path="/staff/shifts" element={<PlaceholderPage title={t('routes.staffShifts.title')} description={t('routes.staffShifts.description')} icon="⏰" />} />
+              <Route path="/staff/shifts" element={<ShiftsAttendance />} />
               <Route path="/staff/pto" element={<PlaceholderPage title={t('routes.staffPto.title')} description={t('routes.staffPto.description')} icon="🏖️" />} />
               <Route path="/staff/finances" element={<StaffFinances />} />
               

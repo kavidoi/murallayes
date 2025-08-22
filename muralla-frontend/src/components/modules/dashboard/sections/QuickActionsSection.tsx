@@ -1,4 +1,5 @@
 import React from 'react';
+import TimeClockWidget from '../widgets/TimeClockWidget';
 
 // Quick action button component
 const QuickActionButton: React.FC<{
@@ -89,6 +90,9 @@ const QuickActionsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Time Clock Widget */}
+      <TimeClockWidget />
+
       {/* Quick Actions Card */}
       <div className="card">
         <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-white">Quick Actions</h2>

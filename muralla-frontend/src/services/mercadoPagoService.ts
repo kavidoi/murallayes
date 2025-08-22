@@ -180,15 +180,15 @@ export class MercadoPagoService {
           theme: this.config.theme || 'default'
         }
       },
-      // Ensure at least one payment method is enabled to avoid
-      // "No payment type was selected" initialization errors
+      // Enable only supported payment methods for better compatibility
       paymentMethods: {
-        // Restrict to commonly allowed credit cards to avoid account-level rejections
-        creditCard: ['visa', 'master', 'amex'],
-        // Removed debitCard property to avoid invalid "none" value
-        ticket: 'none',
-        bankTransfer: 'none',
-        atm: 'none'
+        // Restrict to commonly allowed credit cards
+        creditCard: 'all',  // Let MercadoPago decide which cards are available
+        debitCard: 'all',   // Enable debit cards
+        // Don't explicitly disable other methods - let account settings control them
+        // ticket: 'none',    // Removed - let account settings control
+        // bankTransfer: 'none', // Removed - let account settings control  
+        // atm: 'none'        // Removed - let account settings control
       }
     };
 
@@ -236,9 +236,9 @@ export class MercadoPagoService {
   ): Promise<any> {
     return this.createPaymentBrick(containerId, initialization, callbacks, {
       paymentMethods: {
-        ticket: 'none',
-        bankTransfer: 'none',
-        atm: 'none'
+        creditCard: 'all',
+        debitCard: 'all'
+        // Let account settings control other payment methods
       }
     });
   }
