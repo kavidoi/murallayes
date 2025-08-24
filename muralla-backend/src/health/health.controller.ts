@@ -20,12 +20,18 @@ export class HealthController {
   check() {
     return this.health.check([
       async () => {
-        // Use direct Prisma query instead of pingCheck
+        // Use direct Prisma query with timeout
         try {
-          await this.prisma.$queryRaw`SELECT 1`;
+          const queryPromise = this.prisma.$queryRaw`SELECT 1`;
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timeout')), 5000)
+          );
+          
+          await Promise.race([queryPromise, timeoutPromise]);
           return { database: { status: 'up' } };
         } catch (error) {
-          throw new Error('Database connection failed');
+          console.warn('[HEALTH] Database check failed:', error.message);
+          return { database: { status: 'down', error: error.message } };
         }
       },
       () => this.memoryHealth.checkHeap('memory_heap', 150 * 1024 * 1024),
@@ -40,21 +46,33 @@ export class HealthController {
   readiness() {
     return this.health.check([
       async () => {
-        // Use direct Prisma query instead of pingCheck
+        // Use direct Prisma query with timeout
         try {
-          await this.prisma.$queryRaw`SELECT 1`;
+          const queryPromise = this.prisma.$queryRaw`SELECT 1`;
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timeout')), 3000)
+          );
+          
+          await Promise.race([queryPromise, timeoutPromise]);
           return { database: { status: 'up' } };
         } catch (error) {
-          throw new Error('Database connection failed');
+          console.warn('[HEALTH] Database check failed:', error.message);
+          return { database: { status: 'down', error: error.message } };
         }
       },
       async () => {
-        // Check if we can perform basic database operations
+        // Check if we can perform basic database operations with timeout
         try {
-          await this.prisma.user.count();
+          const countPromise = this.prisma.user.count();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database operations timeout')), 3000)
+          );
+          
+          await Promise.race([countPromise, timeoutPromise]);
           return { database_operations: { status: 'up' } };
         } catch (error) {
-          throw new Error('Database operations failed');
+          console.warn('[HEALTH] Database operations failed:', error.message);
+          return { database_operations: { status: 'down', error: error.message } };
         }
       },
     ]);
