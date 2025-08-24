@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { AuthService } from '../../../services/authService';
+import DatePicker from '../../ui/DatePicker';
+import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO } from '../../../utils/dateUtils';
 
 // Types for Bank Account API (based on legacy bank-routes.js)
 interface BankTransaction {
@@ -115,13 +117,7 @@ const BankAccount: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateDDMMYYYY(dateString);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -307,25 +303,19 @@ const BankAccount: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              <DatePicker
+                value={isoToDDMMYYYY(filters.startDate)}
+                onChange={(date) => handleFilterChange('startDate', dateToISO(date) || '')}
+                label="Fecha inicio"
+                placeholder="Seleccionar fecha inicio"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              <DatePicker
+                value={isoToDDMMYYYY(filters.endDate)}
+                onChange={(date) => handleFilterChange('endDate', dateToISO(date) || '')}
+                label="Fecha fin"
+                placeholder="Seleccionar fecha fin"
               />
             </div>
             <div>

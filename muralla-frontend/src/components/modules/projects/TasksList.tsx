@@ -7,6 +7,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { tasksService, type Task as APITask } from '../../../services/tasksService'
 import { usersService, type User as APIUser } from '../../../services/usersService'
 import { projectsService, type Project as APIProject } from '../../../services/projectsService'
+import DatePicker from '../../ui/DatePicker'
+import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO, isOverdue, isToday, getRelativeTime } from '../../../utils/dateUtils'
 
 // ——— Types ———
 interface User {
@@ -26,7 +28,7 @@ interface Subtask {
   inheritsAssignee: boolean
   inheritsDueDate: boolean
   assigneeIds: string[]
-  dueDate?: string | null // YYYY-MM-DD
+  dueDate?: string | null // DD/MM/YYYY format
   order: number
 }
 
@@ -35,7 +37,7 @@ interface Task {
   name: string
   status: Status
   assigneeIds: string[]
-  dueDate?: string | null
+  dueDate?: string | null // DD/MM/YYYY format
   expanded?: boolean
   subtasks: Subtask[]
   order: number
@@ -112,11 +114,11 @@ const convertStatusToAPIStatus = (status: Status): APIStatus => {
 
 // Convert API Task to local Task
 const convertAPITaskToTask = (apiTask: APITask, _users: User[], projects: APIProject[]): Task => {
-  const toYMD = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+  // Convert ISO date to DD/MM/YYYY format
   const taskAssigneeIds = (apiTask.assignees && apiTask.assignees.length > 0)
     ? apiTask.assignees.map(a => a.userId)
     : (apiTask.assigneeId ? [apiTask.assigneeId] : [])
-  const taskDue = toYMD(apiTask.dueDate)
+  const taskDue = isoToDDMMYYYY(apiTask.dueDate)
   const project = projects.find(p => p.id === apiTask.projectId)
   
   const hasSubtasks = (apiTask.subtasks || []).length > 0
@@ -134,7 +136,7 @@ const convertAPITaskToTask = (apiTask: APITask, _users: User[], projects: APIPro
       const subAssigneeIds = (st.assignees && st.assignees.length > 0)
         ? st.assignees.map(a => a.userId)
         : (st.assigneeId ? [st.assigneeId] : [])
-      const subDue = toYMD(st.dueDate)
+      const subDue = isoToDDMMYYYY(st.dueDate)
       return {
         id: st.id,
         name: st.title,
@@ -343,27 +345,22 @@ const DueDateSelector: React.FC<{
   twoWeeks.setDate(today.getDate() + 14)
   
   const presets = [
-    { label: t('pages.tasks.dueDates.tonight'), value: today.toISOString().slice(0, 10) },
-    { label: t('pages.tasks.dueDates.tomorrow'), value: tomorrow.toISOString().slice(0, 10) },
-    { label: t('pages.tasks.dueDates.nextWeek'), value: nextWeek.toISOString().slice(0, 10) },
-    { label: t('pages.tasks.dueDates.twoWeeks'), value: twoWeeks.toISOString().slice(0, 10) },
+    { label: t('pages.tasks.dueDates.tonight'), value: formatDateDDMMYYYY(today) },
+    { label: t('pages.tasks.dueDates.tomorrow'), value: formatDateDDMMYYYY(tomorrow) },
+    { label: t('pages.tasks.dueDates.nextWeek'), value: formatDateDDMMYYYY(nextWeek) },
+    { label: t('pages.tasks.dueDates.twoWeeks'), value: formatDateDDMMYYYY(twoWeeks) },
   ]
   
   const getDueDateColor = () => {
     if (!dueDate) return 'text-gray-400'
-    const due = new Date(dueDate)
-    const now = new Date()
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 0) return 'text-red-600' // Overdue
-    if (diffDays <= 1) return 'text-amber-600' // Due today/tomorrow
+    if (isOverdue(dueDate)) return 'text-red-600' // Overdue
+    if (isToday(dueDate)) return 'text-amber-600' // Due today
     return 'text-gray-700 dark:text-gray-300'
   }
   
   const formatDueDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return t('pages.tasks.dueDates.noDate')
-    const date = new Date(dateStr)
-    return date.toLocaleDateString()
+    return getRelativeTime(dateStr) || dateStr
   }
   
   const getDropdownPosition = () => {
@@ -371,7 +368,7 @@ const DueDateSelector: React.FC<{
     const rect = buttonRef.getBoundingClientRect()
     return {
       top: rect.bottom + window.scrollY + 4,
-      left: rect.right + window.scrollX - 200 // Align dropdown to right of button
+      left: rect.right + window.scrollX - 280 // More space for DatePicker
     }
   }
   
@@ -394,10 +391,10 @@ const DueDateSelector: React.FC<{
             onClick={() => setIsOpen(false)} 
           />
           <div 
-            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48"
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-80"
             style={getDropdownPosition()}
           >
-            <div className="space-y-1 mb-2">
+            <div className="space-y-1 mb-3">
               {presets.map(preset => (
                 <button
                   key={preset.label}
@@ -422,15 +419,15 @@ const DueDateSelector: React.FC<{
                 {t('pages.tasks.dueDates.clearDate')}
               </button>
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-600 pt-2">
-              <input
-                type="date"
+            <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+              <DatePicker
                 value={dueDate || ''}
-                onChange={(e) => {
-                  onChange(e.target.value || null)
+                onChange={(date) => {
+                  onChange(date)
                   setIsOpen(false)
                 }}
-                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700"
+                placeholder="Seleccionar fecha"
+                className="text-sm"
               />
             </div>
           </div>
@@ -881,7 +878,7 @@ const TasksList: React.FC = () => {
         await tasksService.updateTaskAssignees(taskId, updates.assigneeIds!)
         return
       }
-      if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
+      if ('dueDate' in updates) apiUpdates.dueDate = dateToISO(updates.dueDate)
       if ('projectId' in updates) apiUpdates.projectId = updates.projectId
       
       if (Object.keys(apiUpdates).length > 0) {
@@ -941,7 +938,7 @@ const TasksList: React.FC = () => {
         await tasksService.updateTaskAssignees(subtaskId, updates.assigneeIds!)
         return
       }
-      if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
+      if ('dueDate' in updates) apiUpdates.dueDate = dateToISO(updates.dueDate)
       
       if (Object.keys(apiUpdates).length > 0) {
         await tasksService.updateSubtask(subtaskId, apiUpdates)
@@ -1047,7 +1044,7 @@ const TasksList: React.FC = () => {
                       inheritsAssignee: !newSubtask.assigneeId,
                       inheritsDueDate: !newSubtask.dueDate,
                       assigneeIds: newSubtask.assigneeId ? [newSubtask.assigneeId] : [],
-                      dueDate: newSubtask.dueDate ? new Date(newSubtask.dueDate).toISOString().slice(0, 10) : null,
+                      dueDate: isoToDDMMYYYY(newSubtask.dueDate),
                       order: newSubtask.orderIndex ?? 0
                     }
                   : subtask

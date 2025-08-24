@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import projectsService, { type Project, type ProjectKind } from '../../../services/projectsService'
+import DatePicker from '../../ui/DatePicker'
+import { formatDateDDMMYYYY, dateToISO } from '../../../utils/dateUtils'
 
 export default function ProjectsOverview() {
   const { t } = useTranslation()
@@ -79,7 +81,13 @@ export default function ProjectsOverview() {
             <option value="CORE">Core</option>
           </select>
           {newProject.kind === 'DEADLINE' && (
-            <input type="date" className="input" value={newProject.deadline} onChange={e => setNewProject({ ...newProject, deadline: e.target.value })} />
+            <DatePicker
+              value={newProject.deadline ? formatDateDDMMYYYY(newProject.deadline) : ''}
+              onChange={date => setNewProject({ ...newProject, deadline: dateToISO(date) || '' })}
+              placeholder="Seleccionar fecha límite"
+              label="Fecha límite"
+              className="input"
+            />
           )}
           <button className="btn-primary" onClick={handleCreate}>{t('actions.create')}</button>
         </div>
@@ -115,7 +123,7 @@ export default function ProjectsOverview() {
                 </div>
               </div>
               {p.kind === 'DEADLINE' && p.deadline && (
-                <div className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">Deadline: {new Date(p.deadline).toLocaleDateString()}</div>
+                <div className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">Deadline: {formatDateDDMMYYYY(p.deadline)}</div>
               )}
             </div>
           )
