@@ -49,6 +49,15 @@ export default {
           orange: '#fb923c',
           red: '#ef4444',
         },
+        // Individual electric color shortcuts for easier usage
+        'electric-blue': '#00d4ff',
+        'electric-cyan': '#00ffff', 
+        'electric-purple': '#8b5cf6',
+        'electric-pink': '#f472b6',
+        'electric-green': '#10b981',
+        'electric-yellow': '#fbbf24',
+        'electric-orange': '#fb923c',
+        'electric-red': '#ef4444',
         success: {
           light: '#d1fae5',
           DEFAULT: '#10b981',

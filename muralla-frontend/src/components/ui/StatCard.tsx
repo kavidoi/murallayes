@@ -5,7 +5,7 @@ interface StatCardProps {
   title: string;
   value: React.ReactNode;
   subtitle?: string;
-  color?: 'blue' | 'green' | 'red' | 'purple' | 'electric-blue' | 'electric-green' | 'electric-purple' | 'electric-cyan' | 'electric-pink';
+  color?: 'blue' | 'green' | 'red' | 'purple' | 'electric-blue' | 'electric-green' | 'electric-purple' | 'electric-cyan' | 'electric-pink' | 'electric-yellow' | 'electric-red' | 'electric-orange';
 }
 
 const colorMap = {
@@ -63,10 +63,28 @@ const colorMap = {
     value: 'text-electric-pink dark:text-electric-purple',
     subtitle: 'text-electric-pink dark:text-electric-purple',
   },
+  'electric-yellow': {
+    container: 'from-electric-yellow/20 to-electric-orange/10 dark:from-electric-yellow/20 dark:to-electric-orange/10 border-electric-yellow/30 dark:border-electric-orange/30',
+    title: 'text-electric-yellow dark:text-electric-orange',
+    value: 'text-electric-yellow dark:text-electric-orange',
+    subtitle: 'text-electric-yellow dark:text-electric-orange',
+  },
+  'electric-red': {
+    container: 'from-electric-red/20 to-red-400/10 dark:from-electric-red/20 dark:to-red-400/10 border-electric-red/30 dark:border-red-400/30',
+    title: 'text-electric-red dark:text-red-400',
+    value: 'text-electric-red dark:text-red-400',
+    subtitle: 'text-electric-red dark:text-red-400',
+  },
+  'electric-orange': {
+    container: 'from-electric-orange/20 to-electric-yellow/10 dark:from-electric-orange/20 dark:to-electric-yellow/10 border-electric-orange/30 dark:border-electric-yellow/30',
+    title: 'text-electric-orange dark:text-electric-yellow',
+    value: 'text-electric-orange dark:text-electric-yellow',
+    subtitle: 'text-electric-orange dark:text-electric-yellow',
+  },
 };
 
 export const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color = 'electric-blue' }) => {
-  const c = colorMap[color];
+  const c = colorMap[color] || colorMap['electric-blue'];
   return (
     <Card className={`bg-gradient-to-br ${c.container}`}>
       <CardHeader className="pb-2">
