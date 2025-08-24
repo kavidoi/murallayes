@@ -8,6 +8,17 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(data: Prisma.ProjectCreateInput) {
+    // Handle date format conversion for deadline
+    if (data.deadline && typeof data.deadline === 'string') {
+      // If it's just a date (YYYY-MM-DD), convert to full ISO DateTime
+      if (/^\d{4}-\d{2}-\d{2}$/.test(data.deadline)) {
+        data.deadline = new Date(data.deadline + 'T00:00:00.000Z');
+      } else {
+        // Try to parse as Date
+        data.deadline = new Date(data.deadline);
+      }
+    }
+
     return this.prisma.project.create({ 
       data, 
       include: { 
@@ -37,6 +48,17 @@ export class ProjectsService {
   }
 
   async update(id: string, data: Prisma.ProjectUpdateInput) {
+    // Handle date format conversion for deadline
+    if (data.deadline && typeof data.deadline === 'string') {
+      // If it's just a date (YYYY-MM-DD), convert to full ISO DateTime
+      if (/^\d{4}-\d{2}-\d{2}$/.test(data.deadline)) {
+        data.deadline = new Date(data.deadline + 'T00:00:00.000Z');
+      } else {
+        // Try to parse as Date
+        data.deadline = new Date(data.deadline);
+      }
+    }
+
     return this.prisma.project.update({ 
       where: { id }, 
       data, 
