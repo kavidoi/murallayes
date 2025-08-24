@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -176,7 +176,8 @@ const AssigneeSelector: React.FC<{
 }> = ({ selectedUserIds, users, onSelectionChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
-  const selectedUsers = users.filter(u => selectedUserIds.includes(u.id))
+  const availableUsers = users.filter(user => user.email !== 'admin@murallacafe.cl')
+  const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id))
   
   const toggleUser = (userId: string) => {
     if (selectedUserIds.includes(userId)) {
@@ -232,7 +233,7 @@ const AssigneeSelector: React.FC<{
             className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48 max-h-64 overflow-y-auto"
             style={getDropdownPosition()}
           >
-            {users.map(user => (
+            {availableUsers.map(user => (
               <label key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                 <input
                   type="checkbox"
@@ -569,7 +570,7 @@ const InlineTextEditor: React.FC<{
   )
 }
 
-// Sortable task row
+// Optimized sortable task row with memoization
 const SortableTaskRow: React.FC<{
   task: Task
   users: User[]
@@ -580,7 +581,8 @@ const SortableTaskRow: React.FC<{
   onDeleteSubtask: (subtaskId: string) => void
   onDeleteTask?: (taskId: string) => void
   isSubtask?: boolean
-}> = ({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
+  isLoading?: boolean
+}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false, isLoading = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -731,7 +733,21 @@ const SortableTaskRow: React.FC<{
       )}
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for memo optimization
+  return (
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.name === nextProps.task.name &&
+    prevProps.task.status === nextProps.task.status &&
+    prevProps.task.dueDate === nextProps.task.dueDate &&
+    prevProps.task.expanded === nextProps.task.expanded &&
+    JSON.stringify(prevProps.task.assigneeIds) === JSON.stringify(nextProps.task.assigneeIds) &&
+    JSON.stringify(prevProps.task.subtasks) === JSON.stringify(nextProps.task.subtasks) &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.users.length === nextProps.users.length &&
+    prevProps.projects.length === nextProps.projects.length
+  )
+})
 
 // Main TasksList component
 const TasksList: React.FC = () => {
@@ -741,6 +757,11 @@ const TasksList: React.FC = () => {
   const [projects, setProjects] = useState<APIProject[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set())
+  
+  // Debouncing refs to prevent rapid API calls
+  const updateTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -756,10 +777,13 @@ const TasksList: React.FC = () => {
     })
   )
   
-  // Load data
-  const loadData = useCallback(async () => {
+  // Optimized data loading with caching
+  const loadData = useCallback(async (forceRefresh = false) => {
     try {
-      setLoading(true)
+      if (forceRefresh || tasks.length === 0) {
+        setLoading(true)
+      }
+      
       const [tasksData, usersData, projectsData] = await Promise.all([
         tasksService.getAllTasks(),
         usersService.getActiveUsers(),
@@ -783,6 +807,12 @@ const TasksList: React.FC = () => {
   
   useEffect(() => {
     loadData()
+    
+    // Cleanup timeouts on unmount
+    return () => {
+      updateTimeouts.current.forEach(timeout => clearTimeout(timeout))
+      updateTimeouts.current.clear()
+    }
   }, [loadData])
   
   // Filter tasks
@@ -821,36 +851,70 @@ const TasksList: React.FC = () => {
     }).sort((a, b) => a.order - b.order)
   }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter])
   
-  // Task operations
+  // Optimized task operations with debouncing for name updates
   const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
+    // Store original state for rollback
+    const originalTasks = tasks
+    
     try {
-      // Optimistic update
+      // Optimistic update - immediate UI response
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, ...updates } : task
       ))
       
-      // API call
+      // Skip API calls for temporary tasks (they don't exist in the backend yet)
+      if (taskId.startsWith('temp-')) {
+        return
+      }
+      
+      // Clear existing timeout for this task
+      const existingTimeout = updateTimeouts.current.get(taskId)
+      if (existingTimeout) {
+        clearTimeout(existingTimeout)
+      }
+      
+      // API call with debouncing for name updates
       const apiUpdates: any = {}
       if ('name' in updates) apiUpdates.title = updates.name
       if ('status' in updates) apiUpdates.status = convertStatusToAPIStatus(updates.status!)
       if ('assigneeIds' in updates) {
         await tasksService.updateTaskAssignees(taskId, updates.assigneeIds!)
-        return // updateTaskAssignees returns the full updated task
+        return
       }
       if ('dueDate' in updates) apiUpdates.dueDate = updates.dueDate
       if ('projectId' in updates) apiUpdates.projectId = updates.projectId
       
       if (Object.keys(apiUpdates).length > 0) {
-        await tasksService.updateTask(taskId, apiUpdates)
+        // Debounce name updates (500ms) but send others immediately
+        const delay = 'name' in updates ? 500 : 0
+        
+        const timeoutId = setTimeout(async () => {
+          try {
+            await tasksService.updateTask(taskId, apiUpdates)
+            updateTimeouts.current.delete(taskId)
+          } catch (err) {
+            console.error('Failed to update task:', err)
+            setTasks(originalTasks)
+            setError('Failed to update task. Please try again.')
+            setTimeout(() => setError(null), 3000)
+          }
+        }, delay)
+        
+        updateTimeouts.current.set(taskId, timeoutId)
       }
     } catch (err) {
       console.error('Failed to update task:', err)
-      // Revert optimistic update
-      loadData()
+      // Rollback to original state instead of full reload
+      setTasks(originalTasks)
+      setError('Failed to update task. Please try again.')
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000)
     }
-  }, [loadData])
+  }, [tasks])
   
   const handleSubtaskUpdate = useCallback(async (parentTaskId: string, subtaskId: string, updates: Partial<Subtask>) => {
+    const originalTasks = tasks
+    
     try {
       // Optimistic update
       setTasks(prev => prev.map(task => 
@@ -863,6 +927,11 @@ const TasksList: React.FC = () => {
             }
           : task
       ))
+      
+      // Skip API calls for temporary subtasks
+      if (subtaskId.startsWith('temp-')) {
+        return
+      }
       
       // API call
       const apiUpdates: any = {}
@@ -879,61 +948,160 @@ const TasksList: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to update subtask:', err)
-      loadData()
+      setTasks(originalTasks)
+      setError('Failed to update subtask. Please try again.')
+      setTimeout(() => setError(null), 3000)
     }
-  }, [loadData])
+  }, [tasks])
   
   const handleAddTask = useCallback(async () => {
+    // Create temporary task for immediate UI feedback
+    const tempId = `temp-${Date.now()}`
+    const tempTask: Task = {
+      id: tempId,
+      name: 'New Task',
+      status: 'New',
+      assigneeIds: [],
+      dueDate: null,
+      expanded: false,
+      subtasks: [],
+      order: tasks.length,
+      projectId: projects[0]?.id,
+      projectName: projects[0]?.name || 'Default'
+    }
+    
     try {
+      setSaving(true)
+      setSavingItems(prev => new Set(prev.add(tempId)))
+      
+      // Optimistic UI update
+      setTasks(prev => [...prev, tempTask])
+      
       const defaultProject = await projectsService.getOrCreateDefaultProject()
-      await tasksService.createTask({
+      const newTask = await tasksService.createTask({
         title: 'New Task',
         status: 'PENDING',
         projectId: defaultProject.id
       })
       
-      // Refresh data to get the new task with proper ordering
-      loadData()
+      // Replace temp task with real task
+      setTasks(prev => prev.map(task => 
+        task.id === tempId 
+          ? convertAPITaskToTask(newTask, users, projects)
+          : task
+      ))
     } catch (err) {
       console.error('Failed to add task:', err)
+      // Remove temp task on error
+      setTasks(prev => prev.filter(task => task.id !== tempId))
       setError('Failed to add task')
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setSaving(false)
+      setSavingItems(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tempId)
+        return newSet
+      })
     }
-  }, [loadData])
+  }, [tasks, projects, users])
   
   const handleAddSubtask = useCallback(async (parentTaskId: string) => {
+    const tempId = `temp-${Date.now()}`
+    const tempSubtask: Subtask = {
+      id: tempId,
+      name: 'New Subtask',
+      status: 'New',
+      inheritsAssignee: true,
+      inheritsDueDate: true,
+      assigneeIds: [],
+      dueDate: null,
+      order: 0
+    }
+    
     try {
-      await tasksService.createSubtask(parentTaskId, {
+      // Optimistic UI update
+      setTasks(prev => prev.map(task => 
+        task.id === parentTaskId 
+          ? { ...task, subtasks: [...task.subtasks, tempSubtask], expanded: true }
+          : task
+      ))
+      
+      const newSubtask = await tasksService.createSubtask(parentTaskId, {
         title: 'New Subtask',
         status: 'PENDING',
-        projectId: '' // Will be inherited from parent
+        projectId: ''
       })
       
-      // Refresh data
-      loadData()
+      // Replace temp subtask with real subtask
+      setTasks(prev => prev.map(task => 
+        task.id === parentTaskId 
+          ? {
+              ...task,
+              subtasks: task.subtasks.map(subtask => 
+                subtask.id === tempId
+                  ? {
+                      id: newSubtask.id,
+                      name: newSubtask.title,
+                      status: convertAPIStatusToStatus(newSubtask.status),
+                      inheritsAssignee: !newSubtask.assigneeId,
+                      inheritsDueDate: !newSubtask.dueDate,
+                      assigneeIds: newSubtask.assigneeId ? [newSubtask.assigneeId] : [],
+                      dueDate: newSubtask.dueDate ? new Date(newSubtask.dueDate).toISOString().slice(0, 10) : null,
+                      order: newSubtask.orderIndex ?? 0
+                    }
+                  : subtask
+              )
+            }
+          : task
+      ))
     } catch (err) {
       console.error('Failed to add subtask:', err)
+      // Remove temp subtask on error
+      setTasks(prev => prev.map(task => 
+        task.id === parentTaskId 
+          ? { ...task, subtasks: task.subtasks.filter(subtask => subtask.id !== tempId) }
+          : task
+      ))
     }
-  }, [loadData])
+  }, [])
   
   const handleDeleteSubtask = useCallback(async (subtaskId: string) => {
+    const originalTasks = tasks
+    
     try {
+      // Optimistic removal
+      setTasks(prev => prev.map(task => ({
+        ...task,
+        subtasks: task.subtasks.filter(subtask => subtask.id !== subtaskId)
+      })))
+      
       await tasksService.deleteTask(subtaskId)
-      loadData()
     } catch (err) {
       console.error('Failed to delete subtask:', err)
+      setTasks(originalTasks)
+      setError('Failed to delete subtask')
+      setTimeout(() => setError(null), 3000)
     }
-  }, [loadData])
+  }, [tasks])
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
+    if (window.confirm('¿Confirmas la eliminación de esta tarea?\n\nEsta acción es permanente y eliminará:\n• La tarea y toda su información\n• Todas las subtareas asociadas\n• El historial de actividad\n\n¿Deseas continuar?')) {
+      const originalTasks = tasks
+      
       try {
+        // Optimistic removal
+        setTasks(prev => prev.filter(task => task.id !== taskId))
+        
         await tasksService.deleteTask(taskId)
-        loadData()
       } catch (err) {
         console.error('Failed to delete task:', err)
+        setTasks(originalTasks)
+        setError('Failed to delete task')
+        setTimeout(() => setError(null), 3000)
       }
     }
-  }, [loadData])
+  }, [tasks])
   
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
@@ -945,22 +1113,25 @@ const TasksList: React.FC = () => {
     
     if (oldIndex === -1 || newIndex === -1) return
     
-    // Optimistic update
-    const newTasks = arrayMove(filteredTasks, oldIndex, newIndex)
-    setTasks(prev => {
-      const otherTasks = prev.filter(t => !filteredTasks.find(ft => ft.id === t.id))
-      return [...otherTasks, ...newTasks]
-    })
+    const originalTasks = tasks
     
     try {
+      // Optimistic update
+      const newTasks = arrayMove(filteredTasks, oldIndex, newIndex)
+      setTasks(prev => {
+        const otherTasks = prev.filter(t => !filteredTasks.find(ft => ft.id === t.id))
+        return [...otherTasks, ...newTasks]
+      })
+      
       // Update order on backend
       await tasksService.reorderTasks(newTasks.map(t => t.id))
     } catch (err) {
       console.error('Failed to reorder tasks:', err)
-      // Revert on error
-      loadData()
+      setTasks(originalTasks)
+      setError('Failed to reorder tasks')
+      setTimeout(() => setError(null), 3000)
     }
-  }, [filteredTasks, loadData])
+  }, [filteredTasks, tasks])
   
   const resetFilters = () => {
     setSearchTerm('')
@@ -970,12 +1141,75 @@ const TasksList: React.FC = () => {
     setOneAssignedFilter(false)
   }
   
+  // Task Loading Skeleton
+  const TaskSkeleton = () => (
+    <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 animate-pulse">
+      <div className="col-span-4 flex items-center space-x-2">
+        <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+        <div className="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded"></div>
+        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded flex-1"></div>
+      </div>
+      <div className="col-span-2 flex items-center">
+        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-20"></div>
+      </div>
+      <div className="col-span-1 flex items-center">
+        <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded-full w-16"></div>
+      </div>
+      <div className="col-span-1 flex items-center">
+        <div className="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+      </div>
+      <div className="col-span-2 flex items-center">
+        <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-24"></div>
+      </div>
+      <div className="col-span-2 flex items-center space-x-1">
+        <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-16"></div>
+        <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-16"></div>
+      </div>
+    </div>
+  )
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">{t('pages.tasks.loadingTasks')}</p>
+      <div className="">
+        <div className="container mx-auto px-4 py-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-48 mb-2 animate-pulse"></div>
+              <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-64 animate-pulse"></div>
+            </div>
+            <div className="flex space-x-2">
+              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-24 animate-pulse"></div>
+              <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-20 animate-pulse"></div>
+            </div>
+          </div>
+          
+          {/* Filters Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 mb-4">
+            <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded mb-3 animate-pulse"></div>
+            <div className="flex gap-2">
+              <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-24 animate-pulse"></div>
+              <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
+            </div>
+          </div>
+          
+          {/* Tasks Table Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Headers Skeleton */}
+            <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <div className="col-span-4 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="col-span-2 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="col-span-1 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="col-span-1 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="col-span-2 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="col-span-2 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+            </div>
+            
+            {/* Task Rows Skeleton */}
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TaskSkeleton key={i} />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -1009,9 +1243,17 @@ const TasksList: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={handleAddTask}
-              className="btn-primary"
+              disabled={saving}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {t('pages.tasks.newTask')}
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Creando...
+                </>
+              ) : (
+                t('pages.tasks.newTask')
+              )}
             </button>
             <button
               className="btn-secondary"
@@ -1098,6 +1340,13 @@ const TasksList: React.FC = () => {
             </div>
           </div>
         </div>
+        
+        {/* Error Toast */}
+        {error && (
+          <div className="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-slide-in">
+            {error}
+          </div>
+        )}
         
         {/* Tasks table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">

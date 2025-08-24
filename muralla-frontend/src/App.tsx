@@ -41,13 +41,28 @@ const CeluReceipt = lazy(() => import('./components/modules/mobile/CeluReceipt')
 const ShiftsAttendance = lazy(() => import('./components/modules/people/ShiftsAttendance'))
 const MyShifts = lazy(() => import('./components/modules/people/MyShifts'))
 const MisTareas = lazy(() => import('./components/modules/personal/MisTareas'))
+const KanbanBoard = lazy(() => import('./components/modules/projects/KanbanBoard'))
 
-// Loading fallback component
+// Loading fallback component with skeleton
 const LoadingFallback = () => (
-  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-      <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="container mx-auto">
+      {/* Header skeleton */}
+      <div className="mb-6">
+        <div className="h-8 skeleton rounded w-48 mb-2"></div>
+        <div className="h-4 skeleton rounded w-64"></div>
+      </div>
+      
+      {/* Content skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="h-4 skeleton rounded w-24 mb-3"></div>
+            <div className="h-8 skeleton rounded w-32 mb-2"></div>
+            <div className="h-3 skeleton rounded w-20"></div>
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 )
@@ -105,10 +120,26 @@ function App() {
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-blue mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">{t('common.loadingAuth')}</p>
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 p-6">
+        {/* Auth loading skeleton */}
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-8 skeleton rounded w-32"></div>
+            <div className="flex space-x-4">
+              <div className="h-8 skeleton rounded-full w-8"></div>
+              <div className="h-8 skeleton rounded w-20"></div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="h-6 skeleton rounded w-24 mb-3"></div>
+                <div className="h-10 skeleton rounded w-16 mb-2"></div>
+                <div className="h-3 skeleton rounded w-20"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -164,7 +195,7 @@ function App() {
               <Route path="/projects" element={<Navigate to="/projects/overview" replace />} />
               <Route path="/projects/overview" element={<ProjectsManager />} />
               <Route path="/projects/tasks" element={<TasksList />} />
-              <Route path="/projects/kanban" element={<PlaceholderPage title={t('routes.kanban.title')} description={t('routes.kanban.description')} icon="📊" />} />
+              <Route path="/projects/kanban" element={<KanbanBoard />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
               {/* Redirect project calendar to unified schedule calendar */}
               <Route path="/projects/calendar" element={<Navigate to="/schedule/calendar" replace />} />
