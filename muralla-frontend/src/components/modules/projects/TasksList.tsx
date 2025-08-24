@@ -16,10 +16,11 @@ interface User {
   name: string
   initials: string
   color: string // Tailwind bg-* color class
+  email: string
 }
 
 type Status = 'New' | 'In Progress' | 'Completed' | 'Overdue'
-type APIStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE'
+type APIStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'
 
 interface Subtask {
   id: string
@@ -90,12 +91,13 @@ const convertAPIUserToUser = (apiUser: APIUser, index: number): User => ({
   name: `${apiUser.firstName} ${apiUser.lastName}`,
   initials: getInitials(apiUser.firstName, apiUser.lastName),
   color: getColorForUser(index),
+  email: apiUser.email,
 });
 
 const convertAPIStatusToStatus = (apiStatus: APIStatus, dueDate?: string): Status => {
   if (apiStatus === 'DONE') return 'Completed';
   if (dueDate && new Date(dueDate) < new Date() && apiStatus !== 'DONE' as APIStatus) return 'Overdue';
-  if (apiStatus === 'IN_PROGRESS') return 'In Progress';
+  if (apiStatus === 'IN_PROGRESS' || apiStatus === 'REVIEW') return 'In Progress';
   return 'New';
 };
 
@@ -108,7 +110,7 @@ const convertStatusToAPIStatus = (status: Status): APIStatus => {
     case 'New':
     case 'Overdue':
     default:
-      return 'PENDING';
+      return 'TODO';
   }
 };
 

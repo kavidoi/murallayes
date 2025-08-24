@@ -32,8 +32,8 @@ export class HttpsUtils {
       return this.ensureHttps(envUrl);
     }
     
-    // Default fallback - usar HTTPS también en desarrollo
-    return 'https://localhost:3000';
+    // Default fallback - use HTTP for local development
+    return import.meta.env.DEV ? 'http://localhost:4000' : 'https://localhost:4000';
   }
   
   /**

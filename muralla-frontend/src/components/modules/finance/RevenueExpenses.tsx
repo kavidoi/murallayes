@@ -328,7 +328,7 @@ const RevenueExpenses: React.FC = () => {
   const handleCreateRevenue = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await AuthService.apiCall('/api/revenue-expense/revenue', {
+      const response = await AuthService.apiCall('/api/ingresos-egresos/ingresos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(revenueForm)
@@ -361,7 +361,7 @@ const RevenueExpenses: React.FC = () => {
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await AuthService.apiCall('/api/revenue-expense/expenses', {
+      const response = await AuthService.apiCall('/api/ingresos-egresos/egresos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expenseForm)
@@ -822,14 +822,14 @@ const RevenueExpenses: React.FC = () => {
               {expenses.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">💸</div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('noExpenses') || 'No hay gastos registrados'}</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6">{t('addFirstExpense') || 'Agregue su primer gasto para comenzar a rastrear sus egresos'}</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('nav.noExpenses') || 'No hay gastos registrados'}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">{t('nav.addFirstExpense') || 'Agregue su primer gasto para comenzar a rastrear sus egresos'}</p>
                   <button
                     onClick={() => setShowExpenseForm(true)}
                     className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium inline-flex items-center"
                   >
                     <span className="mr-2">+</span>
-                    {t('addExpense') || 'Agregar Gasto'}
+                    {t('nav.addExpense') || 'Agregar Gasto'}
                   </button>
                 </div>
               ) : (

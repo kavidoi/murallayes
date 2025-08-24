@@ -53,10 +53,13 @@ interface PurchaseOrderFormData {
   vendorName: string
   vendorId?: string
   docType: string
-  docNumber?: string
+  docNumber?: string // This will be auto-generated internal PO number
+  thirdPartyDocType?: 'FACTURA' | 'BOLETA' | 'NONE'
+  thirdPartyDocNumber?: string
   date: string
   description?: string
   companyId: string
+  receiptFile?: File
   lines: {
     description: string
     quantity: number
@@ -74,6 +77,26 @@ interface UserInfo {
   firstName: string
   lastName: string
   fullName: string
+}
+
+// Function to generate automatic internal PO number
+const generatePONumber = (existingPOs: PurchaseOrderRow[]): string => {
+  const currentYear = new Date().getFullYear()
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
+  
+  // Find the highest number for this year-month
+  const yearMonthPattern = `OC-${currentYear}-${currentMonth}`
+  const existingNumbers = existingPOs
+    .map(po => po.docNumber)
+    .filter(docNum => docNum && docNum.startsWith(yearMonthPattern))
+    .map(docNum => {
+      const match = docNum.match(/OC-\d{4}-\d{2}-(\d+)$/)
+      return match ? parseInt(match[1], 10) : 0
+    })
+    .filter(num => !isNaN(num))
+  
+  const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1
+  return `${yearMonthPattern}-${String(nextNumber).padStart(3, '0')}`
 }
 
 const PurchaseOrders: React.FC = () => {
@@ -115,7 +138,7 @@ const PurchaseOrders: React.FC = () => {
     }
   }
 
-  // Get current user info from JWT token
+  // Get current user info from JWT token and backend
   const getCurrentUser = (): UserInfo | null => {
     const token = AuthService.getToken()
     if (!token) return null
@@ -129,16 +152,52 @@ const PurchaseOrders: React.FC = () => {
       const json = atob(padded)
       const payload = JSON.parse(json)
       
+      const firstName = payload.firstName || payload.given_name || payload.name?.split(' ')[0] || ''
+      const lastName = payload.lastName || payload.family_name || payload.name?.split(' ').slice(1).join(' ') || ''
+      const email = payload.email || payload.username || ''
+      const fullName = firstName && lastName ? `${firstName} ${lastName}` : 
+                      payload.name || 
+                      email || 
+                      'Usuario Actual'
+      
       return {
-        id: payload.sub || payload.userId || '',
-        email: payload.email || '',
-        firstName: payload.firstName || payload.given_name || '',
-        lastName: payload.lastName || payload.family_name || '',
-        fullName: `${payload.firstName || payload.given_name || ''} ${payload.lastName || payload.family_name || ''}`.trim() || payload.email || 'Usuario'
+        id: payload.sub || payload.userId || payload.id || '',
+        email,
+        firstName,
+        lastName,
+        fullName
       }
     } catch (e) {
       console.error('Error parsing token:', e)
-      return null
+      return {
+        id: 'unknown',
+        email: 'usuario@sistema.com',
+        firstName: 'Usuario',
+        lastName: 'Actual',
+        fullName: 'Usuario Actual'
+      }
+    }
+  }
+
+  // Load current user from backend if available
+  const loadCurrentUserFromBackend = async () => {
+    try {
+      const tokenUser = getCurrentUser()
+      if (tokenUser?.id && tokenUser.id !== 'unknown') {
+        const backendUser = await usersService.getUser(tokenUser.id)
+        setCurrentUser({
+          id: backendUser.id,
+          email: backendUser.email,
+          firstName: backendUser.firstName,
+          lastName: backendUser.lastName,
+          fullName: `${backendUser.firstName} ${backendUser.lastName}`.trim() || backendUser.email
+        })
+      } else {
+        setCurrentUser(tokenUser)
+      }
+    } catch (error) {
+      console.log('Could not load user from backend, using token data:', error)
+      setCurrentUser(getCurrentUser())
     }
   }
 
@@ -183,23 +242,51 @@ const PurchaseOrders: React.FC = () => {
 
   useEffect(() => {
     load()
-    setCurrentUser(getCurrentUser())
+    loadCurrentUserFromBackend()
   }, [])
 
   const handleCreateOrder = async (formData: PurchaseOrderFormData) => {
     setActionLoading('create')
     try {
+      // Use the PO number from the form (already generated or user-modified)
+      
+      // Upload receipt file if provided
+      let attachments: any[] = []
+      if (formData.receiptFile) {
+        try {
+          const uploadResult = await PurchaseOrdersService.uploadReceipt(formData.receiptFile)
+          if (uploadResult?.fileUrl) {
+            attachments.push({
+              fileName: formData.receiptFile.name,
+              fileUrl: uploadResult.fileUrl,
+              fileType: formData.receiptFile.type,
+              fileSize: formData.receiptFile.size
+            })
+          }
+        } catch (uploadError) {
+          console.error('Error uploading receipt:', uploadError)
+          // Continue with PO creation even if file upload fails
+        }
+      }
+      
+      // Build description with third-party document info if provided
+      let description = `${formData.vendorName} - ${formData.description || ''}`.trim()
+      if (formData.thirdPartyDocType && formData.thirdPartyDocType !== 'NONE' && formData.thirdPartyDocNumber) {
+        description += ` | ${formData.thirdPartyDocType}: ${formData.thirdPartyDocNumber}`
+      }
+      
       const orderData: Partial<CostDTO> = {
         vendorId: undefined, // We'll use vendorName for now
         docType: formData.docType,
-        docNumber: formData.docNumber || undefined,
+        docNumber: formData.docNumber, // Use the PO number from the form
         date: formData.date,
-        description: `${formData.vendorName} - ${formData.description || ''}`.trim(),
+        description,
         companyId: formData.companyId,
         total: formData.lines.reduce((sum, line) => sum + line.totalCost, 0),
         currency: 'CLP',
         payerType: 'COMPANY',
         status: 'PENDING',
+        attachments,
         lines: formData.lines.map(line => ({
           description: line.description,
           quantity: line.quantity,
@@ -483,7 +570,25 @@ const PurchaseOrders: React.FC = () => {
                         <td className="px-6 py-4">
                           <div>
                             <div className="text-sm font-medium text-gray-900 dark:text-white">{po.vendorName || 'Sin proveedor'}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">{po.description}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                              {(() => {
+                                const description = po.description || '';
+                                const thirdPartyMatch = description.match(/\|\s*(FACTURA|BOLETA):\s*([^|]+)$/);
+                                if (thirdPartyMatch) {
+                                  const [, docType, docNumber] = thirdPartyMatch;
+                                  const mainDescription = description.replace(thirdPartyMatch[0], '').trim();
+                                  return (
+                                    <div>
+                                      <div>{mainDescription}</div>
+                                      <div className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-1">
+                                        📄 {docType}: {docNumber.trim()}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return description;
+                              })()}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -571,6 +676,7 @@ const PurchaseOrders: React.FC = () => {
             editingOrder={editingOrder}
             currentUser={currentUser}
             loading={actionLoading === 'create' || actionLoading?.startsWith('edit-')}
+            existingOrders={rows}
           />
         )}
 
@@ -595,15 +701,19 @@ const PurchaseOrderModal: React.FC<{
   editingOrder?: PurchaseOrderRow | null
   currentUser: UserInfo | null
   loading: boolean
-}> = ({ isOpen, onClose, onSubmit, editingOrder, currentUser, loading }) => {
+  existingOrders: PurchaseOrderRow[]
+}> = ({ isOpen, onClose, onSubmit, editingOrder, currentUser, loading, existingOrders }) => {
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     vendorName: editingOrder?.vendorName || '',
     vendorId: '',
-    docType: editingOrder?.docType || 'OC',
-    docNumber: editingOrder?.docNumber || '',
+    docType: 'OC', // Always set to OC for purchase orders
+    docNumber: editingOrder?.docNumber || '', // Will be set when modal opens
+    thirdPartyDocType: 'NONE',
+    thirdPartyDocNumber: '',
     date: editingOrder?.date.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
     description: editingOrder?.description || '',
     companyId: editingOrder?.companyId || 'default-company',
+    receiptFile: undefined,
     lines: editingOrder?.lines?.map(line => ({
       description: line.description || '',
       quantity: Number(line.quantity) || 1,
@@ -629,6 +739,14 @@ const PurchaseOrderModal: React.FC<{
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false)
   const [productSearches, setProductSearches] = useState<{ [key: number]: string }>({})
   const [showProductDropdowns, setShowProductDropdowns] = useState<{ [key: number]: boolean }>({})
+
+  // Generate PO number when modal opens for new orders
+  React.useEffect(() => {
+    if (isOpen && !editingOrder) {
+      const generatedPONumber = generatePONumber(existingOrders)
+      setFormData(prev => ({ ...prev, docNumber: generatedPONumber }))
+    }
+  }, [isOpen, editingOrder, existingOrders])
 
   // Mock data - in real app this would come from API
   React.useEffect(() => {
@@ -808,8 +926,8 @@ const PurchaseOrderModal: React.FC<{
                   </div>
 
                   {/* Header Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="relative">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="relative md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Proveedor *
                       </label>
@@ -871,35 +989,19 @@ const PurchaseOrderModal: React.FC<{
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tipo de Documento *
-                      </label>
-                      <select
-                        required
-                        value={formData.docType}
-                        onChange={(e) => setFormData(prev => ({ ...prev, docType: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="OC">Orden de Compra</option>
-                        <option value="Factura">Factura</option>
-                        <option value="Boleta">Boleta</option>
-                        <option value="Guía">Guía de Despacho</option>
-                        <option value="Nota">Nota de Crédito</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Número de Documento
+                        Número Interno
                       </label>
                       <input
                         type="text"
                         value={formData.docNumber}
                         onChange={(e) => setFormData(prev => ({ ...prev, docNumber: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Ej: OC-2025-001"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                        placeholder="OC-2025-08-001"
                       />
                     </div>
-                    
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Fecha *
@@ -911,6 +1013,10 @@ const PurchaseOrderModal: React.FC<{
                         onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       />
+                    </div>
+                    
+                    <div>
+                      {/* Empty div to maintain grid layout */}
                     </div>
                   </div>
                   
@@ -925,6 +1031,64 @@ const PurchaseOrderModal: React.FC<{
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       placeholder="Descripción opcional de la orden"
                     />
+                  </div>
+
+                  {/* Third-party Document Section */}
+                  <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+                      📄 Documento del Proveedor (Opcional)
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tipo de Documento
+                        </label>
+                        <select
+                          value={formData.thirdPartyDocType}
+                          onChange={(e) => setFormData(prev => ({ ...prev, thirdPartyDocType: e.target.value as 'FACTURA' | 'BOLETA' | 'NONE' }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="NONE">Sin documento</option>
+                          <option value="FACTURA">Factura</option>
+                          <option value="BOLETA">Boleta</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Número del Documento
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.thirdPartyDocNumber}
+                          onChange={(e) => setFormData(prev => ({ ...prev, thirdPartyDocNumber: e.target.value }))}
+                          disabled={formData.thirdPartyDocType === 'NONE'}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-600 disabled:text-gray-500"
+                          placeholder="Ej: 12345 o A-001234"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        📎 Subir Recibo/Factura (PDF o Foto)
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          setFormData(prev => ({ ...prev, receiptFile: file }))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900 dark:file:text-blue-300"
+                      />
+                      {formData.receiptFile && (
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          ✅ Archivo seleccionado: {formData.receiptFile.name} ({(formData.receiptFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Line Items */}
@@ -1213,6 +1377,64 @@ const ViewPurchaseOrderModal: React.FC<{
                     </label>
                     <p className="text-gray-900 dark:text-white">{order.companyName || order.companyId}</p>
                   </div>
+                  
+                  {/* Third-party Document Information */}
+                  {(() => {
+                    const description = order.description || '';
+                    const thirdPartyMatch = description.match(/\|\s*(FACTURA|BOLETA):\s*([^|]+)$/);
+                    if (thirdPartyMatch) {
+                      const [, docType, docNumber] = thirdPartyMatch;
+                      return (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            📄 Documento del Proveedor
+                          </label>
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                            <p className="text-gray-900 dark:text-white font-mono">
+                              {docType}: {docNumber.trim()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  {/* File Attachments */}
+                  {order.attachments && order.attachments.length > 0 && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        📎 Archivos Adjuntos
+                      </label>
+                      <div className="space-y-2">
+                        {order.attachments.map((attachment, index) => (
+                          <div key={index} className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
+                            <PaperClipIcon className="h-5 w-5 text-gray-400 mr-3" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {attachment.fileName || 'Archivo'}
+                              </p>
+                              {attachment.fileSize && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {(attachment.fileSize / 1024).toFixed(1)} KB
+                                </p>
+                              )}
+                            </div>
+                            {attachment.fileUrl && (
+                              <a
+                                href={attachment.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-3 text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {order.description && (
