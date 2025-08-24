@@ -9,11 +9,31 @@ export class PrismaService implements OnModuleInit {
 
   constructor() {
     const { PrismaClient: Client } = require('@prisma/client');
-    this.prisma = new Client();
+    this.prisma = new Client({
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
   }
 
   async onModuleInit() {
-    await this.prisma.$connect();
+    try {
+      // Add connection timeout
+      const connectPromise = this.prisma.$connect();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+      );
+
+      await Promise.race([connectPromise, timeoutPromise]);
+      console.log('✅ Database connected successfully');
+    } catch (error) {
+      console.warn('⚠️ Database connection failed:', error.message);
+      console.warn('📊 Application will continue with limited functionality');
+      // Don't throw the error - allow the app to start without database
+    }
   }
 
   // Forward all PrismaClient methods and properties

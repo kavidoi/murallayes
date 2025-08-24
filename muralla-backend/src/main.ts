@@ -8,7 +8,20 @@ import { existsSync, mkdirSync } from 'fs';
 import * as express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Add application startup timeout
+  const createAppPromise = NestFactory.create(AppModule);
+  const appTimeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Application startup timeout')), 30000)
+  );
+
+  let app;
+  try {
+    app = await Promise.race([createAppPromise, appTimeoutPromise]);
+    console.log('✅ NestJS application created successfully');
+  } catch (error) {
+    console.error('❌ Application startup failed:', error.message);
+    process.exit(1);
+  }
   
   // Trust reverse proxy (Render, Nginx, etc.) for proper HTTPS handling
   const expressApp = app.getHttpAdapter().getInstance();

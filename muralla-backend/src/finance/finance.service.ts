@@ -252,13 +252,35 @@ export class FinanceService {
       ...filters,
     };
 
+    const pendingWhereClause: any = {
+      isDeleted: false,
+      status: TransactionStatus.PENDING,
+      ...filters,
+    };
+
     if (filters.startDate || filters.endDate) {
       whereClause.createdAt = {};
-      if (filters.startDate) whereClause.createdAt.gte = filters.startDate;
-      if (filters.endDate) whereClause.createdAt.lte = filters.endDate;
+      pendingWhereClause.createdAt = {};
+      if (filters.startDate) {
+        whereClause.createdAt.gte = filters.startDate;
+        pendingWhereClause.createdAt.gte = filters.startDate;
+      }
+      if (filters.endDate) {
+        whereClause.createdAt.lte = filters.endDate;
+        pendingWhereClause.createdAt.lte = filters.endDate;
+      }
     }
 
-    const [income, expenses, transactionCount, categoryBreakdown] = await Promise.all([
+    const [
+      income,
+      expenses,
+      pendingIncome,
+      pendingExpenses,
+      transactionCount,
+      categoryBreakdown,
+      bankAccounts,
+      mercadoPagoAccount
+    ] = await Promise.all([
       this.prisma.transaction.aggregate({
         where: { ...whereClause, type: TransactionType.INCOME },
         _sum: { amount: true },
@@ -269,27 +291,91 @@ export class FinanceService {
         _sum: { amount: true },
         _count: true,
       }),
+      this.prisma.transaction.aggregate({
+        where: { ...pendingWhereClause, type: TransactionType.INCOME },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.aggregate({
+        where: { ...pendingWhereClause, type: TransactionType.EXPENSE },
+        _sum: { amount: true },
+      }),
       this.prisma.transaction.count({ where: whereClause }),
       this.prisma.transaction.groupBy({
         by: ['categoryId'],
         where: whereClause,
         _sum: { amount: true },
         _count: true,
+        _avg: { amount: true },
+      }),
+      this.prisma.bankAccount.aggregate({
+        where: { isDeleted: false, isActive: true },
+        _sum: { currentBalance: true },
+      }),
+      this.prisma.bankAccount.findFirst({
+        where: { accountType: 'mercado_pago', isDeleted: false, isActive: true },
+        select: { currentBalance: true },
       }),
     ]);
 
-    const totalIncome = income._sum.amount || 0;
+    const totalRevenue = income._sum.amount || 0;
     const totalExpenses = Math.abs(expenses._sum.amount || 0);
+    const netProfit = totalRevenue - totalExpenses;
+    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // Get category breakdown with names
+    const categoryIds = categoryBreakdown.map(cb => cb.categoryId).filter(Boolean);
+    const categories = await this.prisma.transactionCategory.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true },
+    });
+
+    const categoryMap = categories.reduce((acc, cat) => {
+      acc[cat.id] = cat.name;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const revenueByCategory = categoryBreakdown
+      .filter(cb => cb._sum.amount > 0)
+      .map(cb => ({
+        category: categoryMap[cb.categoryId] || 'Sin categoría',
+        amount: cb._sum.amount,
+        count: cb._count,
+      }));
+
+    const expensesByCategory = categoryBreakdown
+      .filter(cb => cb._sum.amount < 0)
+      .map(cb => ({
+        category: categoryMap[cb.categoryId] || 'Sin categoría',
+        amount: Math.abs(cb._sum.amount),
+        count: cb._count,
+      }));
 
     return {
-      totalIncome,
+      // Main metrics (matching frontend expectations)
+      totalRevenue,
       totalExpenses,
-      netProfit: totalIncome - totalExpenses,
+      netProfit,
+      bankBalance: bankAccounts._sum.currentBalance || 0,
+      
+      // Category breakdowns
+      revenueByCategory,
+      expensesByCategory,
+      
+      // Additional metrics
+      additionalMetrics: {
+        profitMargin,
+        pendingRevenue: pendingIncome._sum.amount || 0,
+        pendingExpenses: Math.abs(pendingExpenses._sum.amount || 0),
+        mercadoPago: mercadoPagoAccount?.currentBalance || 0,
+      },
+      
+      // Legacy fields for compatibility
+      totalIncome: totalRevenue,
       transactionCount,
       incomeTransactions: income._count,
       expenseTransactions: expenses._count,
       categoryBreakdown,
-      averageTransaction: transactionCount > 0 ? (totalIncome + totalExpenses) / transactionCount : 0,
+      averageTransaction: transactionCount > 0 ? (totalRevenue + totalExpenses) / transactionCount : 0,
     };
   }
 

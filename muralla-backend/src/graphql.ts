@@ -45,10 +45,7 @@ export class CreateProductInput {
 
 export class CreateProjectInput {
     description?: Nullable<string>;
-    endDate?: Nullable<DateTime>;
     name: string;
-    startDate?: Nullable<DateTime>;
-    status: string;
 }
 
 export class CreateSaleInput {
@@ -60,8 +57,6 @@ export class CreateSaleInput {
 export class CreateTaskInput {
     assigneeId?: Nullable<string>;
     description?: Nullable<string>;
-    dueDate?: Nullable<DateTime>;
-    priority?: Nullable<string>;
     projectId: string;
     status: TaskStatus;
     title: string;
@@ -168,11 +163,8 @@ export class Product {
 export class Project {
     createdAt: DateTime;
     description?: Nullable<string>;
-    endDate?: Nullable<DateTime>;
     id: string;
     name: string;
-    startDate?: Nullable<DateTime>;
-    status: string;
     tasks: Task[];
     updatedAt: DateTime;
 }
@@ -246,9 +238,7 @@ export class Task {
     assignee?: Nullable<User>;
     createdAt: DateTime;
     description?: Nullable<string>;
-    dueDate?: Nullable<DateTime>;
     id: string;
-    priority?: Nullable<string>;
     project: Project;
     status: TaskStatus;
     title: string;
