@@ -24,6 +24,7 @@ const KnowledgeOverview = lazy(() => import('./components/modules/knowledge/Know
 const BankAccount = lazy(() => import('./components/modules/finance/BankAccount'))
 const RevenueExpenses = lazy(() => import('./components/modules/finance/RevenueExpenses'))
 const BudgetManager = lazy(() => import('./components/modules/finance/BudgetManager'))
+const Gastos = lazy(() => import('./components/modules/finance/Gastos'))
 const PTO = lazy(() => import('./components/modules/people/PTO'))
 const TasksList = lazy(() => import('./components/modules/projects/TasksList'))
 const ProjectsManager = lazy(() => import('./components/modules/projects/ProjectsManager'))
@@ -218,6 +219,7 @@ function App() {
               <Route path="/finance/payment/failure" element={<PaymentFailure />} />
               <Route path="/finance/payment/pending" element={<PaymentPending />} />
               <Route path="/finance/revenue-expenses" element={<RevenueExpenses />} />
+              <Route path="/finance/gastos" element={<Gastos />} />
               <Route path="/finance/taxes" element={<PlaceholderPage title={t('routes.taxes.title')} description={t('routes.taxes.description')} icon="🧾" />} />
               <Route path="/finance/budgets" element={<BudgetManager />} />
               {/* Redirect old analytics under finance to new analytics section */}

@@ -170,6 +170,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         { name: t('nav.bank'), path: '/finance/bank' },
         { name: t('nav.payments'), path: '/finance/payments' },
         { name: t('nav.revenueExpenses'), path: '/finance/revenue-expenses' },
+        { name: t('nav.gastos'), path: '/finance/gastos' },
         { name: t('nav.taxes'), path: '/finance/taxes' },
         { name: t('nav.budgets'), path: '/finance/budgets' },
       ]

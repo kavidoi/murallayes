@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatCard } from '../../ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
+import { tasksService, type Task as APITask } from '../../../services/tasksService';
+import { usersService, type User as APIUser } from '../../../services/usersService';
+import { projectsService, type Project as APIProject } from '../../../services/projectsService';
 
 interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'todo' | 'in-progress' | 'review' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   assignees: User[];
   labels: Label[];
   dueDate?: string;
@@ -68,8 +71,57 @@ interface Column {
   limit?: number;
 }
 
+// Conversion functions
+const convertAPITaskToKanbanTask = (apiTask: APITask, allUsers: User[], projects: APIProject[]): Task => {
+  const assignees = apiTask.assignees?.map(assignee => {
+    const user = allUsers.find(u => u.id === assignee.userId);
+    return user || {
+      id: assignee.userId,
+      name: `${assignee.user?.firstName || ''} ${assignee.user?.lastName || ''}`.trim(),
+      avatar: `${assignee.user?.firstName?.charAt(0) || ''}${assignee.user?.lastName?.charAt(0) || ''}`,
+      email: assignee.user?.email || ''
+    };
+  }) || [];
+
+  const project = projects.find(p => p.id === apiTask.projectId);
+
+  return {
+    id: apiTask.id,
+    title: apiTask.title,
+    description: apiTask.description || '',
+    status: apiTask.status,
+    priority: apiTask.priority,
+    assignees,
+    labels: [], // You might want to add labels from API if available
+    dueDate: apiTask.dueDate,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    estimatedHours: 0, // Add if available in API
+    actualHours: 0, // Add if available in API
+    project: project?.name || 'Unknown Project',
+    subtasks: (apiTask.subtasks || []).map(subtask => ({
+      id: subtask.id,
+      title: subtask.title,
+      completed: subtask.status === 'DONE',
+      assignee: subtask.assignee ? {
+        id: subtask.assignee.id,
+        name: `${subtask.assignee.firstName} ${subtask.assignee.lastName}`,
+        avatar: `${subtask.assignee.firstName.charAt(0)}${subtask.assignee.lastName.charAt(0)}`,
+        email: subtask.assignee.email
+      } : undefined
+    })),
+    attachments: [], // Add if available in API
+    comments: [], // Add if available in API
+    cycleTime: 0, // Calculate if needed
+    timeInStatus: {}, // Add if available in API
+    isBlocked: false // Add if available in API
+  };
+};
+
 const KanbanBoard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<APIProject[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
@@ -78,6 +130,7 @@ const KanbanBoard: React.FC = () => {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [draggedOver, setDraggedOver] = useState<string | null>(null);
   const [quickActionTask, setQuickActionTask] = useState<string | null>(null);
   const [showBulkActions, setShowBulkActions] = useState(false);
@@ -95,28 +148,10 @@ const KanbanBoard: React.FC = () => {
   const boardRef = useRef<HTMLDivElement>(null);
 
   const columns: Column[] = [
-    { id: 'backlog', title: 'Backlog', status: 'backlog', color: 'bg-gray-100 dark:bg-gray-800', limit: undefined },
-    { id: 'todo', title: 'To Do', status: 'todo', color: 'bg-electric-blue/10 dark:bg-electric-blue/5', limit: 8 },
-    { id: 'in-progress', title: 'In Progress', status: 'in-progress', color: 'bg-electric-yellow/10 dark:bg-electric-yellow/5', limit: 5 },
-    { id: 'review', title: 'Review', status: 'review', color: 'bg-electric-purple/10 dark:bg-electric-purple/5', limit: 3 },
-    { id: 'done', title: 'Done', status: 'done', color: 'bg-electric-green/10 dark:bg-electric-green/5', limit: undefined }
-  ];
-
-  const users: User[] = [
-    { id: '1', name: 'Juan Pérez', avatar: 'JP', email: 'juan@muralla.com' },
-    { id: '2', name: 'María González', avatar: 'MG', email: 'maria@muralla.com' },
-    { id: '3', name: 'Carlos Rodríguez', avatar: 'CR', email: 'carlos@muralla.com' },
-    { id: '4', name: 'Ana López', avatar: 'AL', email: 'ana@muralla.com' }
-  ];
-
-  const projects = ['Proyecto Alpha', 'Proyecto Beta', 'Proyecto Gamma', 'Infraestructura'];
-
-  const labels: Label[] = [
-    { id: '1', name: 'Frontend', color: 'bg-electric-blue/20 text-electric-blue' },
-    { id: '2', name: 'Backend', color: 'bg-electric-green/20 text-electric-green' },
-    { id: '3', name: 'Bug', color: 'bg-electric-red/20 text-electric-red' },
-    { id: '4', name: 'Feature', color: 'bg-electric-purple/20 text-electric-purple' },
-    { id: '5', name: 'Documentation', color: 'bg-electric-yellow/20 text-electric-yellow' }
+    { id: 'TODO', title: 'To Do', status: 'TODO', color: 'bg-electric-blue/10 dark:bg-electric-blue/5', limit: 8 },
+    { id: 'IN_PROGRESS', title: 'In Progress', status: 'IN_PROGRESS', color: 'bg-electric-yellow/10 dark:bg-electric-yellow/5', limit: 5 },
+    { id: 'REVIEW', title: 'Review', status: 'REVIEW', color: 'bg-electric-purple/10 dark:bg-electric-purple/5', limit: 3 },
+    { id: 'DONE', title: 'Done', status: 'DONE', color: 'bg-electric-green/10 dark:bg-electric-green/5', limit: undefined }
   ];
 
   // Keyboard shortcuts
@@ -149,163 +184,61 @@ const KanbanBoard: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  useEffect(() => {
-    // Initialize with sample data and loading simulation
-    const initializeData = async () => {
+  // Load data from API
+  const loadData = useCallback(async () => {
+    try {
       setIsLoading(true);
+      setError(null);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const sampleTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Diseñar nueva landing page',
-        description: 'Crear wireframes y mockups para la nueva página principal',
-        status: 'todo',
-        priority: 'high',
-        assignees: [users[0], users[1]],
-        labels: [labels[0], labels[3]],
-        dueDate: '2024-03-20',
-        createdAt: '2024-03-01',
-        updatedAt: '2024-03-10',
-        estimatedHours: 16,
-        project: 'Proyecto Alpha',
-        subtasks: [
-          { id: '1', title: 'Wireframes móvil', completed: true, assignee: users[0] },
-          { id: '2', title: 'Wireframes desktop', completed: false, assignee: users[1] },
-          { id: '3', title: 'Prototipo interactivo', completed: false }
-        ],
-        attachments: [],
-        comments: [],
-        cycleTime: 9,
-        timeInStatus: { 'todo': 4, 'in-progress': 5 },
-        isBlocked: false
-      },
-      {
-        id: '2',
-        title: 'Implementar autenticación OAuth',
-        description: 'Integrar login con Google y GitHub',
-        status: 'in-progress',
-        priority: 'medium',
-        assignees: [users[2]],
-        labels: [labels[1], labels[3]],
-        dueDate: '2024-03-25',
-        createdAt: '2024-03-05',
-        updatedAt: '2024-03-12',
-        estimatedHours: 12,
-        actualHours: 8,
-        project: 'Proyecto Alpha',
-        subtasks: [
-          { id: '1', title: 'Setup OAuth providers', completed: true, assignee: users[2] },
-          { id: '2', title: 'Implementar callbacks', completed: true, assignee: users[2] },
-          { id: '3', title: 'Testing y validación', completed: false, assignee: users[2] }
-        ],
-        attachments: [],
-        comments: [
-          {
-            id: '1',
-            text: 'Google OAuth ya funcionando, trabajando en GitHub',
-            author: users[2],
-            createdAt: '2024-03-12'
-          }
-        ],
-        cycleTime: 7,
-        timeInStatus: { 'todo': 2, 'in-progress': 5 },
-        isBlocked: false
-      },
-      {
-        id: '3',
-        title: 'Corregir bug en checkout',
-        description: 'El proceso de pago se cuelga en dispositivos móviles',
-        status: 'review',
-        priority: 'urgent',
-        assignees: [users[3]],
-        labels: [labels[2], labels[0]],
-        dueDate: '2024-03-15',
-        createdAt: '2024-03-08',
-        updatedAt: '2024-03-13',
-        estimatedHours: 4,
-        actualHours: 6,
-        project: 'Proyecto Beta',
-        subtasks: [
-          { id: '1', title: 'Reproducir bug', completed: true, assignee: users[3] },
-          { id: '2', title: 'Identificar causa', completed: true, assignee: users[3] },
-          { id: '3', title: 'Implementar fix', completed: true, assignee: users[3] },
-          { id: '4', title: 'Testing en dispositivos', completed: false, assignee: users[3] }
-        ],
-        attachments: [],
-        comments: []
-      },
-      {
-        id: '4',
-        title: 'Documentar APIs v2',
-        description: 'Actualizar documentación técnica para la nueva versión',
-        status: 'done',
-        priority: 'low',
-        assignees: [users[1]],
-        labels: [labels[4]],
-        createdAt: '2024-02-15',
-        updatedAt: '2024-03-01',
-        estimatedHours: 8,
-        actualHours: 10,
-        project: 'Infraestructura',
-        subtasks: [
-          { id: '1', title: 'Swagger documentation', completed: true, assignee: users[1] },
-          { id: '2', title: 'Ejemplos de código', completed: true, assignee: users[1] },
-          { id: '3', title: 'Guías de migración', completed: true, assignee: users[1] }
-        ],
-        attachments: [],
-        comments: []
-      }
-      ];
-      setTasks(sampleTasks);
-      setActiveUsers([users[0], users[1], users[2]]); // Simulate active users
-      setRecentActivity([
-        {
-          id: '1',
-          user: users[2],
-          action: 'movió',
-          task: 'Implementar autenticación OAuth',
-          timestamp: '2024-03-12T14:30:00'
-        },
-        {
-          id: '2',
-          user: users[0],
-          action: 'comentó en',
-          task: 'Diseñar nueva landing page',
-          timestamp: '2024-03-12T14:15:00'
-        },
-        {
-          id: '3',
-          user: users[3],
-          action: 'completó',
-          task: 'Corregir bug en checkout',
-          timestamp: '2024-03-12T13:45:00'
-        }
+      const [tasksData, usersData, projectsData] = await Promise.all([
+        tasksService.getAllTasks(),
+        usersService.getActiveUsers(),
+        projectsService.getAllProjects()
       ]);
+      
+      // Convert API users to local user format
+      const convertedUsers: User[] = usersData.map((apiUser, index) => ({
+        id: apiUser.id,
+        name: `${apiUser.firstName} ${apiUser.lastName}`,
+        avatar: `${apiUser.firstName.charAt(0)}${apiUser.lastName.charAt(0)}`,
+        email: apiUser.email
+      }));
+      
+      const convertedTasks = tasksData.map(task => convertAPITaskToKanbanTask(task, convertedUsers, projectsData));
+      
+      setTasks(convertedTasks);
+      setUsers(convertedUsers);
+      setProjects(projectsData);
+      setActiveUsers(convertedUsers.slice(0, 4)); // Show first 4 as active
+      
+    } catch (err) {
+      console.error('Failed to load kanban data:', err);
+      setError('Failed to load tasks');
+    } finally {
       setIsLoading(false);
-    };
-
-    initializeData();
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-electric-red text-white';
-      case 'high': return 'bg-electric-red/20 text-electric-red';
-      case 'medium': return 'bg-electric-yellow/20 text-electric-yellow';
-      case 'low': return 'bg-electric-green/20 text-electric-green';
+      case 'URGENT': return 'bg-electric-red text-white';
+      case 'HIGH': return 'bg-electric-red/20 text-electric-red';
+      case 'MEDIUM': return 'bg-electric-yellow/20 text-electric-yellow';
+      case 'LOW': return 'bg-electric-green/20 text-electric-green';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'urgent': return '🔥';
-      case 'high': return '⬆️';
-      case 'medium': return '➡️';
-      case 'low': return '⬇️';
+      case 'URGENT': return '🔥';
+      case 'HIGH': return '⬆️';
+      case 'MEDIUM': return '➡️';
+      case 'LOW': return '⬇️';
       default: return '';
     }
   };
@@ -323,15 +256,30 @@ const KanbanBoard: React.FC = () => {
   };
 
   // Bulk operations
-  const handleBulkStatusChange = useCallback((newStatus: Task['status']) => {
-    setTasks(prev => prev.map(task => 
-      selectedTasks.has(task.id) 
-        ? { ...task, status: newStatus, updatedAt: new Date().toISOString() }
-        : task
-    ));
-    setSelectedTasks(new Set());
-    setShowBulkActions(false);
-  }, [selectedTasks]);
+  const handleBulkStatusChange = useCallback(async (newStatus: Task['status']) => {
+    const taskIds = Array.from(selectedTasks);
+    try {
+      // Optimistic update
+      setTasks(prev => prev.map(task => 
+        selectedTasks.has(task.id) 
+          ? { ...task, status: newStatus, updatedAt: new Date().toISOString() }
+          : task
+      ));
+      setSelectedTasks(new Set());
+      setShowBulkActions(false);
+
+      // Update all tasks via API
+      await Promise.all(
+        taskIds.map(taskId => tasksService.updateTask(taskId, { status: newStatus }))
+      );
+      console.log(`${taskIds.length} tasks updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating task statuses:', error);
+      // Reload data to ensure consistency
+      loadData();
+      setError('Failed to update task statuses');
+    }
+  }, [selectedTasks, loadData]);
 
   const handleTaskSelection = useCallback((taskId: string, event: React.MouseEvent) => {
     if (event.ctrlKey || event.metaKey) {
@@ -361,19 +309,32 @@ const KanbanBoard: React.FC = () => {
     setDraggedOver(null);
   };
 
-  const handleDrop = (e: React.DragEvent, status: Task['status']) => {
+  const handleDrop = async (e: React.DragEvent, status: Task['status']) => {
     e.preventDefault();
     if (draggedTask) {
-      setTasks(tasks.map(task => 
-        task.id === draggedTask.id 
-          ? { ...task, status, updatedAt: new Date().toISOString() }
-          : task
-      ));
-      setDraggedTask(null);
-      setDraggedOver(null);
-      
-      // Show success toast (you can implement toast notifications)
-      console.log(`Tarea "${draggedTask.title}" movida a ${status}`);
+      try {
+        // Optimistic update
+        setTasks(prev => prev.map(task => 
+          task.id === draggedTask.id 
+            ? { ...task, status, updatedAt: new Date().toISOString() }
+            : task
+        ));
+        setDraggedTask(null);
+        setDraggedOver(null);
+
+        // Update via API
+        await tasksService.updateTask(draggedTask.id, { status });
+        console.log(`Tarea "${draggedTask.title}" movida a ${status}`);
+      } catch (error) {
+        console.error('Error updating task status:', error);
+        // Revert optimistic update
+        setTasks(prev => prev.map(task => 
+          task.id === draggedTask.id 
+            ? { ...task, status: draggedTask.status }
+            : task
+        ));
+        setError('Failed to update task status');
+      }
     }
   };
 
@@ -429,11 +390,11 @@ const KanbanBoard: React.FC = () => {
 
   // Calculate metrics
   const totalTasks = tasks.length;
-  const doneTasks = tasks.filter(t => t.status === 'done').length;
-  const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
+  const doneTasks = tasks.filter(t => t.status === 'DONE').length;
+  const inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS').length;
   const overdueTasks = tasks.filter(t => t.dueDate && isOverdue(t.dueDate)).length;
   const blockedTasks = tasks.filter(t => t.isBlocked).length;
-  const avgCycleTime = tasks.filter(t => t.status === 'done').reduce((acc, task) => {
+  const avgCycleTime = tasks.filter(t => t.status === 'DONE').reduce((acc, task) => {
     return acc + calculateCycleTime(task);
   }, 0) / (doneTasks || 1);
 
@@ -682,25 +643,25 @@ const KanbanBoard: React.FC = () => {
           <div className="bulk-actions-dropdown absolute z-10 right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="py-1">
               <button
-                onClick={() => handleBulkStatusChange('todo')}
+                onClick={() => handleBulkStatusChange('TODO')}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Mover a To Do
               </button>
               <button
-                onClick={() => handleBulkStatusChange('in-progress')}
+                onClick={() => handleBulkStatusChange('IN_PROGRESS')}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Mover a En Progreso
               </button>
               <button
-                onClick={() => handleBulkStatusChange('review')}
+                onClick={() => handleBulkStatusChange('REVIEW')}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Mover a Revisión
               </button>
               <button
-                onClick={() => handleBulkStatusChange('done')}
+                onClick={() => handleBulkStatusChange('DONE')}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Mover a Terminado
@@ -804,7 +765,7 @@ const KanbanBoard: React.FC = () => {
                 >
                   <option value="all">Todos los proyectos</option>
                   {projects.map(project => (
-                    <option key={project} value={project}>{project}</option>
+                    <option key={project.id} value={project.name}>{project.name}</option>
                   ))}
                 </select>
               </div>
@@ -818,7 +779,7 @@ const KanbanBoard: React.FC = () => {
                   className="input transition-colors"
                 >
                   <option value="all">Todos los usuarios</option>
-                  {users.map(user => (
+                  {users.filter(user => user.email !== 'admin@murallacafe.cl').map(user => (
                     <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
@@ -1212,7 +1173,7 @@ const KanbanBoard: React.FC = () => {
                     </label>
                     <select className="input">
                       {projects.map(project => (
-                        <option key={project} value={project}>{project}</option>
+                        <option key={project.id} value={project.name}>{project.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1221,10 +1182,10 @@ const KanbanBoard: React.FC = () => {
                       Prioridad
                     </label>
                     <select className="input">
-                      <option value="low">Baja</option>
-                      <option value="medium">Media</option>
-                      <option value="high">Alta</option>
-                      <option value="urgent">Urgente</option>
+                      <option value="LOW">Baja</option>
+                      <option value="MEDIUM">Media</option>
+                      <option value="HIGH">Alta</option>
+                      <option value="URGENT">Urgente</option>
                     </select>
                   </div>
                 </div>
@@ -1335,7 +1296,7 @@ const KanbanBoard: React.FC = () => {
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <div className="text-lg font-semibold text-electric-blue">{tasks.filter(t => t.status === 'done').length}</div>
+                    <div className="text-lg font-semibold text-electric-blue">{tasks.filter(t => t.status === 'DONE').length}</div>
                     <div className="text-gray-500">Completadas</div>
                   </div>
                   <div>

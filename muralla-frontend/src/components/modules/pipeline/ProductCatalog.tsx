@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { PlusIcon, MagnifyingGlassIcon, TagIcon, CubeIcon, BeakerIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, TagIcon, CubeIcon, XMarkIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AuthService } from '../../../services/authService'
+import { useTranslation } from 'react-i18next'
 
 interface Product {
   id: string
   sku: string
   name: string
   description?: string
+  displayName?: string
   type: 'TERMINADO' | 'MANUFACTURED' | 'PURCHASED'
   uom: string
   category?: string
@@ -18,12 +20,46 @@ interface Product {
   fechaElaboracion?: string
   duracion?: number // in days, null means indefinida
   vencimiento?: string
+  
+  // Phase 1: Multi-Platform Integration Fields
+  images?: string[]
+  
+  // Platform-Specific Pricing (in CLP)
+  cafePrice?: number
+  rappiPrice?: number
+  pedidosyaPrice?: number
+  uberPrice?: number
+  
+  // Platform External IDs
+  rappiProductId?: string
+  pedidosyaProductId?: string
+  uberProductId?: string
+  
+  // Min/Max Quantities
+  minOrderQuantity: number
+  maxOrderQuantity: number
+  
+  // Platform Availability
+  availableOnRappi: boolean
+  availableOnPedidosya: boolean
+  availableOnUber: boolean
+  availableInCafe: boolean
+}
+
+interface ProductCategory {
+  id: string
+  name: string
+  emoji?: string
+  description?: string
+  color: string
+  isActive: boolean
 }
 
 interface ProductFormData {
   name: string
   description: string
-  sku: string
+  displayName: string
+  autoSku: string // Auto-generated, but editable
   category: string
   unitCost: number
   uom: string
@@ -32,6 +68,25 @@ interface ProductFormData {
   vencimiento: string
   locationId: string
   initialStock: number
+  
+  // Phase 1: Multi-Platform Integration Fields
+  images: string[]
+  
+  // Platform-Specific Pricing (in CLP)
+  cafePrice: number
+  rappiPrice: number
+  pedidosyaPrice: number
+  uberPrice: number
+  
+  // Min/Max Quantities
+  minOrderQuantity: number
+  maxOrderQuantity: number
+  
+  // Platform Availability
+  availableOnRappi: boolean
+  availableOnPedidosya: boolean
+  availableOnUber: boolean
+  availableInCafe: boolean
 }
 
 // Available locations
@@ -42,13 +97,13 @@ const LOCATIONS = [
   { id: '4', name: 'Producción', isDefault: false }
 ]
 
-// Utility function to generate automatic internal SKU
-const generateInternalSku = (productType: 'MANUFACTURED' | 'PURCHASED', sequence: number): string => {
-  const prefix = productType === 'MANUFACTURED' ? 'MFG' : 'PUR'
-  const year = new Date().getFullYear().toString().slice(-2)
-  const paddedSequence = sequence.toString().padStart(4, '0')
-  return `${prefix}-${year}-${paddedSequence}`
-}
+// Utility function to generate automatic internal SKU (kept for future use)
+// const generateInternalSku = (productType: 'MANUFACTURED' | 'PURCHASED', sequence: number): string => {
+//   const prefix = productType === 'MANUFACTURED' ? 'MFG' : 'PUR'
+//   const year = new Date().getFullYear().toString().slice(-2)
+//   const paddedSequence = sequence.toString().padStart(4, '0')
+//   return `${prefix}-${year}-${paddedSequence}`
+// }
 
 // Utility functions for expiration calculations
 const calculateVencimiento = (fechaElaboracion: string, duracion: number | null): string => {
@@ -68,20 +123,25 @@ const calculateDuracion = (fechaElaboracion: string, vencimiento: string): numbe
 }
 
 const ProductCatalog: React.FC = () => {
+  const { t } = useTranslation()
   const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
-  const [creatingCategory, setCreatingCategory] = useState(false)
+  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [showCategoriesModal, setShowCategoriesModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryEmoji, setNewCategoryEmoji] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('#64748B')
+  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
-    sku: '',
+    displayName: '',
+    autoSku: '',
     category: '',
     unitCost: 0,
     uom: 'UN',
@@ -89,8 +149,59 @@ const ProductCatalog: React.FC = () => {
     duracion: null,
     vencimiento: '',
     locationId: '1', // Default to Muralla Café
-    initialStock: 0
+    initialStock: 0,
+    
+    // Phase 1: Multi-Platform Integration Fields
+    images: [],
+    
+    // Platform-Specific Pricing (in CLP) - with smart defaults
+    cafePrice: 0,
+    rappiPrice: 0,
+    pedidosyaPrice: 0,
+    uberPrice: 0,
+    
+    // Min/Max Quantities
+    minOrderQuantity: 1,
+    maxOrderQuantity: 10,
+    
+    // Platform Availability - start with café only
+    availableOnRappi: false,
+    availableOnPedidosya: false,
+    availableOnUber: false,
+    availableInCafe: true
   })
+
+  // Predefined colors for categories
+  const categoryColors = [
+    '#3B82F6', '#F59E0B', '#06B6D4', '#8B5CF6', '#10B981', 
+    '#F97316', '#84CC16', '#6B7280', '#EF4444', '#64748B',
+    '#EC4899', '#14B8A6', '#F472B6', '#8B5A2B', '#92400E'
+  ]
+
+  // Generate intelligent SKU preview based on form data
+  const generateSkuPreview = (): string => {
+    const categoryName = categories.find(c => c.id === formData.category)?.name || 'General'
+    const categoryPrefix = categoryName.substring(0, 3).toUpperCase()
+    const typePrefix = 'PUR' // Always purchased for this form
+    const year = new Date().getFullYear().toString().slice(-2)
+    const sequence = (products.length + 1).toString().padStart(4, '0')
+    return `${categoryPrefix}-${typePrefix}-${year}-${sequence}`
+  }
+
+  // Update SKU preview when form data changes
+  useEffect(() => {
+    if (formData.name && formData.category) {
+      const previewSku = generateSkuPreview()
+      setFormData(prev => ({ ...prev, autoSku: previewSku }))
+    }
+  }, [formData.name, formData.category, categories, products.length])
+
+  // Popular emojis for categories
+  const popularEmojis = [
+    '📱', '💻', '🖥️', '⌚', '🔌', '🎧', '📷', '🖨️', '📟', '📿',
+    '🍕', '☕', '🥤', '🍰', '🧴', '🧽', '🔧', '⚙️', '🔩', '📝',
+    '📚', '🎨', '✏️', '📐', '📌', '🗂️', '📊', '💼', '🏢', '🛍️'
+  ]
 
   useEffect(() => {
     const load = async () => {
@@ -111,7 +222,14 @@ const ProductCatalog: React.FC = () => {
         setProducts(mapped)
 
         const cats = await AuthService.apiCall<any[]>(`/products/categories/all`)
-        setCategories((cats || []).map((c: any) => ({ id: c.id, name: c.name })))
+        setCategories((cats || []).map((c: any) => ({ 
+          id: c.id, 
+          name: c.name, 
+          emoji: c.emoji,
+          description: c.description,
+          color: c.color || '#64748B',
+          isActive: c.isActive !== false
+        })))
       } catch (e) {
         console.error('Error loading products/categories', e)
       }
@@ -156,34 +274,82 @@ const ProductCatalog: React.FC = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      // Generate automatic internal SKU
-      const sequence = products.length + 1
-      const internalSku = generateInternalSku('PURCHASED', sequence)
-      
-      const selectedLocation = LOCATIONS.find(loc => loc.id === formData.locationId)
-      
-      const newProduct: Product = {
-        id: Date.now().toString(),
-        sku: formData.sku,
+      // Create product via backend API
+      const productData = {
         name: formData.name,
         description: formData.description,
-        type: 'PURCHASED',
+        displayName: formData.displayName || formData.name,
+        sku: formData.autoSku || undefined, // Let backend auto-generate if empty
+        categoryId: formData.category || undefined,
+        type: 'PURCHASED' as const, // Use PURCHASED for purchased items
         uom: formData.uom,
-        category: formData.category,
         unitCost: formData.unitCost,
-        isActive: true,
-        stockLevel: formData.initialStock,
-        fechaElaboracion: formData.fechaElaboracion,
-        duracion: formData.duracion,
-        vencimiento: formData.vencimiento
+        price: formData.unitCost, // Set price same as unit cost initially
+        
+        // Phase 1: Multi-Platform Integration Fields
+        images: formData.images,
+        
+        // Platform-Specific Pricing
+        cafePrice: formData.cafePrice,
+        rappiPrice: formData.rappiPrice,
+        pedidosyaPrice: formData.pedidosyaPrice,
+        uberPrice: formData.uberPrice,
+        
+        // Min/Max Quantities
+        minOrderQuantity: formData.minOrderQuantity,
+        maxOrderQuantity: formData.maxOrderQuantity,
+        
+        // Platform Availability
+        availableOnRappi: formData.availableOnRappi,
+        availableOnPedidosya: formData.availableOnPedidosya,
+        availableOnUber: formData.availableOnUber,
+        availableInCafe: formData.availableInCafe,
+        
+        isActive: true
       }
-      
-      setProducts(prev => [...prev, newProduct])
-      setShowCreateModal(false)
-      resetForm()
-      
-      // Show success message with internal SKU
-      alert(`Producto creado exitosamente!\nSKU Interno: ${internalSku}\nUbicación: ${selectedLocation?.name}`)
+
+      const createdProduct = await AuthService.apiCall('/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      })
+
+      if (createdProduct) {
+        // Update local state with the created product
+        const newProduct: Product = {
+          id: Date.now().toString(),
+          sku: productData.sku || `AUTO-${Date.now()}`,
+          name: productData.name,
+          description: productData.description,
+          displayName: productData.displayName,
+          type: productData.type,
+          uom: productData.uom,
+          category: categories.find(c => c.name === formData.category)?.name,
+          unitCost: productData.unitCost,
+          isActive: productData.isActive,
+          stockLevel: 0, // Will be updated when stock is added
+          // Phase 1: Multi-Platform Integration Fields
+          images: productData.images || [],
+          cafePrice: productData.cafePrice || 0,
+          rappiPrice: productData.rappiPrice || 0,
+          pedidosyaPrice: productData.pedidosyaPrice || 0,
+          uberPrice: productData.uberPrice || 0,
+          minOrderQuantity: productData.minOrderQuantity || 1,
+          maxOrderQuantity: productData.maxOrderQuantity || 10,
+          availableOnRappi: productData.availableOnRappi || false,
+          availableOnPedidosya: productData.availableOnPedidosya || false,
+          availableOnUber: productData.availableOnUber || false,
+          availableInCafe: productData.availableInCafe !== undefined ? productData.availableInCafe : true
+        }
+        
+        setProducts(prev => [...prev, newProduct])
+        setShowCreateModal(false)
+        resetForm()
+        
+        // Show success message with actual SKU
+        const selectedLocation = LOCATIONS.find(loc => loc.id === formData.locationId)
+        alert(`Producto creado exitosamente!\nSKU: ${createdProduct.sku}\nUbicación: ${selectedLocation?.name}`)
+      }
     } catch (e) {
       console.error('Error creating product:', e)
       alert('Error al crear el producto. Por favor intenta de nuevo.')
@@ -196,7 +362,8 @@ const ProductCatalog: React.FC = () => {
     setFormData({
       name: '',
       description: '',
-      sku: '',
+      displayName: '',
+      autoSku: '',
       category: '',
       unitCost: 0,
       uom: 'UN',
@@ -204,8 +371,141 @@ const ProductCatalog: React.FC = () => {
       duracion: null,
       vencimiento: '',
       locationId: '1', // Default to Muralla Café
-      initialStock: 0
+      initialStock: 0,
+      
+      // Phase 1: Multi-Platform Integration Fields
+      images: [],
+      
+      // Platform-Specific Pricing (in CLP)
+      cafePrice: 0,
+      rappiPrice: 0,
+      pedidosyaPrice: 0,
+      uberPrice: 0,
+      
+      // Min/Max Quantities
+      minOrderQuantity: 1,
+      maxOrderQuantity: 10,
+      
+      // Platform Availability - start with café only
+      availableOnRappi: false,
+      availableOnPedidosya: false,
+      availableOnUber: false,
+      availableInCafe: true
     })
+  }
+
+  // Category management functions
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return
+
+    try {
+      const newCategory = await AuthService.apiCall('/products/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          emoji: newCategoryEmoji,
+          color: newCategoryColor,
+          isInventory: true,
+          isActive: true
+        })
+      })
+
+      if (newCategory) {
+        setCategories(prev => [...prev, {
+          id: newCategory.id,
+          name: newCategory.name,
+          emoji: newCategory.emoji,
+          color: newCategory.color,
+          isActive: true
+        }])
+      }
+
+      setNewCategoryName('')
+      setNewCategoryEmoji('')
+      setNewCategoryColor('#64748B')
+    } catch (e) {
+      console.error('Error creating category:', e)
+      alert('Error al crear la categoría. Por favor intenta de nuevo.')
+    }
+  }
+
+  const handleEditCategory = (category: ProductCategory) => {
+    setEditingCategory(category)
+    setNewCategoryName(category.name)
+    setNewCategoryEmoji(category.emoji || '')
+    setNewCategoryColor(category.color)
+  }
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !newCategoryName.trim()) return
+
+    try {
+      const updatedCategory = await AuthService.apiCall(`/products/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          emoji: newCategoryEmoji,
+          color: newCategoryColor
+        })
+      })
+
+      if (updatedCategory) {
+        setCategories(prev => prev.map(cat => 
+          cat.id === editingCategory.id 
+            ? { ...cat, name: updatedCategory.name, emoji: updatedCategory.emoji, color: updatedCategory.color }
+            : cat
+        ))
+      }
+
+      setEditingCategory(null)
+      setNewCategoryName('')
+      setNewCategoryEmoji('')
+      setNewCategoryColor('#64748B')
+    } catch (e) {
+      console.error('Error updating category:', e)
+      alert('Error al actualizar la categoría. Por favor intenta de nuevo.')
+    }
+  }
+
+  const handleToggleCategoryActive = async (categoryId: string) => {
+    try {
+      const category = categories.find(c => c.id === categoryId)
+      if (!category) return
+
+      const updatedCategory = await AuthService.apiCall(`/products/categories/${categoryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: !category.isActive
+        })
+      })
+
+      if (updatedCategory) {
+        setCategories(prev => prev.map(cat => 
+          cat.id === categoryId ? { ...cat, isActive: updatedCategory.isActive } : cat
+        ))
+      }
+    } catch (e) {
+      console.error('Error toggling category status:', e)
+      alert('Error al cambiar el estado de la categoría.')
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return
+
+    try {
+      await AuthService.apiCall(`/products/categories/${categoryId}`, {
+        method: 'DELETE'
+      })
+
+      setCategories(prev => prev.filter(cat => cat.id !== categoryId))
+    } catch (e) {
+      console.error('Error deleting category:', e)
+      alert('Error al eliminar la categoría. Puede que tenga productos asociados.')
+    }
   }
 
   return (
@@ -309,10 +609,11 @@ const ProductCatalog: React.FC = () => {
                   ))}
                 </select>
                 <button
-                  onClick={() => setCreatingCategory(true)}
-                  className="px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200"
+                  onClick={() => setShowCategoriesModal(true)}
+                  className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  + Nueva categoría
+                  <TagIcon className="h-4 w-4 mr-1 inline" />
+                  Gestionar Categorías
                 </button>
               </div>
             </div>
@@ -550,44 +851,210 @@ const ProductCatalog: React.FC = () => {
           </div>
         )}
 
-        {/* Create Category Modal */}
-        {creatingCategory && (
+        {/* Categories Management Modal */}
+        {showCategoriesModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nueva categoría</h3>
-              <input
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Nombre de la categoría"
-                className="w-full px-3 py-2 mb-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <div className="flex justify-end gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {t('products.manageCategories')}
+                </h3>
                 <button
-                  onClick={() => { setCreatingCategory(false); setNewCategoryName(''); }}
-                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!newCategoryName.trim()) return;
-                    try {
-                      await AuthService.apiCall(`/products/categories`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: newCategoryName.trim(), isInventory: true })
-                      });
-                      const cats = await AuthService.apiCall<any[]>(`/products/categories/all`);
-                      setCategories((cats || []).map((c: any) => ({ id: c.id, name: c.name })));
-                      setCreatingCategory(false);
-                      setNewCategoryName('');
-                    } catch (e) {
-                      console.error('Error creating category', e);
-                    }
+                  onClick={() => {
+                    setShowCategoriesModal(false)
+                    setEditingCategory(null)
+                    setNewCategoryName('')
+                    setNewCategoryEmoji('')
+                    setNewCategoryColor('#64748B')
                   }}
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  Crear
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Add/Edit Category Form */}
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    {editingCategory ? t('products.editCategory') : t('products.addNewCategory')}
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    {/* Category Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('products.categoryName')}
+                      </label>
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder={t('products.categoryName')}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Emoji Selector */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('products.categoryEmoji')}
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={newCategoryEmoji}
+                          onChange={(e) => setNewCategoryEmoji(e.target.value.slice(0, 2))}
+                          placeholder="📱"
+                          className="w-16 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-center"
+                        />
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {popularEmojis.slice(0, 10).map((emoji, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setNewCategoryEmoji(emoji)}
+                              className={`p-1 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 rounded ${
+                                newCategoryEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Color Picker */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('products.categoryColor')}
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="color"
+                          value={newCategoryColor}
+                          onChange={(e) => setNewCategoryColor(e.target.value)}
+                          className="w-12 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                        />
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {categoryColors.map((color, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setNewCategoryColor(color)}
+                              className={`w-6 h-6 rounded-full border-2 ${
+                                newCategoryColor === color ? 'border-gray-800 dark:border-white' : 'border-gray-300 dark:border-gray-600'
+                              }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      {editingCategory ? (
+                        <>
+                          <button
+                            onClick={handleUpdateCategory}
+                            disabled={!newCategoryName.trim()}
+                            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {t('common.update')}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingCategory(null)
+                              setNewCategoryName('')
+                              setNewCategoryEmoji('')
+                              setNewCategoryColor('#64748B')
+                            }}
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                          >
+                            {t('common.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={handleCreateCategory}
+                          disabled={!newCategoryName.trim()}
+                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {t('common.add')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Existing Categories */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    {t('products.existingCategories')}
+                  </h4>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {categories.map((category) => (
+                      <div key={category.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex items-center space-x-2">
+                            {category.emoji && (
+                              <span className="text-lg">{category.emoji}</span>
+                            )}
+                            <div 
+                              className="w-4 h-4 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-900 dark:text-white font-medium">
+                            {category.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleToggleCategoryActive(category.id)}
+                            className={`text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80 ${
+                              category.isActive 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {category.isActive ? t('common.active') : t('common.inactive')}
+                          </button>
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            title={t('common.edit')}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            title={t('common.delete')}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end pt-6">
+                <button
+                  onClick={() => {
+                    setShowCategoriesModal(false)
+                    setEditingCategory(null)
+                    setNewCategoryName('')
+                    setNewCategoryEmoji('')
+                    setNewCategoryColor('#64748B')
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -596,8 +1063,8 @@ const ProductCatalog: React.FC = () => {
 
         {/* Create Product Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Nuevo Producto Comprado
               </h3>
@@ -619,16 +1086,23 @@ const ProductCatalog: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    SKU *
+                    SKU (Auto-generado)
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.sku}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="SKU único del producto"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.autoSku}
+                      onChange={(e) => setFormData(prev => ({ ...prev, autoSku: e.target.value }))}
+                      className="w-full px-3 py-2 pr-20 bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Se generará automáticamente"
+                    />
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                      Editable
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Se genera automáticamente basado en categoría y producto, pero puedes editarlo
+                  </p>
                 </div>
 
                 <div>
@@ -648,16 +1122,28 @@ const ProductCatalog: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Categoría
                   </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccionar categoría</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
+                  <div className="flex space-x-2">
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Seleccionar categoría</option>
+                      {categories.filter(cat => cat.isActive).map(cat => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.emoji && `${cat.emoji} `}{cat.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoriesModal(true)}
+                      className="px-3 py-2 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      title="Gestionar categorías"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -841,6 +1327,199 @@ const ProductCatalog: React.FC = () => {
                       <strong>Nota:</strong> La duración y fecha de vencimiento se calculan automáticamente una con la otra. 
                       Puedes ingresar cualquiera de los dos valores.
                     </div>
+                  </div>
+                </div>
+
+                {/* Phase 1: Multi-Platform Integration Fields */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    {t('products.platformSettings')}
+                  </h4>
+                  
+                  {/* Display Name */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('products.displayName')}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.displayName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nombre para mostrar en plataformas de delivery"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Si está vacío, se usará el nombre del producto
+                    </p>
+                  </div>
+
+                  {/* Platform-Specific Pricing */}
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      {t('products.pricingSection')}
+                    </h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      {t('products.pricingHint')}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.cafePrice')} (CLP)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.cafePrice}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cafePrice: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="0"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.rappiPrice')} (CLP)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.rappiPrice}
+                          onChange={(e) => setFormData(prev => ({ ...prev, rappiPrice: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="0"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.pedidosyaPrice')} (CLP)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.pedidosyaPrice}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pedidosyaPrice: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="0"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.uberPrice')} (CLP)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.uberPrice}
+                          onChange={(e) => setFormData(prev => ({ ...prev, uberPrice: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order Limits */}
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      {t('products.orderLimits')}
+                    </h5>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.minQuantity')}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.minOrderQuantity}
+                          onChange={(e) => setFormData(prev => ({ ...prev, minOrderQuantity: parseInt(e.target.value) || 1 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('products.maxQuantity')}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.maxOrderQuantity}
+                          onChange={(e) => setFormData(prev => ({ ...prev, maxOrderQuantity: parseInt(e.target.value) || 10 }))}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Platform Availability */}
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      {t('products.platformAvailability')}
+                    </h5>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.availableInCafe}
+                          onChange={(e) => setFormData(prev => ({ ...prev, availableInCafe: e.target.checked }))}
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          ☕ {t('products.availableInCafe')}
+                        </span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.availableOnRappi}
+                          onChange={(e) => setFormData(prev => ({ ...prev, availableOnRappi: e.target.checked }))}
+                          className="rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 dark:focus:ring-orange-400"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          🟠 {t('products.availableOnRappi')}
+                        </span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.availableOnPedidosya}
+                          onChange={(e) => setFormData(prev => ({ ...prev, availableOnPedidosya: e.target.checked }))}
+                          className="rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500 dark:focus:ring-red-400"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          🔴 {t('products.availableOnPedidosya')}
+                        </span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.availableOnUber}
+                          onChange={(e) => setFormData(prev => ({ ...prev, availableOnUber: e.target.checked }))}
+                          className="rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 dark:focus:ring-green-400"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          🟢 {t('products.availableOnUber')}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                    <strong>💡 Consejo:</strong> Configura precios diferentes para cada plataforma considerando las comisiones. 
+                    Los límites de cantidad son requeridos por algunas plataformas como Rappi.
                   </div>
                 </div>
 

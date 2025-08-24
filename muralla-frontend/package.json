@@ -12,7 +12,13 @@
     "build": "tsc --noEmit && vite build --mode production",
     "build:fast": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "lint:i18n": "eslint --ext .ts,.tsx,.js,.jsx src/",
+    "preview": "vite preview",
+    "validate-translations": "node scripts/validate-translations.js",
+    "i18n:check": "npm run validate-translations",
+    "i18n:fix": "npm run validate-translations && npm run lint:i18n",
+    "precommit": "npm run lint && npm run validate-translations",
+    "pre-push": "npm run i18n:check"
   },
   "packageManager": "pnpm@8.15.0",
   "dependencies": {

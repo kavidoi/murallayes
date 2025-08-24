@@ -106,7 +106,7 @@ async function bootstrap() {
   const allowedOrigins = [
     ...(frontendUrl ? [frontendUrl] : []),
     // Development origins (only in non-production)
-    ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000']),
+    ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000', 'http://localhost:4000']),
     // Production HTTPS origins
     'https://admin.murallacafe.cl',
     // Include the deployed backend URL if provided by the platform
@@ -150,7 +150,7 @@ async function bootstrap() {
   }
   expressApp.use('/uploads', express.static(uploadsDir));
   
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 4000;
   // Debug: log what port we bind to and the env PORT
   // eslint-disable-next-line no-console
   console.log(`[BOOT] process.env.PORT=${process.env.PORT} | binding port=${port}`);

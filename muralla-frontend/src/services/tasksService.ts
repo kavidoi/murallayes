@@ -36,7 +36,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   projectId: string;
   project: Project;

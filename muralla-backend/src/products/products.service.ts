@@ -12,9 +12,16 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto): Promise<any> {
     try {
+      // Generate intelligent SKU if not provided
+      let sku = createProductDto.sku;
+      if (!sku) {
+        sku = await this.generateIntelligentSku(createProductDto);
+      }
+
       // Ensure required fields are set for current schema
       const productData = {
         ...createProductDto,
+        sku,
         price: createProductDto.price || 0, // Set default price if not provided
       };
 
@@ -27,6 +34,39 @@ export class ProductsService {
       }
       throw error;
     }
+  }
+
+  private async generateIntelligentSku(productData: CreateProductDto): Promise<string> {
+    // Get category prefix if available
+    let categoryPrefix = 'GEN';
+    if (productData.categoryId) {
+      const category = await this.prisma.productCategory.findUnique({
+        where: { id: productData.categoryId }
+      });
+      if (category) {
+        // Use first 3 letters of category name, uppercase
+        categoryPrefix = category.name.substring(0, 3).toUpperCase();
+      }
+    }
+
+    // Get product type prefix
+    const typePrefix = productData.type === 'TERMINADO' ? 'MFG' : 'PUR';
+    
+    // Get current year (last 2 digits)
+    const year = new Date().getFullYear().toString().slice(-2);
+    
+    // Get sequence number based on existing products
+    const existingCount = await this.prisma.product.count({
+      where: { 
+        isDeleted: false,
+        type: productData.type 
+      }
+    });
+    const sequence = (existingCount + 1).toString().padStart(4, '0');
+    
+    // Generate SKU: CATEGORY-TYPE-YEAR-SEQUENCE
+    // Example: CAF-PUR-25-0003 (Café purchased item #3 in 2025)
+    return `${categoryPrefix}-${typePrefix}-${year}-${sequence}`;
   }
 
   async findAll(filters: ProductFiltersDto) {
