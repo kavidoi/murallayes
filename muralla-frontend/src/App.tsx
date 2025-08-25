@@ -2,6 +2,7 @@ import { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthService } from './services/authService'
 import { useTranslation } from 'react-i18next'
+import { WebSocketProvider } from './contexts/WebSocketContext'
 
 // Eager load critical components
 import MainLayout from './components/layout/MainLayout'
@@ -73,6 +74,8 @@ function App() {
   const [darkMode, setDarkMode] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, false = not auth, true = auth
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState(null)
+  const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
     // Check for user preference or system preference
@@ -94,6 +97,14 @@ function App() {
       try {
         const ok = await AuthService.isAuthenticated()
         setIsAuthenticated(ok)
+        
+        if (ok) {
+          // Get user data and token
+          const userData = await AuthService.getCurrentUser()
+          const authToken = AuthService.getToken()
+          setUser(userData)
+          setToken(authToken)
+        }
       } catch (error) {
         console.error('Authentication check failed:', error)
         AuthService.clearTokens()
@@ -160,19 +171,20 @@ function App() {
 
   // Render main app if authenticated
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
-        {/* Public Supplier Portal Route */}
-        <Route path="/supplier-portal/:token" element={
-          <Suspense fallback={<LoadingFallback />}>
-            <SupplierPortal />
-          </Suspense>
-        } />
-        <Route path="*" element={
-          <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+    <WebSocketProvider user={user} token={token}>
+      <Router>
+        <Routes>
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+          {/* Public Supplier Portal Route */}
+          <Route path="/supplier-portal/:token" element={
             <Suspense fallback={<LoadingFallback />}>
-              <Routes>
+              <SupplierPortal />
+            </Suspense>
+          } />
+          <Route path="*" element={
+            <MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
                 <Route index element={<Dashboard />} />
               
               {/* My (user-centric) Routes */}
@@ -287,12 +299,13 @@ function App() {
               {/* Settings */}
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </MainLayout>
-        } />
-      </Routes>
-    </Router>
+                </Routes>
+              </Suspense>
+            </MainLayout>
+          } />
+        </Routes>
+      </Router>
+    </WebSocketProvider>
   )
 }
 

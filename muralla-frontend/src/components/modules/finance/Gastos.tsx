@@ -4,6 +4,9 @@ import { EyeIcon, DocumentTextIcon, BanknotesIcon, BuildingOfficeIcon, PlusIcon,
 import { PurchaseOrdersService } from '../../../services/purchaseOrdersService';
 import type { CostDTO } from '../../../services/purchaseOrdersService';
 import AddContact from '../crm/AddContact';
+import { ExpenseEditModal } from './ExpenseEditModal';
+import { EditingIndicator } from '../../common/EditingIndicator';
+import { useWebSocket } from '../../../contexts/WebSocketContext';
 
 interface ExpenseCategory {
   id: string;
@@ -81,6 +84,7 @@ interface ExpenseFormData {
 
 const Gastos: React.FC = () => {
   const { t } = useTranslation();
+  const { isUserEditing, getEditingUsers } = useWebSocket();
   const [expenses, setExpenses] = useState<CompanyExpense[]>([]);
   const [directExpenses, setDirectExpenses] = useState<DirectExpense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -94,6 +98,10 @@ const Gastos: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Array<{id: string; name: string; email?: string; phone?: string}>>([]);
   const [providerSearchTerm, setProviderSearchTerm] = useState('');
   const [showProviderDropdown, setShowProviderDropdown] = useState(false);
+  
+  // Real-time collaboration state
+  const [editingExpense, setEditingExpense] = useState<DirectExpense | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   // Helper function to get local date string without timezone issues
   const getLocalDateString = (date = new Date()) => {
     const year = date.getFullYear();
@@ -240,6 +248,29 @@ const Gastos: React.FC = () => {
       // Fallback: show expense details in modal
       setSelectedExpense(expense);
       setShowExpenseDetails(true);
+    }
+  };
+
+  const handleEditExpense = (expense: CompanyExpense) => {
+    // Only allow editing direct expenses for now
+    const directExpense = directExpenses.find(de => de.id === expense.id);
+    if (directExpense) {
+      setEditingExpense(directExpense);
+      setShowEditModal(true);
+    }
+  };
+
+  const handleSaveExpense = async (updatedExpense: DirectExpense) => {
+    try {
+      // TODO: Integrate with backend API to save expense
+      setDirectExpenses(prev => 
+        prev.map(expense => 
+          expense.id === updatedExpense.id ? updatedExpense : expense
+        )
+      );
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      throw error;
     }
   };
 
@@ -676,58 +707,93 @@ const Gastos: React.FC = () => {
                     {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Colaboración
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('common.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {formatDate(expense.fecha)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {expense.proveedor}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {expense.documento}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      <div className="max-w-xs truncate" title={expense.descripcion}>
-                        {expense.descripcion}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(expense.total)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {(() => {
-                        const statusDisplay = getStatusDisplay(expense);
-                        return (
-                          <span 
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              statusDisplay.color 
-                                ? statusDisplay.className 
-                                : statusDisplay.className
-                            }`}
-                            style={statusDisplay.color ? { backgroundColor: statusDisplay.color } : {}}
+                {filteredExpenses.map((expense) => {
+                  const isBeingEdited = isUserEditing('expense', expense.id);
+                  const editingUsers = getEditingUsers('expense', expense.id);
+                  const isDirectExpense = directExpenses.some(de => de.id === expense.id);
+                  
+                  return (
+                    <tr key={expense.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${isBeingEdited ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {formatDate(expense.fecha)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {expense.proveedor}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {expense.documento}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        <div className="max-w-xs truncate" title={expense.descripcion}>
+                          {expense.descripcion}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {formatCurrency(expense.total)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const statusDisplay = getStatusDisplay(expense);
+                          return (
+                            <span 
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                statusDisplay.color 
+                                  ? statusDisplay.className 
+                                  : statusDisplay.className
+                              }`}
+                              style={statusDisplay.color ? { backgroundColor: statusDisplay.color } : {}}
+                            >
+                              {statusDisplay.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isBeingEdited && (
+                          <EditingIndicator 
+                            users={editingUsers}
+                            showNames={false}
+                            className="text-xs"
+                          />
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewDetails(expense)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                           >
-                            {statusDisplay.label}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleViewDetails(expense)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                        <span className="sr-only">{t('common.view')}</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                            <EyeIcon className="h-4 w-4" />
+                            <span className="sr-only">{t('common.view')}</span>
+                          </button>
+                          {isDirectExpense && (
+                            <button
+                              onClick={() => handleEditExpense(expense)}
+                              disabled={isBeingEdited}
+                              className={`${
+                                isBeingEdited 
+                                  ? 'text-gray-400 cursor-not-allowed' 
+                                  : 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300'
+                              }`}
+                              title={isBeingEdited ? 'Siendo editado por otro usuario' : 'Editar gasto'}
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                              <span className="sr-only">{t('common.edit')}</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1510,6 +1576,23 @@ const Gastos: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Real-time Collaborative Expense Edit Modal */}
+      {showEditModal && editingExpense && (
+        <ExpenseEditModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingExpense(null);
+          }}
+          onSave={handleSaveExpense}
+          expense={editingExpense}
+          categories={categories}
+          statuses={statuses}
+          suppliers={suppliers}
+          onCreateSupplier={() => setShowAddContact(true)}
+        />
       )}
     </div>
   );
