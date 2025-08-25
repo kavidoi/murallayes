@@ -1,4 +1,5 @@
 import { HttpsUtils } from '../utils/https';
+import { User } from '../types/user';
 
 // Advanced auth service with automatic token refresh
 export class AuthService {
@@ -220,7 +221,7 @@ export class AuthService {
     }
   }
 
-  static async getCurrentUser(): Promise<any> {
+  static async getCurrentUser(): Promise<User | null> {
     await this.ensureValidToken();
     
     try {

@@ -1,22 +1,9 @@
 import axios from 'axios';
 import { HttpsUtils } from '../utils/https';
 import { AuthService } from './authService';
+import { User } from '../types/user';
 
 const API_BASE_URL = HttpsUtils.getApiBaseUrl();
-
-export interface User {
-  id: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  isActive: boolean;
-  role: {
-    id: string;
-    name: string;
-    description: string;
-  };
-}
 
 class UsersService {
   private getAuthHeaders() {
