@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { websocketService, User } from '../services/websocket.service';
+import { websocketService } from '../services/websocket.service';
+import { User } from '../types/user';
 
 export interface UserPresence {
   user: User;

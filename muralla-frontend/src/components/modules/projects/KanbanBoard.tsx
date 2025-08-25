@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatCard } from '../../ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { tasksService, type Task as APITask } from '../../../services/tasksService';
-import { usersService, type User as APIUser } from '../../../services/usersService';
+import { usersService } from '../../../services/usersService';
 import { projectsService, type Project as APIProject } from '../../../services/projectsService';
+import { User } from '../../../types/user';
 
 interface Task {
   id: string;
@@ -26,13 +27,6 @@ interface Task {
   timeInStatus?: { [key: string]: number }; // time spent in each status
   blockedReason?: string;
   isBlocked?: boolean;
-}
-
-interface User {
-  id: string;
-  name: string;
-  avatar: string;
-  email: string;
 }
 
 interface Label {

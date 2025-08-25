@@ -9,14 +9,7 @@ import { ConflictResolutionModal } from '../../common/ConflictResolutionModal';
 import { EditingIndicator } from '../../common/EditingIndicator';
 import DatePicker from '../../ui/DatePicker';
 import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO } from '../../../utils/dateUtils';
-
-interface User {
-  id: string;
-  name: string;
-  initials: string;
-  color: string;
-  email: string;
-}
+import { User } from '../../../types/user';
 
 interface Project {
   id: string;

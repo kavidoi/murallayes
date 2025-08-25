@@ -1,43 +1,6 @@
 // Types for export functionality
-interface User {
-  id: string
-  name: string
-  email: string
-  initials: string
-  color: string
-}
-
-interface Subtask {
-  id: string
-  name: string
-  description?: string
-  status: string
-  createdAt?: string
-  updatedAt?: string
-}
-
-interface Task {
-  id: string
-  name: string
-  description?: string
-  status: string
-  priority?: string
-  projectId?: string
-  assigneeIds?: string[]
-  dueDate?: string | null
-  createdAt?: string
-  updatedAt?: string
-  subtasks?: Subtask[]
-  order?: number
-}
-
-interface APIProject {
-  id: string
-  name: string
-  description?: string
-  deadline?: string
-  isCore?: boolean
-}
+import { User } from '../types/user';
+import { Task, Subtask, APIProject } from '../types/common';
 
 export interface ExportData {
   tasks: Task[]
