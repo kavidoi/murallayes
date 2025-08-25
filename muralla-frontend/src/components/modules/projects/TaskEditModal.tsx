@@ -9,7 +9,7 @@ import { ConflictResolutionModal } from '../../common/ConflictResolutionModal';
 import { EditingIndicator } from '../../common/EditingIndicator';
 import DatePicker from '../../ui/DatePicker';
 import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO } from '../../../utils/dateUtils';
-import { User } from '../../../services/authService';
+import type { User } from '../../../types';
 
 interface Project {
   id: string;
