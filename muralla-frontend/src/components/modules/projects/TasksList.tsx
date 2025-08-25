@@ -4,11 +4,15 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { tasksService, type Task as APITask } from '../../../services/tasksService'
-import { usersService, type User as APIUser } from '../../../services/usersService'
+import { tasksService } from '../../../services/tasksService'
 import { projectsService, type Project as APIProject } from '../../../services/projectsService'
+import { usersService } from '../../../services/usersService'
+import { exportTasks, type ExportFormat } from '../../../utils/exportUtils'
 import DatePicker from '../../ui/DatePicker'
 import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO, isOverdue, isToday, getRelativeTime } from '../../../utils/dateUtils'
+import { TaskEditModal } from './TaskEditModal'
+import { EditingIndicator } from '../../common/EditingIndicator'
+import { useWebSocket } from '../../../contexts/WebSocketContext'
 
 // ——— Types ———
 interface User {
@@ -631,8 +635,11 @@ const SortableTaskRow: React.FC<{
   onAddSubtask: (taskId: string) => void
   onDeleteSubtask: (subtaskId: string) => void
   onDeleteTask?: (taskId: string) => void
+  onEditTask?: (task: Task) => void
+  isUserEditing: (resource: string, resourceId: string) => boolean
+  getEditingUsers: (resource: string, resourceId: string) => any[]
   isSubtask?: boolean
-}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
+}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, onEditTask, isUserEditing, getEditingUsers, isSubtask = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -657,10 +664,14 @@ const SortableTaskRow: React.FC<{
       onTaskUpdate(task.id, { expanded: newExpanded })
     }
   }
+
+  // Check if this task is being edited by other users
+  const isBeingEdited = isUserEditing('task', task.id)
+  const editingUsers = getEditingUsers('task', task.id)
   
   return (
     <div ref={setNodeRef} style={style} className={isSubtask ? 'ml-6' : ''}>
-      <div className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-800'}`}>
+      <div className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubtask ? 'bg-gray-50/50 dark:bg-gray-800/25' : 'bg-white dark:bg-gray-800'} ${isBeingEdited ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
         {/* Drag handle + Expand/Collapse + Name */}
         <div className="col-span-4 flex items-center space-x-2">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
@@ -724,6 +735,32 @@ const SortableTaskRow: React.FC<{
         
         {/* Actions */}
         <div className="col-span-2 flex items-center space-x-1">
+          {/* Collaboration indicator */}
+          {isBeingEdited && (
+            <div className="mr-2">
+              <EditingIndicator 
+                users={editingUsers}
+                showNames={false}
+                className="text-xs"
+              />
+            </div>
+          )}
+          
+          {!isSubtask && onEditTask && (
+            <button
+              onClick={() => onEditTask(task)}
+              disabled={isBeingEdited}
+              className={`px-2 py-1 text-xs rounded border transition-colors ${
+                isBeingEdited 
+                  ? 'text-gray-400 border-gray-200 cursor-not-allowed' 
+                  : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-blue-200 hover:border-blue-300 dark:border-blue-600 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+              }`}
+              title={isBeingEdited ? 'Siendo editado por otro usuario' : 'Editar tarea'}
+            >
+              Editar
+            </button>
+          )}
+          
           {!isSubtask && (
             <button
               onClick={() => onAddSubtask(task.id)}
@@ -776,6 +813,9 @@ const SortableTaskRow: React.FC<{
               onAddSubtask={onAddSubtask}
               onDeleteSubtask={onDeleteSubtask}
               onDeleteTask={onDeleteTask}
+              onEditTask={onEditTask}
+              isUserEditing={isUserEditing}
+              getEditingUsers={getEditingUsers}
               isSubtask={true}
             />
           ))}
@@ -801,6 +841,7 @@ const SortableTaskRow: React.FC<{
 // Main TasksList component
 const TasksList: React.FC = () => {
   const { t } = useTranslation()
+  const { isUserEditing, getEditingUsers } = useWebSocket()
   const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [projects, setProjects] = useState<APIProject[]>([])
@@ -808,7 +849,30 @@ const TasksList: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [, setSavingItems] = useState<Set<string>>(new Set())
-  
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(
+    () => new Set(JSON.parse(localStorage.getItem('expandedTasks') || '[]'))
+  )
+
+  // Real-time collaboration state
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  // Export state
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showExportMenu && !(event.target as Element).closest('.export-menu')) {
+        setShowExportMenu(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showExportMenu])
+
   // Debouncing refs to prevent rapid API calls
   const updateTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
   
@@ -880,6 +944,24 @@ const TasksList: React.FC = () => {
     setManualOrderState(newOrder)
     setManualOrder(newOrder)
   }, [])
+
+  // Export handlers
+  const handleExport = useCallback(async (format: ExportFormat) => {
+    setExporting(true)
+    setShowExportMenu(false)
+    
+    try {
+      exportTasks(tasks, projects, users, format)
+      setError(`Tasks exported successfully as ${format.toUpperCase()}`)
+      setTimeout(() => setError(null), 3000)
+    } catch (err) {
+      console.error('Export failed:', err)
+      setError('Failed to export tasks')
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setExporting(false)
+    }
+  }, [tasks, projects, users])
 
   const sortTasks = useCallback((tasksToSort: Task[]) => {
     const sorted = [...tasksToSort]
@@ -1210,6 +1292,27 @@ const TasksList: React.FC = () => {
     }
   }, [tasks])
 
+  // Task editing handlers for collaboration
+  const handleEditTask = useCallback((task: Task) => {
+    setEditingTask(task);
+    setShowEditModal(true);
+  }, []);
+
+  const handleSaveTaskFromModal = useCallback(async (updatedTask: Task) => {
+    try {
+      // Update local state first for immediate UI feedback
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+      
+      // Call the existing handleTaskUpdate to sync with backend
+      await handleTaskUpdate(updatedTask.id, updatedTask);
+    } catch (error) {
+      console.error('Error saving task from modal:', error);
+      throw error;
+    }
+  }, [handleTaskUpdate]);
+
   const handleDeleteTask = useCallback(async (taskId: string) => {
     if (window.confirm('¿Confirmas la eliminación de esta tarea?\n\nEsta acción es permanente y eliminará:\n• La tarea y toda su información\n• Todas las subtareas asociadas\n• El historial de actividad\n\n¿Deseas continuar?')) {
       const originalTasks = tasks
@@ -1398,6 +1501,60 @@ const TasksList: React.FC = () => {
                 t('pages.tasks.newTask')
               )}
             </button>
+            
+            {/* Export Menu */}
+            <div className="relative export-menu">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                disabled={exporting}
+                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {exporting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    Exportando...
+                  </>
+                ) : (
+                  <>
+                    📥 Exportar
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+              
+              {showExportMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport('json')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      📄 JSON (Completo)
+                    </button>
+                    <button
+                      onClick={() => handleExport('csv')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      📊 CSV (Tabla)
+                    </button>
+                    <button
+                      onClick={() => handleExport('excel')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      📈 Excel (Hoja de cálculo)
+                    </button>
+                  </div>
+                  <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {tasks.length} tareas • {tasks.reduce((sum, task) => sum + (task.subtasks?.length || 0), 0)} subtareas
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <button
               className="btn-secondary"
               disabled
@@ -1549,6 +1706,9 @@ const TasksList: React.FC = () => {
                       onAddSubtask={handleAddSubtask}
                       onDeleteSubtask={handleDeleteSubtask}
                       onDeleteTask={handleDeleteTask}
+                      onEditTask={handleEditTask}
+                      isUserEditing={isUserEditing}
+                      getEditingUsers={getEditingUsers}
                     />
                   ))}
                 </div>
@@ -1557,6 +1717,21 @@ const TasksList: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Real-time Collaborative Task Edit Modal */}
+      {showEditModal && editingTask && (
+        <TaskEditModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingTask(null);
+          }}
+          onSave={handleSaveTaskFromModal}
+          task={editingTask}
+          users={users}
+          projects={projects}
+        />
+      )}
     </div>
   )
 }

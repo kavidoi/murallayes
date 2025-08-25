@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AuthService } from '../../services/authService';
+import { ConflictNotification } from '../common/ConflictNotification';
 
 import { useTranslation } from 'react-i18next';
 
@@ -439,6 +440,9 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
           {children}
         </main>
       </div>
+
+      {/* Real-time Conflict Notifications */}
+      <ConflictNotification />
     </div>
   );
 }

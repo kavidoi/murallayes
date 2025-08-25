@@ -506,6 +506,56 @@ const resources = {
         availableOnPedidosya: 'Disponible en PedidosYa',
         availableOnUber: 'Disponible en Uber Eats',
         platformSettings: 'Configuración de Plataformas'
+      },
+
+      // Conflict Resolution System
+      conflicts: {
+        title: 'Conflicto de Edición Detectado',
+        subtitle: 'también está editando',
+        description: 'Múltiples usuarios están modificando el mismo recurso',
+        
+        // Resolution Strategies
+        resolutionStrategy: 'Estrategia de Resolución',
+        manual: 'Manual',
+        manualDesc: 'Resolver campo por campo',
+        mine: 'Mis Cambios',
+        mineDesc: 'Usar mis valores',
+        theirs: 'Sus Cambios',
+        theirsDesc: 'Usar valores del otro usuario',
+        merge: 'Combinar',
+        mergeDesc: 'Intentar fusionar automáticamente',
+        
+        // Fields
+        conflictingFields: 'Campos en Conflicto',
+        yourVersion: 'Tu Versión',
+        theirVersion: 'Su Versión',
+        resolvedValue: 'Valor Resuelto',
+        pendingResolution: 'Pendiente de resolver',
+        customValue: 'Valor personalizado...',
+        useThisVersion: 'Usar Esta Versión',
+        
+        // Actions
+        resolved: 'Resuelto',
+        applyResolution: 'Aplicar Resolución',
+        cancel: 'Cancelar',
+        allResolved: 'Todos los conflictos resueltos',
+        conflictsRemaining: 'conflictos resueltos',
+        
+        // Notifications
+        simultaneousEditing: 'Edición Simultánea',
+        conflictWarning: 'Cuidado: Los cambios pueden entrar en conflicto',
+        userEditing: 'también está editando este recurso',
+        multipleUsers: 'personas están editando este recurso',
+        viewConflict: 'Ver Conflicto',
+        dismissConflict: 'Descartar',
+        clearAll: 'Limpiar todas',
+        
+        // Real-time Status
+        editing: 'Editando...',
+        readyToSave: 'Listo para guardar',
+        saving: 'Guardando...',
+        saveChanges: 'Guardar Cambios',
+        conflictDetected: 'Conflicto detectado, resuelve antes de guardar'
       }
     }
   },
