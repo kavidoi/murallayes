@@ -305,6 +305,7 @@ const resources = {
             noDate: 'Sin fecha',
             tonight: 'Esta noche',
             tomorrow: 'Mañana',
+            thisWeek: 'Esta semana',
             nextWeek: 'Próxima semana',
             twoWeeks: 'En dos semanas',
             clearDate: 'Quitar fecha'
@@ -693,6 +694,7 @@ const resources = {
             noDate: 'No date',
             tonight: 'Tonight',
             tomorrow: 'Tomorrow',
+            thisWeek: 'This Week',
             nextWeek: 'Next Week',
             twoWeeks: 'Two Weeks',
             clearDate: 'Clear date'
