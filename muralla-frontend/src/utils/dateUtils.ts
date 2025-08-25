@@ -126,12 +126,31 @@ export const formatDateLongSpanish = (date: Date | string | null | undefined): s
 export const getRelativeTime = (date: Date | string | null | undefined): string => {
   if (!date) return '';
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  let dateObj: Date;
+  
+  if (typeof date === 'string') {
+    // Check if it's DD/MM/YYYY format
+    if (date.includes('/')) {
+      const parsed = parseDDMMYYYY(date);
+      if (!parsed) return '';
+      dateObj = parsed;
+    } else {
+      // Assume ISO format or other valid date string
+      dateObj = new Date(date);
+    }
+  } else {
+    dateObj = date;
+  }
+  
   if (isNaN(dateObj.getTime())) return '';
   
   const now = new Date();
-  const diffMs = dateObj.getTime() - now.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // Set both dates to start of day for accurate day comparison
+  const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  
+  const diffMs = dateStart.getTime() - nowStart.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
   
   if (diffDays === 0) return 'Hoy';
   if (diffDays === 1) return 'Mañana';
@@ -146,14 +165,30 @@ export const getRelativeTime = (date: Date | string | null | undefined): string 
 export const isOverdue = (date: Date | string | null | undefined): boolean => {
   if (!date) return false;
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  let dateObj: Date;
+  
+  if (typeof date === 'string') {
+    // Check if it's DD/MM/YYYY format
+    if (date.includes('/')) {
+      const parsed = parseDDMMYYYY(date);
+      if (!parsed) return false;
+      dateObj = parsed;
+    } else {
+      // Assume ISO format or other valid date string
+      dateObj = new Date(date);
+    }
+  } else {
+    dateObj = date;
+  }
+  
   if (isNaN(dateObj.getTime())) return false;
   
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  dateObj.setHours(0, 0, 0, 0);
+  // Set both dates to start of day for accurate comparison
+  const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   
-  return dateObj < now;
+  return dateStart < nowStart;
 };
 
 /**
@@ -162,7 +197,22 @@ export const isOverdue = (date: Date | string | null | undefined): boolean => {
 export const isToday = (date: Date | string | null | undefined): boolean => {
   if (!date) return false;
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  let dateObj: Date;
+  
+  if (typeof date === 'string') {
+    // Check if it's DD/MM/YYYY format
+    if (date.includes('/')) {
+      const parsed = parseDDMMYYYY(date);
+      if (!parsed) return false;
+      dateObj = parsed;
+    } else {
+      // Assume ISO format or other valid date string
+      dateObj = new Date(date);
+    }
+  } else {
+    dateObj = date;
+  }
+  
   if (isNaN(dateObj.getTime())) return false;
   
   const now = new Date();

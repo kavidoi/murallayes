@@ -242,16 +242,33 @@ class TasksService {
   }
 
   async updateTaskAssignees(taskId: string, userIds: string[]): Promise<Task> {
-    try {
-      await AuthService.ensureValidToken();
-      const response = await axios.patch(`${API_BASE_URL}/tasks/${taskId}/assignees`, { userIds }, {
-        headers: this.getAuthHeaders(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error updating task assignees:', error);
-      throw error;
+    const maxRetries = 2;
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        await AuthService.ensureValidToken();
+        const response = await axios.patch(`${API_BASE_URL}/tasks/${taskId}/assignees`, { userIds }, {
+          headers: this.getAuthHeaders(),
+        });
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Only retry on 500 errors, not on 4xx errors
+        if (error.response?.status === 500 && attempt < maxRetries) {
+          console.warn(`Retrying updateTaskAssignees (attempt ${attempt + 1}/${maxRetries + 1})`);
+          // Wait briefly before retrying
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          continue;
+        }
+        
+        console.error('Error updating task assignees:', error);
+        throw error;
+      }
     }
+    
+    throw lastError;
   }
 
   async getMyTasks(): Promise<Task[]> {
