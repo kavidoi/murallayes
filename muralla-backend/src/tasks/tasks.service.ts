@@ -339,37 +339,68 @@ export class TasksService {
   }
 
   async updateTaskAssignees(taskId: string, userIds: string[]) {
-    return this.prisma.$transaction(async (tx) => {
-      // Remove all existing assignees
-      await tx.taskAssignee.deleteMany({
-        where: { taskId },
+    try {
+      // Validate task exists first
+      const existingTask = await this.prisma.task.findUnique({
+        where: { id: taskId },
+        select: { id: true }
       });
-
-      // Add new assignees
-      if (userIds.length > 0) {
-        await tx.taskAssignee.createMany({
-          data: userIds.map(userId => ({
-            taskId,
-            userId,
-            role: 'assignee',
-          })),
-        });
+      
+      if (!existingTask) {
+        throw new Error(`Task with ID ${taskId} not found`);
       }
 
-      // Return updated task
-      return tx.task.findUnique({
-        where: { id: taskId },
-        include: {
-          project: true,
-          assignee: true,
-          assignees: {
-            include: {
-              user: true,
+      // Validate all user IDs exist
+      if (userIds.length > 0) {
+        const existingUsers = await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true }
+        });
+        
+        const existingUserIds = existingUsers.map(u => u.id);
+        const invalidUserIds = userIds.filter(id => !existingUserIds.includes(id));
+        
+        if (invalidUserIds.length > 0) {
+          throw new Error(`Invalid user IDs: ${invalidUserIds.join(', ')}`);
+        }
+      }
+
+      return this.prisma.$transaction(async (tx) => {
+        // Remove all existing assignees
+        await tx.taskAssignee.deleteMany({
+          where: { taskId },
+        });
+
+        // Add new assignees
+        if (userIds.length > 0) {
+          await tx.taskAssignee.createMany({
+            data: userIds.map(userId => ({
+              taskId,
+              userId,
+              role: 'assignee',
+            })),
+            skipDuplicates: true, // Prevent duplicate key errors
+          });
+        }
+
+        // Return updated task
+        return tx.task.findUnique({
+          where: { id: taskId },
+          include: {
+            project: true,
+            assignee: true,
+            assignees: {
+              include: {
+                user: true,
+              },
             },
           },
-        },
+        });
       });
-    });
+    } catch (error) {
+      console.error('Error updating task assignees:', error);
+      throw error;
+    }
   }
 
   async addTaskAssignee(taskId: string, userId: string, role: string = 'assignee') {
