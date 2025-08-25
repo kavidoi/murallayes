@@ -885,7 +885,8 @@ const TasksList: React.FC = () => {
       
       if (Object.keys(apiUpdates).length > 0) {
         // Debounce name updates (500ms) but send others immediately
-        const delay = 'name' in updates ? 500 : 0
+        // Project changes should be immediate to show visual feedback
+        const delay = ('name' in updates && !('projectId' in updates)) ? 500 : 0
         
         const timeoutId = setTimeout(async () => {
           try {
