@@ -181,17 +181,25 @@ const ProjectsManager: React.FC = () => {
     const isEditing = editingProject === project.id
     const [editName, setEditName] = useState(project.name)
     const [editDescription, setEditDescription] = useState(project.description || '')
+    const [editKind, setEditKind] = useState<ProjectKind>(project.kind || 'DEADLINE')
+    const [editDeadline, setEditDeadline] = useState(
+      project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : ''
+    )
 
     const handleSaveEdit = () => {
       handleUpdateProject(project.id, {
         name: editName,
-        description: editDescription
+        description: editDescription,
+        kind: editKind,
+        deadline: editKind === 'DEADLINE' && editDeadline ? editDeadline : undefined
       })
     }
 
     const handleCancelEdit = () => {
       setEditName(project.name)
       setEditDescription(project.description || '')
+      setEditKind(project.kind || 'DEADLINE')
+      setEditDeadline(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '')
       setEditingProject(null)
     }
 
@@ -202,28 +210,58 @@ const ProjectsManager: React.FC = () => {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               {isEditing ? (
-                <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                <div className="space-y-3" onClick={e => e.stopPropagation()}>
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="w-full font-semibold text-lg bg-transparent border-b border-blue-500 focus:outline-none"
+                    placeholder="Nombre del proyecto"
                   />
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     className="w-full text-sm text-gray-600 dark:text-gray-400 bg-transparent border-b border-blue-500 focus:outline-none resize-none"
                     rows={2}
+                    placeholder="Descripción del proyecto"
                   />
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Tipo de Proyecto
+                      </label>
+                      <select
+                        value={editKind}
+                        onChange={(e) => setEditKind(e.target.value as ProjectKind)}
+                        className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="DEADLINE">Con fecha límite</option>
+                        <option value="CORE">Proyecto principal</option>
+                      </select>
+                    </div>
+                    {editKind === 'DEADLINE' && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha Límite
+                        </label>
+                        <input
+                          type="date"
+                          value={editDeadline}
+                          onChange={(e) => setEditDeadline(e.target.value)}
+                          className="w-full text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 pt-2">
                     <button
                       onClick={handleSaveEdit}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                     >
                       Guardar
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                      className="px-3 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
                     >
                       Cancelar
                     </button>

@@ -58,6 +58,16 @@ const getColorForUser = (index: number): string => {
 
 // Task expanded state persistence
 const EXPANDED_TASKS_KEY = 'muralla-expanded-tasks'
+const TASK_SORT_KEY = 'muralla-task-sort'
+const MANUAL_ORDER_KEY = 'muralla-manual-task-order'
+
+type SortOption = 'manual' | 'name' | 'dueDate' | 'status' | 'project' | 'dateCreated'
+type SortDirection = 'asc' | 'desc'
+
+interface SortConfig {
+  option: SortOption
+  direction: SortDirection
+}
 
 const getExpandedStates = (): Record<string, boolean> => {
   try {
@@ -77,6 +87,40 @@ const setExpandedState = (taskId: string, expanded: boolean) => {
       delete states[taskId] // Only store expanded=true to save space
     }
     localStorage.setItem(EXPANDED_TASKS_KEY, JSON.stringify(states))
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+const getSortConfig = (): SortConfig => {
+  try {
+    const stored = localStorage.getItem(TASK_SORT_KEY)
+    return stored ? JSON.parse(stored) : { option: 'manual', direction: 'asc' }
+  } catch {
+    return { option: 'manual', direction: 'asc' }
+  }
+}
+
+const setSortConfig = (config: SortConfig) => {
+  try {
+    localStorage.setItem(TASK_SORT_KEY, JSON.stringify(config))
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+const getManualOrder = (): Record<string, number> => {
+  try {
+    const stored = localStorage.getItem(MANUAL_ORDER_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+const setManualOrder = (order: Record<string, number>) => {
+  try {
+    localStorage.setItem(MANUAL_ORDER_KEY, JSON.stringify(order))
   } catch {
     // Ignore localStorage errors
   }
@@ -526,6 +570,7 @@ const InlineTextEditor: React.FC<{
   disabled?: boolean
 }> = ({ value, onChange, onBlur, placeholder, className, disabled }) => {
   const [isEditing, setIsEditing] = useState(false)
+  // Removed unused isLoading state
   const [editValue, setEditValue] = useState(value)
   
   const handleStart = () => {
@@ -587,8 +632,7 @@ const SortableTaskRow: React.FC<{
   onDeleteSubtask: (subtaskId: string) => void
   onDeleteTask?: (taskId: string) => void
   isSubtask?: boolean
-  isLoading?: boolean
-}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false, isLoading = false }) => {
+}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, isSubtask = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -749,7 +793,6 @@ const SortableTaskRow: React.FC<{
     prevProps.task.expanded === nextProps.task.expanded &&
     JSON.stringify(prevProps.task.assigneeIds) === JSON.stringify(nextProps.task.assigneeIds) &&
     JSON.stringify(prevProps.task.subtasks) === JSON.stringify(nextProps.task.subtasks) &&
-    prevProps.isLoading === nextProps.isLoading &&
     prevProps.users.length === nextProps.users.length &&
     prevProps.projects.length === nextProps.projects.length
   )
@@ -764,7 +807,7 @@ const TasksList: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [savingItems, setSavingItems] = useState<Set<string>>(new Set())
+  const [, setSavingItems] = useState<Set<string>>(new Set())
   
   // Debouncing refs to prevent rapid API calls
   const updateTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
@@ -775,6 +818,10 @@ const TasksList: React.FC = () => {
   const [assigneeFilter, setAssigneeFilter] = useState<string | 'All' | 'Unassigned'>('All')
   const [noDateFilter, setNoDateFilter] = useState(false)
   const [oneAssignedFilter, setOneAssignedFilter] = useState(false)
+  
+  // Sorting
+  const [sortConfig, setSortConfigState] = useState<SortConfig>(() => getSortConfig())
+  const [manualOrder, setManualOrderState] = useState<Record<string, number>>(() => getManualOrder())
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -821,9 +868,78 @@ const TasksList: React.FC = () => {
     }
   }, [loadData])
   
-  // Filter tasks
+  // Helper functions for sorting
+  const handleSortChange = useCallback((option: SortOption) => {
+    const newDirection: SortDirection = sortConfig.option === option && sortConfig.direction === 'asc' ? 'desc' : 'asc'
+    const newConfig: SortConfig = { option, direction: newDirection }
+    setSortConfigState(newConfig)
+    setSortConfig(newConfig)
+  }, [sortConfig])
+
+  const updateManualOrder = useCallback((newOrder: Record<string, number>) => {
+    setManualOrderState(newOrder)
+    setManualOrder(newOrder)
+  }, [])
+
+  const sortTasks = useCallback((tasksToSort: Task[]) => {
+    const sorted = [...tasksToSort]
+    
+    switch (sortConfig.option) {
+      case 'manual':
+        return sorted.sort((a, b) => {
+          const orderA = manualOrder[a.id] ?? a.order ?? 0
+          const orderB = manualOrder[b.id] ?? b.order ?? 0
+          return orderA - orderB
+        })
+      
+      case 'name':
+        return sorted.sort((a, b) => {
+          const result = a.name.localeCompare(b.name)
+          return sortConfig.direction === 'asc' ? result : -result
+        })
+      
+      case 'dueDate':
+        return sorted.sort((a, b) => {
+          if (!a.dueDate && !b.dueDate) return 0
+          if (!a.dueDate) return sortConfig.direction === 'asc' ? 1 : -1
+          if (!b.dueDate) return sortConfig.direction === 'asc' ? -1 : 1
+          
+          const dateA = new Date(a.dueDate.split('/').reverse().join('-'))
+          const dateB = new Date(b.dueDate.split('/').reverse().join('-'))
+          const result = dateA.getTime() - dateB.getTime()
+          return sortConfig.direction === 'asc' ? result : -result
+        })
+      
+      case 'status':
+        return sorted.sort((a, b) => {
+          const statusOrder = { 'New': 0, 'In Progress': 1, 'Completed': 2, 'Overdue': 3 }
+          const result = statusOrder[a.status] - statusOrder[b.status]
+          return sortConfig.direction === 'asc' ? result : -result
+        })
+      
+      case 'project':
+        return sorted.sort((a, b) => {
+          const projectA = a.projectName || ''
+          const projectB = b.projectName || ''
+          const result = projectA.localeCompare(projectB)
+          return sortConfig.direction === 'asc' ? result : -result
+        })
+      
+      case 'dateCreated':
+        return sorted.sort((a, b) => {
+          // Use task order as proxy for creation date since we don't have actual creation date
+          const result = (a.order ?? 0) - (b.order ?? 0)
+          return sortConfig.direction === 'asc' ? result : -result
+        })
+      
+      default:
+        return sorted
+    }
+  }, [sortConfig, manualOrder])
+
+  // Filter and sort tasks
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+    const filtered = tasks.filter(task => {
       // Search filter
       if (searchTerm && !task.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false
@@ -854,8 +970,10 @@ const TasksList: React.FC = () => {
       }
       
       return true
-    }).sort((a, b) => a.order - b.order)
-  }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter])
+    })
+    
+    return sortTasks(filtered)
+  }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter, sortTasks])
   
   // Optimized task operations with debouncing for name updates
   const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
@@ -966,7 +1084,7 @@ const TasksList: React.FC = () => {
     const tempId = `temp-${Date.now()}`
     const tempTask: Task = {
       id: tempId,
-      name: 'New Task',
+      name: '',
       status: 'New',
       assigneeIds: [],
       dueDate: null,
@@ -986,7 +1104,7 @@ const TasksList: React.FC = () => {
       
       const defaultProject = await projectsService.getOrCreateDefaultProject()
       const newTask = await tasksService.createTask({
-        title: 'New Task',
+        title: '',
         status: 'PENDING',
         projectId: defaultProject.id
       })
@@ -1017,7 +1135,7 @@ const TasksList: React.FC = () => {
     const tempId = `temp-${Date.now()}`
     const tempSubtask: Subtask = {
       id: tempId,
-      name: 'New Subtask',
+      name: '',
       status: 'New',
       inheritsAssignee: true,
       inheritsDueDate: true,
@@ -1035,7 +1153,7 @@ const TasksList: React.FC = () => {
       ))
       
       const newSubtask = await tasksService.createSubtask(parentTaskId, {
-        title: 'New Subtask',
+        title: '',
         status: 'PENDING',
         projectId: ''
       })
@@ -1115,30 +1233,48 @@ const TasksList: React.FC = () => {
     
     if (!over || active.id === over.id) return
     
+    // Only allow manual reordering when sort is set to manual
+    if (sortConfig.option !== 'manual') {
+      setError('Switch to manual sorting to reorder tasks')
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+    
     const oldIndex = filteredTasks.findIndex(task => task.id === active.id)
     const newIndex = filteredTasks.findIndex(task => task.id === over.id)
     
     if (oldIndex === -1 || newIndex === -1) return
     
     const originalTasks = tasks
+    const originalManualOrder = manualOrder
     
     try {
       // Optimistic update
       const newTasks = arrayMove(filteredTasks, oldIndex, newIndex)
+      
+      // Update manual order mapping
+      const newManualOrder = { ...manualOrder }
+      newTasks.forEach((task, index) => {
+        newManualOrder[task.id] = index
+      })
+      
       setTasks(prev => {
         const otherTasks = prev.filter(t => !filteredTasks.find(ft => ft.id === t.id))
         return [...otherTasks, ...newTasks]
       })
+      
+      updateManualOrder(newManualOrder)
       
       // Update order on backend
       await tasksService.reorderTasks(newTasks.map(t => t.id))
     } catch (err) {
       console.error('Failed to reorder tasks:', err)
       setTasks(originalTasks)
+      updateManualOrder(originalManualOrder)
       setError('Failed to reorder tasks')
       setTimeout(() => setError(null), 3000)
     }
-  }, [filteredTasks, tasks])
+  }, [filteredTasks, tasks, sortConfig.option, manualOrder, updateManualOrder])
   
   const resetFilters = () => {
     setSearchTerm('')
@@ -1228,7 +1364,7 @@ const TasksList: React.FC = () => {
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button 
-            onClick={loadData}
+            onClick={() => loadData()}
             className="btn-primary"
           >
             Retry
@@ -1287,6 +1423,31 @@ const TasksList: React.FC = () => {
             
             {/* Filters Row */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Sort dropdown */}
+              <select
+                value={sortConfig.option}
+                onChange={(e) => handleSortChange(e.target.value as SortOption)}
+                className="input text-sm min-w-36"
+              >
+                <option value="manual">Orden Manual</option>
+                <option value="name">Nombre</option>
+                <option value="dueDate">Fecha Límite</option>
+                <option value="status">Estado</option>
+                <option value="project">Proyecto</option>
+                <option value="dateCreated">Fecha Creación</option>
+              </select>
+              
+              {/* Sort direction indicator */}
+              {sortConfig.option !== 'manual' && (
+                <button
+                  onClick={() => handleSortChange(sortConfig.option)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400"
+                  title={`Ordenar ${sortConfig.direction === 'asc' ? 'descendente' : 'ascendente'}`}
+                >
+                  {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                </button>
+              )}
+              
               {/* Status filter */}
               <select
                 value={statusFilter}
