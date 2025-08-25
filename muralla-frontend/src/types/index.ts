@@ -1,13 +1,12 @@
-// Common types used across the application
-
-export type User = {
+// Consolidated types to prevent import conflicts
+export interface User {
   id: string;
   email: string;
   name?: string;
   role?: string;
   initials?: string;
   color?: string;
-};
+}
 
 export interface APIProject {
   id: string;

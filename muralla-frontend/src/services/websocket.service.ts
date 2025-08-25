@@ -1,13 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role?: string;
-  initials?: string;
-  color?: string;
-}
+import type { User } from '../types';
 
 export interface WebSocketService {
   socket: Socket | null;

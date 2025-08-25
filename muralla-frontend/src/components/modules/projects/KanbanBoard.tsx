@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { tasksService, type Task as APITask } from '../../../services/tasksService';
 import { usersService } from '../../../services/usersService';
 import { projectsService, type Project as APIProject } from '../../../services/projectsService';
-import { User } from '../../../services/authService';
+import type { User } from '../../../types';
 
 interface Task {
   id: string;

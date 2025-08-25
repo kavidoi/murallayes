@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { HttpsUtils } from '../utils/https';
-import { AuthService, User } from './authService';
+import { AuthService } from './authService';
+import type { User } from '../types';
 
 const API_BASE_URL = HttpsUtils.getApiBaseUrl();
 

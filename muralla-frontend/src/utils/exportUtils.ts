@@ -1,6 +1,5 @@
 // Types for export functionality
-import { User } from '../services/authService';
-import { Task, Subtask, APIProject } from '../types/common';
+import type { User, Task, Subtask, APIProject } from '../types';
 
 export interface ExportData {
   tasks: Task[]
