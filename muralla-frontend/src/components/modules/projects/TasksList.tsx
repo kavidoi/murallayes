@@ -1369,7 +1369,7 @@ const TasksList: React.FC = () => {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                <div>
+                <div className="pb-32">
                   {filteredTasks.map(task => (
                     <SortableTaskRow
                       key={task.id}
