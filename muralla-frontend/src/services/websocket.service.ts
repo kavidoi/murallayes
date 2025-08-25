@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { User } from '../types/user';
+import { User } from './authService';
 
 export interface WebSocketService {
   socket: Socket | null;
