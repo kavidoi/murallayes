@@ -1,5 +1,13 @@
 import { HttpsUtils } from '../utils/https';
-import { User } from '../types/user';
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  initials?: string;
+  color?: string;
+}
 
 // Advanced auth service with automatic token refresh
 export class AuthService {
