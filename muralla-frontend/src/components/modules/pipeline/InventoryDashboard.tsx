@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, AdjustmentsHorizontalIcon, MapPinIcon, CubeIcon, ExclamationTriangleIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, AdjustmentsHorizontalIcon, MapPinIcon, CubeIcon, ExclamationTriangleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
+import inventoryService, { type StockItem, type InventoryMove, type Location, type CreateMoveDto, type TransferDto, type AdjustmentDto } from '../../../services/inventoryService'
 
 // Utility function to generate automatic internal SKU
 const generateInternalSku = (productType: 'MANUFACTURED' | 'PURCHASED', sequence: number): string => {
