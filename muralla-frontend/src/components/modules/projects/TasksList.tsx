@@ -341,6 +341,12 @@ const DueDateSelector: React.FC<{
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(today.getDate() + 1)
+  
+  // Calculate this Friday (end of current week)
+  const thisWeek = new Date(today)
+  const daysUntilFriday = (5 - today.getDay() + 7) % 7 || 7 // Friday is day 5, if today is Friday use next Friday
+  thisWeek.setDate(today.getDate() + daysUntilFriday)
+  
   const nextWeek = new Date(today)
   nextWeek.setDate(today.getDate() + 7)
   const twoWeeks = new Date(today)
@@ -349,6 +355,7 @@ const DueDateSelector: React.FC<{
   const presets = [
     { label: t('pages.tasks.dueDates.tonight'), value: formatDateDDMMYYYY(today) },
     { label: t('pages.tasks.dueDates.tomorrow'), value: formatDateDDMMYYYY(tomorrow) },
+    { label: t('pages.tasks.dueDates.thisWeek'), value: formatDateDDMMYYYY(thisWeek) },
     { label: t('pages.tasks.dueDates.nextWeek'), value: formatDateDDMMYYYY(nextWeek) },
     { label: t('pages.tasks.dueDates.twoWeeks'), value: formatDateDDMMYYYY(twoWeeks) },
   ]
