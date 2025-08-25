@@ -48,6 +48,7 @@ export const parseDDMMYYYY = (dateString: string): Date | null => {
 
 /**
  * Convert date to ISO format (YYYY-MM-DD) for API calls
+ * Uses local timezone to prevent date shifting issues
  */
 export const dateToISO = (date: Date | string | null | undefined): string | null => {
   if (!date) return null;
@@ -70,16 +71,34 @@ export const dateToISO = (date: Date | string | null | undefined): string | null
   
   if (isNaN(dateObj.getTime())) return null;
   
-  return dateObj.toISOString().split('T')[0];
+  // Use local timezone instead of UTC to prevent date shifting
+  const year = dateObj.getFullYear();
+  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const day = dateObj.getDate().toString().padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
 };
 
 /**
  * Convert ISO date (YYYY-MM-DD) to DD/MM/YYYY format
+ * Uses local timezone to prevent date shifting issues
  */
 export const isoToDDMMYYYY = (isoDate: string | null | undefined): string => {
   if (!isoDate) return '';
   
-  const date = new Date(isoDate);
+  // Parse ISO date manually to avoid timezone issues
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return '';
+  
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+  
+  // Create date in local timezone
+  const date = new Date(year, month - 1, day);
   if (isNaN(date.getTime())) return '';
   
   return formatDateDDMMYYYY(date);
