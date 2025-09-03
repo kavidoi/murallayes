@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: muralla-backend
+    env: node
+    plan: starter
+    buildCommand: pnpm run build
+    startCommand: pnpm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postgresmuralla
+          property: connectionString
+    healthCheckPath: /health
+
+databases:
+  - name: postgresmuralla
+    databaseName: postgresmuralla
+    user: postgresmuralla_user
+    plan: starter
+    backup_retention: 30
