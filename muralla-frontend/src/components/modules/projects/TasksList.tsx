@@ -499,7 +499,8 @@ const ProjectSelector: React.FC<{
   projectId?: string
   projects: APIProject[]
   onChange: (projectId: string) => void
-}> = ({ projectId, projects, onChange }) => {
+  isUpdating?: boolean
+}> = ({ projectId, projects, onChange, isUpdating = false }) => {
   const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -521,14 +522,22 @@ const ProjectSelector: React.FC<{
       <button
         ref={setButtonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-w-[80px]"
+        disabled={isUpdating}
+        className={`flex items-center text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-w-[80px] ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <span className="truncate text-left flex-1">
           {selectedProject?.name || 'Sin proyecto'}
         </span>
-        <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {isUpdating ? (
+          <svg className="animate-spin w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : (
+          <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
       </button>
 
       {isOpen && (
@@ -730,6 +739,7 @@ const SortableTaskRow: React.FC<{
             projectId={task.projectId}
             projects={projects}
             onChange={(projectId) => onTaskUpdate(task.id, { projectId })}
+            isUpdating={savingItems.has(task.id)}
           />
         </div>
         
@@ -848,7 +858,7 @@ const TasksList: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [, setSavingItems] = useState<Set<string>>(new Set())
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set())
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(
     () => new Set(JSON.parse(localStorage.getItem('expandedTasks') || '[]'))
   )
@@ -1071,6 +1081,7 @@ const TasksList: React.FC = () => {
           if ('projectId' in updates && updates.projectId) {
             const project = projects.find(p => p.id === updates.projectId)
             updatedTask.projectName = project?.name || 'Unknown Project'
+            console.log('Project updated optimistically:', { taskId, newProjectId: updates.projectId, projectName: updatedTask.projectName })
           }
           return updatedTask
         }
@@ -1106,13 +1117,30 @@ const TasksList: React.FC = () => {
         
         const timeoutId = setTimeout(async () => {
           try {
+            // Mark task as saving
+            setSavingItems(prev => new Set([...prev, taskId]))
+            
             await tasksService.updateTask(taskId, apiUpdates)
             updateTimeouts.current.delete(taskId)
+            
+            // For project updates, refresh data to ensure server state is reflected
+            if ('projectId' in updates) {
+              console.log('Project update API success, refreshing task data...')
+              // Small delay to let server process the update
+              setTimeout(() => loadData(false), 100)
+            }
           } catch (err) {
             console.error('Failed to update task:', err)
             setTasks(originalTasks)
             setError('Failed to update task. Please try again.')
             setTimeout(() => setError(null), 3000)
+          } finally {
+            // Remove task from saving state
+            setSavingItems(prev => {
+              const newSet = new Set(prev)
+              newSet.delete(taskId)
+              return newSet
+            })
           }
         }, delay)
         
@@ -1126,7 +1154,7 @@ const TasksList: React.FC = () => {
       // Clear error after 3 seconds
       setTimeout(() => setError(null), 3000)
     }
-  }, [tasks, projects])
+  }, [tasks, projects, loadData, setSavingItems])
   
   const handleSubtaskUpdate = useCallback(async (parentTaskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     const originalTasks = tasks
