@@ -1112,6 +1112,9 @@ const TasksList: React.FC = () => {
       if ('dueDate' in updates) apiUpdates.dueDate = dateToISO(updates.dueDate)
       if ('projectId' in updates) apiUpdates.projectId = updates.projectId
       
+      // Debug logging
+      console.log('Sending API update:', { taskId, apiUpdates })
+      
       if (Object.keys(apiUpdates).length > 0) {
         // Debounce name updates (500ms) but send others immediately
         // Project changes should be immediate to show visual feedback
