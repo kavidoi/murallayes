@@ -740,7 +740,7 @@ const SortableTaskRow: React.FC<{
             projectId={task.projectId}
             projects={projects}
             onChange={(projectId) => onTaskUpdate(task.id, { projectId })}
-            isUpdating={savingItems.has(task.id)}
+            isUpdating={savingItems?.has(task.id) || false}
           />
         </div>
         
@@ -1125,11 +1125,9 @@ const TasksList: React.FC = () => {
             await tasksService.updateTask(taskId, apiUpdates)
             updateTimeouts.current.delete(taskId)
             
-            // For project updates, refresh data to ensure server state is reflected
+            // For project updates, just log success - optimistic update already handled UI
             if ('projectId' in updates) {
-              console.log('Project update API success, refreshing task data...')
-              // Small delay to let server process the update
-              setTimeout(() => loadData(false), 100)
+              console.log('Project update API success')
             }
           } catch (err) {
             console.error('Failed to update task:', err)
