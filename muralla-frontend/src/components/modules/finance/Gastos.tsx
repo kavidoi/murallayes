@@ -10,7 +10,6 @@ import { EditingIndicator } from '../../common/EditingIndicator';
 import { useWebSocket } from '../../../contexts/WebSocketContext';
 import MentionInput, { type EntityMention } from '../../universal/MentionInput';
 import RelationshipManager, { type EntityRelationship } from '../../universal/RelationshipManager';
-import { DevLoginModal } from '../../common/DevLoginModal';
 import { AuthService } from '../../../services/authService';
 
 interface ExpenseCategory {
@@ -109,8 +108,7 @@ const Gastos: React.FC = () => {
   const [descriptionMentions, setDescriptionMentions] = useState<EntityMention[]>([]);
   const [expenseRelationships, setExpenseRelationships] = useState<EntityRelationship[]>([]);
   
-  // Authentication state
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  // Check authentication status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Real-time collaboration state
@@ -220,6 +218,17 @@ const Gastos: React.FC = () => {
     setCategories(defaultCategories);
     setStatuses(defaultStatuses);
     setSuppliers(defaultSuppliers);
+    
+    // Check authentication status
+    const checkAuth = async () => {
+      try {
+        const authStatus = await AuthService.isAuthenticated();
+        setIsAuthenticated(authStatus);
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
   }, []);
 
   // Close dropdown when clicking outside
@@ -238,13 +247,6 @@ const Gastos: React.FC = () => {
     };
   }, [showProviderDropdown]);
 
-  // Handle successful login
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-    setShowLoginModal(false);
-    // Try to create the expense again after authentication
-    handleCreateExpense();
-  };
 
   // Filter suppliers based on search term
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -411,8 +413,8 @@ const Gastos: React.FC = () => {
         };
         
         // Show user-friendly message
-        // Show login modal instead of alert
-        setShowLoginModal(true);
+        // Show message directing user to login
+        alert('🔐 Por favor inicia sesión para guardar gastos en el servidor. Usa el botón de login en la esquina superior derecha.');
       }
       
       // Convert backend/demo response to local format for immediate UI update
@@ -1156,9 +1158,16 @@ const Gastos: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleCreateExpense}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                      !isAuthenticated 
+                        ? 'bg-amber-500 hover:bg-amber-600' 
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
-                    {t('gastos.createExpense')}
+                    {!isAuthenticated 
+                      ? '🔐 Crear Gasto (Requiere Login)' 
+                      : t('gastos.createExpense')
+                    }
                   </button>
                 </div>
               </form>
@@ -1667,12 +1676,6 @@ const Gastos: React.FC = () => {
         />
       )}
 
-      {/* Login Modal for Authentication */}
-      <DevLoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
     </div>
   );
 };
