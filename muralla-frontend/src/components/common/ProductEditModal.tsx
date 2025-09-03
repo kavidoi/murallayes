@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { useTranslation } from 'react-i18next';
+// import { useTranslation } from 'react-i18next'; // Commented out as unused
 import { useEditingStatus } from '../../hooks/useEditingStatus';
 import { useConflictResolution } from '../../hooks/useConflictResolution';
 import { useWebSocket } from '../../contexts/WebSocketContext';
@@ -49,22 +49,22 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   onClose,
   onSave,
   product,
-  version: initialVersion
+  version: _initialVersion
 }) => {
-  const { t } = useTranslation();
+  // const _t = useTranslation(); // Commented out as unused
   const { broadcastDataChange } = useWebSocket();
   
   // Local editing state
   const [formData, setFormData] = useState<Product>(product);
   const [originalData] = useState<Product>(product); // Keep original for conflict detection
-  const [currentVersion, setCurrentVersion] = useState(initialVersion || '');
+  // const [currentVersion] = useState(product); // Commented out as unused
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Real-time collaboration hooks
   const {
     isEditing,
-    startEditing,
+    // startEditing, // Commented out as unused
     stopEditing,
     refreshEditingStatus,
     otherUsersEditing,
@@ -122,7 +122,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
       const updated = { ...prev, [field]: value };
       
       // Broadcast data change to detect conflicts
-      broadcastDataChange('product', product.id, updated, currentVersion);
+      broadcastDataChange('product', product.id, updated, product.id);
       
       // Refresh editing status to show we're still active
       refreshEditingStatus();
@@ -178,7 +178,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
     <>
       <div className="fixed inset-0 z-40 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleClose} />
+          <div className="fixed inset-0 bg-black bg-opacity-75 transition-opacity" onClick={handleClose} />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -414,7 +414,6 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
             onResolve={handleConflictResolve}
             resourceName={currentConflict.resourceName}
             conflicts={currentConflict.conflicts}
-            currentUser="Tú"
             conflictingUser={currentConflict.conflictingUser.name || currentConflict.conflictingUser.email}
           />
         )}

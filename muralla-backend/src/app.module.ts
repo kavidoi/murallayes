@@ -36,6 +36,16 @@ import { CostsModule } from './costs/costs.module';
 import { ProductsModule } from './products/products.module';
 import { WorkOrdersModule } from './workorders/workorders.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { BrandsModule } from './brands/brands.module';
+import { ContactsModule } from './contacts/contacts.module';
+import { StorageModule } from './storage/storage.module';
+import { RecipesModule } from './recipes/recipes.module';
+import { RelationshipsModule } from './relationships/relationships.module';
+import { SKUModule } from './sku/sku.module';
+import { SearchModule } from './search/search.module';
+import { ConfigModule } from '@nestjs/config';
+import { CalendarModule } from './calendar/calendar.module';
 import { QueueService } from './queue/queue.service';
 
 @Injectable()
@@ -44,12 +54,30 @@ class BootstrapService implements OnModuleInit {
   async onModuleInit() {
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
+    const adminName = process.env.ADMIN_USER;
+    const secondaryEmail = process.env.SECONDARY_ADMIN_EMAIL;
+    const secondaryPassword = process.env.SECONDARY_ADMIN_PASSWORD;
+    const secondaryName = process.env.SECONDARY_ADMIN_USER;
+    const tertiaryEmail = process.env.TERTIARY_ADMIN_EMAIL;
+    const tertiaryPassword = process.env.TERTIARY_ADMIN_PASSWORD;
+    const tertiaryName = process.env.TERTIARY_ADMIN_USER;
+    
     try {
       if (email && password) {
-        await this.users.findOrCreateAdmin(email, password);
-        console.log(`Admin ensured from env: ${email}`);
+        await this.users.findOrCreateAdmin(email, password, adminName);
+        console.log(`Admin ensured from env: ${email} (${adminName})`);
       } else {
         console.warn('ADMIN_EMAIL/ADMIN_PASSWORD not set; skipping admin bootstrap');
+      }
+      
+      if (secondaryEmail && secondaryPassword) {
+        await this.users.findOrCreateAdmin(secondaryEmail, secondaryPassword, secondaryName);
+        console.log(`Secondary admin ensured from env: ${secondaryEmail} (${secondaryName})`);
+      }
+      
+      if (tertiaryEmail && tertiaryPassword) {
+        await this.users.findOrCreateAdmin(tertiaryEmail, tertiaryPassword, tertiaryName);
+        console.log(`Tertiary admin ensured from env: ${tertiaryEmail} (${tertiaryName})`);
       }
     } catch (e) {
       console.error('Failed to ensure admin user', e);
@@ -106,6 +134,19 @@ class BootstrapService implements OnModuleInit {
     ProductsModule,
     WorkOrdersModule,
     BudgetsModule,
+    SuppliersModule,
+    BrandsModule,
+    ContactsModule,
+    StorageModule,
+    RecipesModule,
+    RelationshipsModule,
+    SKUModule,
+    SearchModule,
+    CalendarModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute

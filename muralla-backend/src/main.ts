@@ -66,6 +66,12 @@ async function bootstrap() {
     forbidNonWhitelisted: false,
   }));
   
+  // Determine environment before configuring Helmet
+  const isProd = process.env.NODE_ENV === 'production';
+  const connectSrcDirectives = isProd
+    ? ["'self'", 'https:', 'wss:']
+    : ["'self'", 'http:', 'https:', 'ws:', 'wss:'];
+
   // Enhanced security headers with SSL/TLS optimizations
   app.use(helmet({
     contentSecurityPolicy: {
@@ -74,7 +80,8 @@ async function bootstrap() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", 'https://sdk.mercadopago.com'],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", 'https:'],
+        // Allow Socket.IO/WebSocket connections
+        connectSrc: connectSrcDirectives,
         fontSrc: ["'self'", 'https:', 'data:'],
         mediaSrc: ["'self'", 'https:'],
         objectSrc: ["'none'"],
@@ -99,14 +106,13 @@ async function bootstrap() {
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
   }));
   
-  const isProd = process.env.NODE_ENV === 'production';
   const frontendUrl = process.env.FRONTEND_URL;
   
   // In production, only allow HTTPS origins
   const allowedOrigins = [
     ...(frontendUrl ? [frontendUrl] : []),
     // Development origins (only in non-production)
-    ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000', 'http://localhost:4000']),
+    ...(isProd ? [] : ['http://localhost:5173', 'https://localhost:5173', 'http://localhost:3000', 'https://localhost:3000', 'http://localhost:4000', 'http://172.20.0.3:5173', 'http://172.20.0.3:5174']),
     // Production HTTPS origins
     'https://admin.murallacafe.cl',
     // Include the deployed backend URL if provided by the platform

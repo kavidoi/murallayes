@@ -4,31 +4,76 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5173,
+    host: 'localhost',
+    open: false,
+  },
+  base: '/',
   build: {
     target: 'esnext',
     minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
-      input: {
-        main: '/index.html',
-        404: '/404.html'
-      },
       output: {
-        manualChunks: {
+        manualChunks: (id) => {
           // Vendor chunks for better caching
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-chart': ['chart.js', 'react-chartjs-2'],
-          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
-          'vendor-ui': ['@headlessui/react', '@heroicons/react', 'framer-motion'],
-          'vendor-utils': ['axios', 'date-fns'],
-          'vendor-i18n': ['i18next', 'react-i18next'],
-          'vendor-mp': ['@mercadopago/sdk-js']
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react'
+            }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'vendor-chart'
+            }
+            if (id.includes('@dnd-kit')) {
+              return 'vendor-dnd'
+            }
+            if (id.includes('@headlessui') || id.includes('@heroicons') || id.includes('framer-motion')) {
+              return 'vendor-ui'
+            }
+            if (id.includes('axios') || id.includes('date-fns')) {
+              return 'vendor-utils'
+            }
+            if (id.includes('i18next')) {
+              return 'vendor-i18n'
+            }
+            if (id.includes('@mercadopago')) {
+              return 'vendor-mp'
+            }
+            return 'vendor-other'
+          }
+          
+          // Split large feature modules
+          if (id.includes('/modules/pipeline/PurchaseOrders')) {
+            return 'feature-purchase-orders'
+          }
+          if (id.includes('/modules/pos/CashierPOS')) {
+            return 'feature-cashier-pos'
+          }
+          if (id.includes('/modules/projects/TasksList')) {
+            return 'feature-tasks'
+          }
+          if (id.includes('/modules/pipeline/ProductionWorkOrders')) {
+            return 'feature-production'
+          }
+          if (id.includes('/modules/finance/Gastos')) {
+            return 'feature-expenses'
+          }
+          if (id.includes('/modules/crm/')) {
+            return 'feature-crm'
+          }
+          if (id.includes('/modules/pipeline/')) {
+            return 'feature-pipeline'
+          }
+          if (id.includes('/modules/finance/')) {
+            return 'feature-finance'
+          }
+          if (id.includes('/modules/projects/')) {
+            return 'feature-projects'
+          }
         }
       }
     },
     chunkSizeWarningLimit: 1000 // Increase warning limit to 1MB
-  },
-  esbuild: {
-    drop: ['console', 'debugger']
   }
 })

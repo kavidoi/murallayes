@@ -1,5 +1,5 @@
 import React from 'react';
-import { User } from '../../services/websocket.service';
+import type { User } from '../../types';
 
 interface EditingIndicatorProps {
   users: User[];

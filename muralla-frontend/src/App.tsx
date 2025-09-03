@@ -31,7 +31,8 @@ const TasksList = lazy(() => import('./components/modules/projects/TasksList'))
 const ProjectsManager = lazy(() => import('./components/modules/projects/ProjectsManager'))
 const Settings = lazy(() => import('./components/modules/settings/Settings'))
 const ProductCatalog = lazy(() => import('./components/modules/pipeline/ProductCatalog'))
-const InventoryDashboard = lazy(() => import('./components/modules/pipeline/InventoryDashboard'))
+// const InventoryDashboard = lazy(() => import('./components/modules/pipeline/InventoryDashboard'))
+const PlatformInventoryDashboard = lazy(() => import('./components/modules/inventory/PlatformInventoryDashboard'))
 const CostsPurchases = lazy(() => import('./components/modules/pipeline/CostsPurchases'))
 const ProductionWorkOrders = lazy(() => import('./components/modules/pipeline/ProductionWorkOrders'))
 const ReportsAnalytics = lazy(() => import('./components/modules/pipeline/ReportsAnalytics'))
@@ -44,6 +45,9 @@ const ShiftsAttendance = lazy(() => import('./components/modules/people/ShiftsAt
 const MyShifts = lazy(() => import('./components/modules/people/MyShifts'))
 const MisTareas = lazy(() => import('./components/modules/personal/MisTareas'))
 const KanbanBoard = lazy(() => import('./components/modules/projects/KanbanBoard'))
+const CalendarDashboard = lazy(() => import('./components/modules/schedule/CalendarDashboard'))
+const CashierPOS = lazy(() => import('./components/modules/cashier/CashierPOS'))
+const RecipeManager = lazy(() => import('./components/modules/recipes/RecipeManager'))
 
 // Loading fallback component with skeleton
 const LoadingFallback = () => (
@@ -102,7 +106,7 @@ function App() {
           // Get user data and token
           const userData = await AuthService.getCurrentUser()
           const authToken = AuthService.getToken()
-          setUser(userData)
+          setUser(userData as any)
           setToken(authToken)
         }
       } catch (error) {
@@ -175,6 +179,12 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+          {/* Cashier POS Route - Full Screen */}
+          <Route path="/cashier" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CashierPOS />
+            </Suspense>
+          } />
           {/* Public Supplier Portal Route */}
           <Route path="/supplier-portal/:token" element={
             <Suspense fallback={<LoadingFallback />}>
@@ -244,8 +254,9 @@ function App() {
               <Route path="/operations/insumos" element={<Insumos />} />
               <Route path="/operations/production" element={<ProductionWorkOrders />} />
               <Route path="/operations/products" element={<ProductCatalog />} />
+              <Route path="/operations/recipes" element={<RecipeManager />} />
               {/* Legacy routes - kept for compatibility */}
-              <Route path="/operations/inventory" element={<InventoryDashboard />} />
+              <Route path="/operations/inventory" element={<PlatformInventoryDashboard />} />
               <Route path="/operations/costs" element={<CostsPurchases />} />
               {/* Redirect old pipeline routes to operations */}
               <Route path="/pipeline" element={<Navigate to="/operations" replace />} />
@@ -275,7 +286,7 @@ function App() {
               
               {/* Scheduling (unified calendars) */}
               <Route path="/schedule" element={<Navigate to="/schedule/calendar" replace />} />
-              <Route path="/schedule/calendar" element={<PlaceholderPage title={t('routes.eventsCalendar.title')} description={t('routes.eventsCalendar.description')} icon="📅" />} />
+              <Route path="/schedule/calendar" element={<CalendarDashboard />} />
               <Route path="/schedule/bookings" element={<PlaceholderPage title={t('routes.bookings.title')} description={t('routes.bookings.description')} icon="🎫" />} />
               <Route path="/schedule/resources" element={<PlaceholderPage title={t('routes.resources.title')} description={t('routes.resources.description')} icon="🛠️" />} />
               {/* Redirect Events to Scheduling */}

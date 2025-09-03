@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddContact from './AddContact';
+import EditContact from './EditContact';
 import ContactProfile from './ContactProfile';
+import { contactsService, type Contact as ContactType } from '../../../services/contactsService';
 
 interface SupplierStockItem {
   id: string;
@@ -30,48 +32,6 @@ interface PendingOrder {
   notes?: string;
 }
 
-interface Contact {
-  id: string;
-  name: string;
-  type: 'supplier' | 'customer' | 'important';
-  entityType: 'business' | 'person'; // New field to distinguish business vs person
-  phone?: string;
-  email?: string;
-  instagram?: string;
-  rut?: string;
-  company?: string;
-  address?: string;
-  notes?: string;
-  tags: string[];
-  createdAt: string;
-  lastContact?: string;
-  // Business-specific fields
-  contactPersonName?: string; // For businesses: name of the contact person
-  giro?: string; // Business activity/industry
-  // Bank account details
-  bankDetails?: {
-    bankName?: string;
-    accountType?: 'checking' | 'savings' | 'business';
-    accountNumber?: string;
-    accountHolder?: string; // Name on the account
-    rutAccount?: string; // RUT of account holder
-  };
-  // Supplier portal access
-  portalToken?: string; // Random token for supplier portal access
-  portalEnabled?: boolean; // Whether portal access is enabled
-  currentStock?: SupplierStockItem[]; // Current stock of items from this supplier
-  pendingOrders?: PendingOrder[]; // Current orders with this supplier
-  // Analytics data
-  totalPurchases?: number;
-  totalSales?: number;
-  averagePurchase?: number;
-  averageSale?: number;
-  lastPurchaseAmount?: number;
-  lastSaleAmount?: number;
-  purchaseCount: number;
-  salesCount: number;
-  relationshipScore: number; // 1-5 rating
-}
 
 interface Transaction {
   id: string;
@@ -105,399 +65,48 @@ interface HistoryEntry {
 }
 
 const Contactos: React.FC = () => {
-  const { t } = useTranslation();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
+  const _t = useTranslation();
+  const [contacts, setContacts] = useState<ContactType[]>([]);
+  const [filteredContacts, setFilteredContacts] = useState<ContactType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'supplier' | 'customer' | 'important'>('all');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'supplier' | 'customer' | 'important' | 'brand'>('all');
+  const [selectedContact, setSelectedContact] = useState<ContactType | null>(null);
+  const [editingContact, setEditingContact] = useState<ContactType | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with actual API calls
+  // Load real data from API
   useEffect(() => {
-    const mockContacts: Contact[] = [
-      {
-        id: '1',
-        name: 'Café Central S.A.',
-        type: 'supplier',
-        entityType: 'business',
-        phone: '+56987654321',
-        email: 'ventas@cafecentral.cl',
-        instagram: '@cafecentral',
-        rut: '76.123.456-7',
-        company: 'Café Central S.A.',
-        address: 'Av. Providencia 1234, Santiago',
-        contactPersonName: 'Roberto Muñoz',
-        giro: 'Comercialización de café y productos gourmet',
-        bankDetails: {
-          bankName: 'Banco de Chile',
-          accountType: 'business',
-          accountNumber: '001-1234567-89',
-          accountHolder: 'Café Central S.A.',
-          rutAccount: '76.123.456-7'
-        },
-        portalToken: '375dsfgeF',
-        portalEnabled: true,
-        currentStock: [
-          {
-            id: 's1',
-            name: 'Café Arábica Premium',
-            category: 'Café',
-            currentStock: 25,
-            unit: 'kg',
-            lastPurchaseDate: '2025-01-20',
-            lastPurchaseAmount: 420000,
-            reorderLevel: 10,
-            status: 'sufficient'
-          },
-          {
-            id: 's2',
-            name: 'Café Robusta',
-            category: 'Café',
-            currentStock: 5,
-            unit: 'kg',
-            lastPurchaseDate: '2025-01-15',
-            lastPurchaseAmount: 180000,
-            reorderLevel: 8,
-            status: 'low'
-          },
-          {
-            id: 's3',
-            name: 'Café Orgánico',
-            category: 'Café',
-            currentStock: 2,
-            unit: 'kg',
-            lastPurchaseDate: '2025-01-10',
-            lastPurchaseAmount: 350000,
-            reorderLevel: 5,
-            status: 'critical'
-          }
-        ],
-        pendingOrders: [
-          {
-            id: 'o1',
-            orderNumber: 'PO-2025-003',
-            items: [
-              { name: 'Café Arábica Premium', quantity: 50, unit: 'kg' },
-              { name: 'Café Orgánico', quantity: 20, unit: 'kg' }
-            ],
-            orderDate: '2025-01-22',
-            expectedDelivery: '2025-01-25',
-            totalAmount: 1200000,
-            status: 'confirmed',
-            notes: 'Entrega en la mañana, contactar a Roberto'
-          }
-        ],
-        notes: 'Proveedor principal de café arábica premium',
-        tags: ['café', 'premium', 'confiable'],
-        createdAt: '2024-01-15',
-        lastContact: '2025-01-20',
-        totalPurchases: 2450000,
-        averagePurchase: 350000,
-        lastPurchaseAmount: 420000,
-        purchaseCount: 7,
-        salesCount: 0,
-        relationshipScore: 5
-      },
-      {
-        id: '2',
-        name: 'María González',
-        type: 'customer',
-        entityType: 'person',
-        phone: '+56912345678',
-        email: 'maria.gonzalez@email.com',
-        instagram: '@mariagonzalez',
-        notes: 'Cliente VIP, prefiere café sin azúcar',
-        tags: ['vip', 'frecuente', 'café'],
-        createdAt: '2024-02-01',
-        lastContact: '2025-01-21',
-        totalSales: 350000,
-        averageSale: 8500,
-        lastSaleAmount: 12000,
-        purchaseCount: 0,
-        salesCount: 41,
-        relationshipScore: 4
-      },
-      {
-        id: '3',
-        name: 'TechCorp S.A.',
-        type: 'customer',
-        entityType: 'business',
-        phone: '+56223456789',
-        email: 'eventos@techcorp.cl',
-        rut: '96.789.123-4',
-        company: 'TechCorp S.A.',
-        address: 'Las Condes, Santiago',
-        contactPersonName: 'Ana Martínez',
-        giro: 'Tecnología y servicios digitales',
-        notes: 'Cliente corporativo para eventos y catering',
-        tags: ['corporativo', 'catering', 'eventos'],
-        createdAt: '2024-03-10',
-        lastContact: '2025-01-18',
-        totalSales: 1250000,
-        averageSale: 125000,
-        lastSaleAmount: 250000,
-        purchaseCount: 0,
-        salesCount: 10,
-        relationshipScore: 5
-      },
-      {
-        id: '4',
-        name: 'Seguridad Edificio',
-        type: 'important',
-        entityType: 'person',
-        phone: '+56987123456',
-        notes: 'Contacto de emergencia del edificio',
-        tags: ['emergencia', 'edificio'],
-        createdAt: '2024-01-01',
-        purchaseCount: 0,
-        salesCount: 0,
-        relationshipScore: 3
-      },
-      {
-        id: '5',
-        name: 'Municipalidad de Santiago',
-        type: 'important',
-        entityType: 'business',
-        phone: '+56226927000',
-        email: 'contacto@santiago.cl',
-        address: 'Plaza de Armas s/n, Santiago',
-        contactPersonName: 'Encargado de Permisos',
-        giro: 'Administración pública municipal',
-        notes: 'Permisos y trámites municipales',
-        tags: ['gobierno', 'permisos', 'trámites'],
-        createdAt: '2024-01-01',
-        purchaseCount: 0,
-        salesCount: 0,
-        relationshipScore: 3
-      },
-      {
-        id: '6',
-        name: 'Lechería del Valle',
-        type: 'supplier',
-        entityType: 'business',
-        phone: '+56945678912',
-        email: 'pedidos@lecheriadelvalle.cl',
-        rut: '78.456.789-1',
-        company: 'Lechería del Valle Ltda.',
-        address: 'Camino Rural 456, Melipilla',
-        contactPersonName: 'Carlos Jiménez',
-        giro: 'Producción y distribución de lácteos',
-        bankDetails: {
-          bankName: 'Banco Estado',
-          accountType: 'business',
-          accountNumber: '600-7891234-56',
-          accountHolder: 'Lechería del Valle Ltda.',
-          rutAccount: '78.456.789-1'
-        },
-        portalToken: '8kL9mN3pQ',
-        portalEnabled: true,
-        currentStock: [
-          {
-            id: 's4',
-            name: 'Leche Entera',
-            category: 'Lácteos',
-            currentStock: 8,
-            unit: 'litros',
-            lastPurchaseDate: '2025-01-19',
-            lastPurchaseAmount: 120000,
-            reorderLevel: 15,
-            status: 'low'
-          },
-          {
-            id: 's5',
-            name: 'Mantequilla',
-            category: 'Lácteos',
-            currentStock: 3,
-            unit: 'kg',
-            lastPurchaseDate: '2025-01-18',
-            lastPurchaseAmount: 84000,
-            reorderLevel: 8,
-            status: 'critical'
-          }
-        ],
-        pendingOrders: [],
-        notes: 'Proveedor de lácteos frescos',
-        tags: ['lácteos', 'frescos', 'diario'],
-        createdAt: '2024-01-20',
-        lastContact: '2025-01-19',
-        totalPurchases: 890000,
-        averagePurchase: 85000,
-        lastPurchaseAmount: 120000,
-        purchaseCount: 12,
-        salesCount: 0,
-        relationshipScore: 4
+    const loadContacts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch contacts from the general contacts API
+        const allContacts = await contactsService.getAllContacts();
+        
+        setContacts(allContacts);
+        setFilteredContacts(allContacts);
+        
+        // For now, use empty arrays for transactions and history since we don't have that data
+        setTransactions([]);
+        setHistory([]);
+        
+      } catch (err) {
+        console.error('Failed to load contacts:', err);
+        setError('Failed to load contacts. Please try again.');
+        // Keep empty state on error
+        setContacts([]);
+        setFilteredContacts([]);
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    const mockTransactions: Transaction[] = [
-      {
-        id: '1',
-        contactId: '1',
-        type: 'purchase',
-        amount: 420000,
-        description: 'Café Arábica Premium - 50kg',
-        date: '2025-01-20',
-        status: 'completed',
-        reference: 'PO-2025-001'
-      },
-      {
-        id: '2',
-        contactId: '2',
-        type: 'sale',
-        amount: 12000,
-        description: 'Café + Pasteles',
-        date: '2025-01-21',
-        status: 'completed'
-      },
-      {
-        id: '3',
-        contactId: '3',
-        type: 'sale',
-        amount: 250000,
-        description: 'Catering Evento Corporativo',
-        date: '2025-01-18',
-        status: 'completed',
-        reference: 'FACT-2025-015'
-      }
-    ];
-
-    const mockHistory: HistoryEntry[] = [
-      // Café Central S.A. history
-      {
-        id: 'h1',
-        contactId: '1',
-        type: 'automated',
-        category: 'order',
-        title: 'Orden creada',
-        description: 'Nueva orden de compra PO-2025-001 por $420.000',
-        amount: 420000,
-        date: '2025-01-20T10:30:00',
-        linkedTransactionId: '1',
-        metadata: {
-          orderNumber: 'PO-2025-001'
-        }
-      },
-      {
-        id: 'h2',
-        contactId: '1',
-        type: 'manual',
-        category: 'communication',
-        title: 'Confirmación telefónica',
-        description: 'Llamé y confirmaron la entrega para el martes. Roberto estará disponible en la mañana.',
-        date: '2025-01-19T14:15:00',
-        author: 'Darwin'
-      },
-      {
-        id: 'h3',
-        contactId: '1',
-        type: 'automated',
-        category: 'payment',
-        title: 'Pago procesado',
-        description: 'Transferencia bancaria completada - Orden PO-2025-001',
-        amount: 420000,
-        date: '2025-01-21T09:00:00',
-        linkedTransactionId: '1',
-        metadata: {
-          paymentMethod: 'Transferencia',
-          orderNumber: 'PO-2025-001'
-        }
-      },
-      // María González history
-      {
-        id: 'h4',
-        contactId: '2',
-        type: 'automated',
-        category: 'order',
-        title: 'Compra realizada',
-        description: 'Venta por $12.000 - Café + Pasteles',
-        amount: 12000,
-        date: '2025-01-21T16:45:00',
-        linkedTransactionId: '2'
-      },
-      {
-        id: 'h5',
-        contactId: '2',
-        type: 'manual',
-        category: 'note',
-        title: 'Preferencias del cliente',
-        description: 'María prefiere café sin azúcar y le gustan mucho los croissants. Mencionar promociones de pasteles.',
-        date: '2025-01-15T12:00:00',
-        author: 'Ana',
-        metadata: {
-          urgency: 'low'
-        }
-      },
-      // TechCorp S.A. history
-      {
-        id: 'h6',
-        contactId: '3',
-        type: 'automated',
-        category: 'order',
-        title: 'Catering completado',
-        description: 'Evento corporativo facturado por $250.000',
-        amount: 250000,
-        date: '2025-01-18T18:00:00',
-        linkedTransactionId: '3',
-        metadata: {
-          orderNumber: 'FACT-2025-015'
-        }
-      },
-      {
-        id: 'h7',
-        contactId: '3',
-        type: 'manual',
-        category: 'meeting',
-        title: 'Reunión de planificación',
-        description: 'Nos reunimos con Ana Martínez para planificar el evento. Acordamos menú vegetariano y servicio de 150 personas.',
-        date: '2025-01-10T15:30:00',
-        author: 'Carlos',
-        metadata: {
-          meetingType: 'presencial',
-          urgency: 'high'
-        }
-      },
-      {
-        id: 'h8',
-        contactId: '3',
-        type: 'manual',
-        category: 'communication',
-        title: 'Feedback del evento',
-        description: 'Ana llamó para agradecer. Muy satisfechos con el servicio. Están interesados en catering mensual.',
-        date: '2025-01-19T11:00:00',
-        author: 'Darwin',
-        metadata: {
-          urgency: 'medium'
-        }
-      },
-      // Lechería del Valle history
-      {
-        id: 'h9',
-        contactId: '6',
-        type: 'automated',
-        category: 'system',
-        title: 'Contacto agregado',
-        description: 'Nuevo proveedor registrado en el sistema',
-        date: '2024-01-20T08:00:00'
-      },
-      {
-        id: 'h10',
-        contactId: '6',
-        type: 'manual',
-        category: 'note',
-        title: 'Condiciones de pago',
-        description: 'Carlos confirmó que aceptan pago a 30 días. Entregas lunes, miércoles y viernes antes de las 8 AM.',
-        date: '2024-01-22T10:30:00',
-        author: 'Sofia'
-      }
-    ];
-
-    setContacts(mockContacts);
-    setFilteredContacts(mockContacts);
-    setTransactions(mockTransactions);
-    setHistory(mockHistory);
+    loadContacts();
   }, []);
 
   // Filter logic
@@ -509,7 +118,7 @@ const Contactos: React.FC = () => {
         contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        contact.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -520,7 +129,7 @@ const Contactos: React.FC = () => {
     setFilteredContacts(filtered);
   }, [contacts, searchTerm, typeFilter]);
 
-  const getContactTransactions = (contactId: string) => {
+  const _getContactTransactions = (contactId: string) => {
     return transactions.filter(t => t.contactId === contactId);
   };
 
@@ -535,6 +144,7 @@ const Contactos: React.FC = () => {
       case 'supplier': return 'bg-blue-100 text-blue-800';
       case 'customer': return 'bg-green-100 text-green-800';
       case 'important': return 'bg-purple-100 text-purple-800';
+      case 'brand': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -544,6 +154,7 @@ const Contactos: React.FC = () => {
       case 'supplier': return 'Proveedor';
       case 'customer': return 'Cliente';
       case 'important': return 'Importante';
+      case 'brand': return 'Marca';
       default: return type;
     }
   };
@@ -560,7 +171,7 @@ const Contactos: React.FC = () => {
     return '★'.repeat(score) + '☆'.repeat(5 - score);
   };
 
-  const ContactCard: React.FC<{ contact: Contact }> = ({ contact }) => (
+  const ContactCard: React.FC<{ contact: ContactType }> = ({ contact }) => (
     <div 
       className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
       onClick={() => setSelectedContact(contact)}
@@ -677,18 +288,18 @@ const Contactos: React.FC = () => {
           </div>
           <div className="mt-2 flex justify-between items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Relación: {getRelationshipStars(contact.relationshipScore)}
+              Relación: {getRelationshipStars(contact.relationshipScore || 1)}
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {contact.type === 'supplier' ? `${contact.purchaseCount} compras` : `${contact.salesCount} ventas`}
+              {contact.type === 'supplier' ? `${contact.purchaseCount || 0} compras` : `${contact.salesCount || 0} ventas`}
             </span>
           </div>
         </div>
       )}
 
-      {contact.tags.length > 0 && (
+      {contact.tags && contact.tags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
-          {contact.tags.map((tag, index) => (
+          {contact.tags.map((tag: string, index: number) => (
             <span
               key={index}
               className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded"
@@ -711,9 +322,37 @@ const Contactos: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-400 mt-2">
           Proveedores, clientes y contactos importantes
         </p>
+        
+        {/* Loading State */}
+        {loading && (
+          <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+            Cargando contactos...
+          </div>
+        )}
+        
+        {/* Error State */}
+        {error && (
+          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+            <div className="flex">
+              <span className="text-red-400 mr-2">⚠️</span>
+              <div>
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="text-sm text-red-600 dark:text-red-400 underline mt-2 hover:text-red-500"
+                >
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
+      {!loading && !error && (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
@@ -738,6 +377,20 @@ const Contactos: React.FC = () => {
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Clientes</h3>
               <p className="text-2xl font-semibold text-green-600">
                 {contacts.filter(c => c.type === 'customer').length}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-orange-100 dark:bg-orange-900">
+              <span className="text-2xl">🏷️</span>
+            </div>
+            <div className="ml-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Marcas</h3>
+              <p className="text-2xl font-semibold text-orange-600">
+                {contacts.filter(c => c.type === 'brand').length}
               </p>
             </div>
           </div>
@@ -771,8 +424,10 @@ const Contactos: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Filters and Search */}
+      {!loading && !error && (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
@@ -800,6 +455,7 @@ const Contactos: React.FC = () => {
               <option value="all">Todos los tipos</option>
               <option value="supplier">Proveedores</option>
               <option value="customer">Clientes</option>
+              <option value="brand">Marcas</option>
               <option value="important">Importantes</option>
             </select>
           </div>
@@ -814,24 +470,29 @@ const Contactos: React.FC = () => {
           </button>
         </div>
       </div>
+      )}
 
       {/* Contacts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredContacts.map((contact) => (
-          <ContactCard key={contact.id} contact={contact} />
-        ))}
-      </div>
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredContacts.map((contact) => (
+              <ContactCard key={contact.id} contact={contact} />
+            ))}
+          </div>
 
-      {filteredContacts.length === 0 && (
-        <div className="text-center py-12">
-          <span className="text-6xl mb-4 block">📞</span>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No se encontraron contactos
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Ajusta los filtros o agrega tu primer contacto
-          </p>
-        </div>
+          {filteredContacts.length === 0 && (
+            <div className="text-center py-12">
+              <span className="text-6xl mb-4 block">📞</span>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No se encontraron contactos
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Ajusta los filtros o agrega tu primer contacto
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Contact Profile Modal */}
@@ -841,9 +502,14 @@ const Contactos: React.FC = () => {
           history={history.filter(h => h.contactId === selectedContact.id)}
           onClose={() => setSelectedContact(null)}
           onEdit={(contact) => {
-            // Update contact in the list
-            setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
-            setSelectedContact(contact);
+            // Close profile and open edit modal
+            setSelectedContact(null);
+            setEditingContact(contact);
+          }}
+          onDelete={(contactId) => {
+            // Remove contact from the list and close profile
+            setContacts(prev => prev.filter(c => c.id !== contactId));
+            setSelectedContact(null);
           }}
           onAddNote={(note) => {
             // Add new history entry
@@ -867,22 +533,27 @@ const Contactos: React.FC = () => {
         <AddContact
           onClose={() => setShowAddForm(false)}
           onAdd={(contactData) => {
-            // Add new contact to the list
-            const newContact: Contact = {
-              ...contactData,
-              id: `contact-${Date.now()}`,
-              tags: [],
-              createdAt: new Date().toISOString(),
-              purchaseCount: 0,
-              salesCount: 0,
-              relationshipScore: 1,
-              totalPurchases: 0,
-              totalSales: 0,
-              averagePurchase: 0,
-              averageSale: 0,
-            };
-            setContacts(prev => [...prev, newContact]);
+            // Add the new contact directly from the API response
+            setContacts(prev => [...prev, contactData]);
             setShowAddForm(false);
+          }}
+        />
+      )}
+
+      {/* Edit Contact Modal */}
+      {editingContact && (
+        <EditContact
+          contact={editingContact}
+          onClose={() => setEditingContact(null)}
+          onEdit={(updatedContact) => {
+            // Update contact in the list
+            setContacts(prev => prev.map(c => c.id === updatedContact.id ? updatedContact : c));
+            setEditingContact(null);
+          }}
+          onDelete={(contactId) => {
+            // Remove contact from the list
+            setContacts(prev => prev.filter(c => c.id !== contactId));
+            setEditingContact(null);
           }}
         />
       )}

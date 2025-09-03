@@ -21,7 +21,7 @@ export const ConflictNotification: React.FC = () => {
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2">
       <AnimatePresence>
-        {conflictEvents.slice(0, 3).map((conflict, index) => (
+        {conflictEvents.slice(0, 3).map((conflict, _index) => (
           <motion.div
             key={`${conflict.resourceType}-${conflict.resourceId}-${conflict.timestamp}`}
             initial={{ opacity: 0, x: 300, scale: 0.9 }}

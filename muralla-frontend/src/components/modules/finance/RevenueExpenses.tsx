@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
+import { TagIcon, XMarkIcon } from '@heroicons/react/24/outline'
+// import { motion, AnimatePresence } from 'framer-motion' // Commented out as unused
+import { useTranslation } from 'react-i18next'
+import { formatCLP } from '../../../utils/formatUtils';
+import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { AuthService } from '../../../services/authService';
-import PageHeader from '../../ui/PageHeader';
 import { Tabs } from '../../ui/Tabs';
 import { StatCard } from '../../ui/StatCard';
-import { useTranslation } from 'react-i18next';
-import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 
 // Interfaces matching backend
 interface RevenueEntry {
@@ -131,7 +133,7 @@ interface StaffDebtPayment {
 }
 
 const RevenueExpenses: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   useDocumentTitle('revenueExpenses');
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'expenses' | 'transactions' | 'debts'>('overview');
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
@@ -148,7 +150,8 @@ const RevenueExpenses: React.FC = () => {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showDebtForm, setShowDebtForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [selectedDebt, setSelectedDebt] = useState<StaffDebt | null>(null);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<StaffDebt | undefined>(undefined);
   const [revenueForm, setRevenueForm] = useState({
     description: '',
     amount: '',
@@ -379,6 +382,9 @@ const RevenueExpenses: React.FC = () => {
             description: `Reembolso por: ${expenseForm.description}`,
             amount: parseFloat(expenseForm.amount),
             originalAmount: parseFloat(expenseForm.amount),
+            createdDate: new Date().toISOString(),
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
             status: 'PENDING',
             relatedExpenseId: response.data?.id || Date.now().toString(),
             paymentHistory: []
@@ -418,7 +424,7 @@ const RevenueExpenses: React.FC = () => {
     try {
       const newDebt: StaffDebt = {
         id: Date.now().toString(),
-        type: debtForm.type,
+        type: debtForm.type as 'DEBT' | 'LOAN',
         staffId: debtForm.staffId,
         staffName: debtForm.staffId === 'darwin' ? 'Darwin Bruna' : 'Kaví Doi',
         staffEmail: debtForm.staffId === 'darwin' ? 'darwin@murallacafe.cl' : 'kavi@murallacafe.cl',
@@ -426,6 +432,9 @@ const RevenueExpenses: React.FC = () => {
         amount: parseFloat(debtForm.amount),
         originalAmount: parseFloat(debtForm.amount),
         status: 'PENDING',
+        createdDate: new Date().toISOString(),
+        createdBy: 'system',
+        createdAt: new Date().toISOString(),
         paymentHistory: []
       };
 
@@ -434,8 +443,11 @@ const RevenueExpenses: React.FC = () => {
       setDebtForm({
         type: 'DEBT',
         staffId: '',
+        staffName: '',
         description: '',
-        amount: ''
+        amount: '',
+        dueDate: '',
+        notes: ''
       });
     } catch (err) {
       console.error('Error creating staff debt:', err);
@@ -447,7 +459,7 @@ const RevenueExpenses: React.FC = () => {
     e.preventDefault();
     try {
       const paymentAmount = parseFloat(paymentForm.amount);
-      const debtId = selectedDebt?.id || paymentForm.debtId;
+      const debtId = selectedDebt?.id;
       
       if (!debtId) {
         setError('Debe seleccionar una deuda/préstamo');
@@ -456,10 +468,12 @@ const RevenueExpenses: React.FC = () => {
 
       const payment: StaffDebtPayment = {
         id: Date.now().toString(),
+        debtId: debtId,
         amount: paymentAmount,
-        paymentMethod: paymentForm.paymentMethod,
+        paymentMethod: paymentForm.paymentMethod as 'CASH' | 'BANK_TRANSFER' | 'OTHER' | 'PAYROLL_DEDUCTION',
         notes: paymentForm.notes,
         paymentDate: new Date().toISOString(),
+        createdBy: 'system',
         createdAt: new Date().toISOString()
       };
 
@@ -479,9 +493,8 @@ const RevenueExpenses: React.FC = () => {
       }));
 
       setShowPaymentForm(false);
-      setSelectedDebt(null);
+      setSelectedDebt(undefined);
       setPaymentForm({
-        debtId: '',
         amount: '',
         paymentMethod: 'CASH',
         notes: ''
@@ -492,13 +505,8 @@ const RevenueExpenses: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  // Use the new CLP formatting utility
+  const formatCurrency = formatCLP;
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -727,13 +735,22 @@ const RevenueExpenses: React.FC = () => {
             {/* Revenue Header with Add Button */}
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('nav.revenueEntries') || 'Entradas de Ingresos'}</h2>
-              <button
-                onClick={() => setShowRevenueForm(true)}
-                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
-              >
-                <span className="mr-2">+</span>
-                {t('nav.addRevenue') || 'Agregar Ingreso'}
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowCategoryForm(true)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <TagIcon className="h-4 w-4 mr-2" />
+                  {t('gastos.manageCategories') || 'Gestionar Categorías'}
+                </button>
+                <button
+                  onClick={() => setShowRevenueForm(true)}
+                  className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center"
+                >
+                  <span className="mr-2">+</span>
+                  {t('nav.addRevenue') || 'Agregar Ingreso'}
+                </button>
+              </div>
             </div>
 
             {/* Revenue List */}
@@ -1158,7 +1175,7 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Staff Debt/Loan Form Modal */}
         {showDebtForm && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-90 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('nav.addStaffDebtLoan') || 'Agregar Deuda/Préstamo de Personal'}</h3>
@@ -1238,7 +1255,7 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Payment Form Modal */}
         {showPaymentForm && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-90 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('nav.recordPayment') || 'Registrar Pago'}</h3>
@@ -1248,8 +1265,11 @@ const RevenueExpenses: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('nav.selectDebt') || 'Seleccionar Deuda/Préstamo'}</label>
                       <select
                         required
-                        value={paymentForm.debtId}
-                        onChange={(e) => setPaymentForm({...paymentForm, debtId: e.target.value})}
+                        value={(selectedDebt as any)?.id ?? ''}
+                        onChange={(e) => {
+                          const debt = staffDebts.find(d => d.id === e.target.value);
+                          setSelectedDebt(debt || undefined);
+                        }}
                         className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">{t('nav.selectDebtOption') || 'Seleccionar deuda/préstamo'}</option>
@@ -1304,7 +1324,7 @@ const RevenueExpenses: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setShowPaymentForm(false);
-                        setSelectedDebt(null);
+                        setSelectedDebt(undefined);
                       }}
                       className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
@@ -1325,7 +1345,7 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Revenue Form Modal */}
         {showRevenueForm && categories && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-90 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('nav.addRevenueEntry') || 'Agregar Entrada de Ingreso'}</h3>
@@ -1428,7 +1448,7 @@ const RevenueExpenses: React.FC = () => {
 
         {/* Expense Form Modal */}
         {showExpenseForm && categories && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-90 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('nav.addExpenseEntry') || 'Agregar Entrada de Egreso'}</h3>
@@ -1550,6 +1570,78 @@ const RevenueExpenses: React.FC = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Category Management Modal */}
+        {showCategoryForm && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-90 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    {t('gastos.manageCategories') || 'Gestionar Categorías'}
+                  </h3>
+                  <button
+                    onClick={() => setShowCategoryForm(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Revenue Categories */}
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                      {t('nav.revenueCategories') || 'Categorías de Ingresos'}
+                    </h4>
+                    <div className="space-y-2">
+                      {categories?.revenue.map((category) => (
+                        <div key={category.value} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{category.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                            {t('common.active') || 'Activa'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Expense Categories */}
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                      {t('nav.expenseCategories') || 'Categorías de Egresos'}
+                    </h4>
+                    <div className="space-y-2">
+                      {categories?.expenses.map((category) => (
+                        <div key={category.value} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{category.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                            {t('common.active') || 'Activa'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowCategoryForm(false)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600"
+                  >
+                    {t('common.close') || 'Cerrar'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

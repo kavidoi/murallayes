@@ -23,7 +23,7 @@ export class ProjectsService {
       data, 
       include: { 
         tasks: true,
-        budgets: true 
+        // budgets: true // Removed - now handled by EntityRelationship system 
       } 
     });
   }
@@ -32,7 +32,7 @@ export class ProjectsService {
     return this.prisma.project.findMany({ 
       include: { 
         tasks: true,
-        budgets: true 
+        // budgets: true // Removed - now handled by EntityRelationship system 
       } 
     });
   }
@@ -42,7 +42,7 @@ export class ProjectsService {
       where: { id }, 
       include: { 
         tasks: true,
-        budgets: true 
+        // budgets: true // Removed - now handled by EntityRelationship system 
       } 
     });
   }
@@ -64,7 +64,7 @@ export class ProjectsService {
       data, 
       include: { 
         tasks: true,
-        budgets: true 
+        // budgets: true // Removed - now handled by EntityRelationship system 
       } 
     });
   }

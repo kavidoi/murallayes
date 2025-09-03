@@ -74,7 +74,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
   statuses,
   suppliers,
   onCreateSupplier,
-  version: initialVersion
+  version: _initialVersion
 }) => {
   const { t } = useTranslation();
   const { broadcastDataChange } = useWebSocket();
@@ -82,7 +82,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
   // Local editing state
   const [formData, setFormData] = useState<DirectExpense>(expense);
   const [originalData] = useState<DirectExpense>(expense); // Keep original for conflict detection
-  const [currentVersion, setCurrentVersion] = useState(initialVersion || '');
+  // const [currentVersion] = useState(expense); // Commented out as unused
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -101,7 +101,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
   // Real-time collaboration hooks
   const {
     isEditing,
-    startEditing,
+    // startEditing, // Commented out as unused
     stopEditing,
     refreshEditingStatus,
     otherUsersEditing,
@@ -156,7 +156,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
       const updated = { ...prev, [field]: value };
       
       // Broadcast data change to detect conflicts
-      broadcastDataChange('expense', expense.id, updated, currentVersion);
+      broadcastDataChange('expense', expense.id, updated, expense.id);
       
       // Refresh editing status to show we're still active
       refreshEditingStatus();
@@ -246,7 +246,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
     <>
       <div className="fixed inset-0 z-40 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleClose} />
+          <div className="fixed inset-0 bg-black bg-opacity-75 transition-opacity" onClick={handleClose} />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -534,7 +534,6 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
             onResolve={handleConflictResolve}
             resourceName={currentConflict.resourceName}
             conflicts={currentConflict.conflicts}
-            currentUser="Tú"
             conflictingUser={currentConflict.conflictingUser.name || currentConflict.conflictingUser.email}
           />
         )}

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntityRelationshipService } from '../relationships/entity-relationship.service';
 
 function toDecimal(v: any): Prisma.Decimal | null {
   if (v === null || v === undefined) return null;
@@ -13,7 +14,10 @@ function toDecimal(v: any): Prisma.Decimal | null {
 
 @Injectable()
 export class CostsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private entityRelationshipService: EntityRelationshipService
+  ) {}
 
   async createCost(dto: any) {
     if (!dto?.companyId) throw new BadRequestException('companyId is required');
@@ -26,11 +30,12 @@ export class CostsService {
     const attachments = Array.isArray(dto.attachments) ? dto.attachments : [];
     const lines = Array.isArray(dto.lines) ? dto.lines : [];
 
+    // Remove vendorId from cost data since it's now handled by EntityRelationship
     const created = await this.prisma.cost.create({
       data: {
         companyId: dto.companyId,
         categoryId: dto.categoryId,
-        vendorId: dto.vendorId ?? null,
+        // REMOVED: vendorId - now handled by EntityRelationship
         docType: dto.docType,
         docNumber: dto.docNumber ?? null,
         date: new Date(dto.date),
@@ -77,6 +82,19 @@ export class CostsService {
       },
       include: { lines: true, attachments: true },
     });
+
+    // Create vendor relationship if vendorId was provided
+    if (dto.vendorId) {
+      await this.entityRelationshipService.create({
+        relationshipType: 'cost_from_vendor',
+        sourceType: 'Cost',
+        sourceId: created.id,
+        targetType: 'Vendor',
+        targetId: dto.vendorId,
+        strength: 5,
+        metadata: { assignedAt: new Date() }
+      });
+    }
     
     return created;
   }
@@ -90,9 +108,21 @@ export class CostsService {
     take?: number;
     skip?: number;
   }) {
-    const where: any = {};
+    // Get cost IDs that belong to the specified vendor (if vendorId filter is provided)
+    let vendorFilteredCostIds: string[] | undefined;
+    if (params.vendorId) {
+      const vendorRelationships = await this.entityRelationshipService.findAll({
+        relationshipType: 'cost_from_vendor',
+        targetType: 'Vendor',
+        targetId: params.vendorId
+      });
+      vendorFilteredCostIds = vendorRelationships.data.map(rel => rel.sourceId);
+    }
+
+    const where: any = {
+      ...(vendorFilteredCostIds ? { id: { in: vendorFilteredCostIds } } : {}),
+    };
     if (params.companyId) where.companyId = params.companyId;
-    if (params.vendorId) where.vendorId = params.vendorId;
     if (params.categoryId) where.categoryId = params.categoryId;
     if (params.dateFrom || params.dateTo) {
       where.date = {};
@@ -100,12 +130,12 @@ export class CostsService {
       if (params.dateTo) (where.date as any).lte = new Date(params.dateTo);
     }
 
-    return this.prisma.cost.findMany({
+    const costs = await this.prisma.cost.findMany({
       where,
       include: {
         lines: true,
         attachments: true,
-        vendor: true,
+        // REMOVED: vendor: true - now handled by EntityRelationship
         category: true,
         company: true,
       },
@@ -113,6 +143,22 @@ export class CostsService {
       take: params.take ? Number(params.take) : 50,
       skip: params.skip ? Number(params.skip) : 0,
     });
+
+    // Add vendor information from EntityRelationship system
+    const costsWithVendors = await Promise.all(costs.map(async (cost) => {
+      const allRelationships = await this.entityRelationshipService.getEntityRelationships('Cost', cost.id);
+      const vendorRelationships = allRelationships.filter(rel => rel.relationshipType === 'cost_from_vendor');
+      
+      let vendor = null;
+      if (vendorRelationships.length > 0) {
+        const vendorId = vendorRelationships[0].targetId;
+        vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
+      }
+
+      return { ...cost, vendor };
+    }));
+
+    return costsWithVendors;
   }
 
   async getCost(id: string) {
@@ -121,14 +167,25 @@ export class CostsService {
       include: {
         lines: true,
         attachments: true,
-        vendor: true,
+        // REMOVED: vendor: true - now handled by EntityRelationship
         category: true,
         company: true,
         links: true,
       },
     });
     if (!cost) throw new BadRequestException('Cost not found');
-    return cost;
+
+    // Add vendor information from EntityRelationship system
+    const allRelationships = await this.entityRelationshipService.getEntityRelationships('Cost', cost.id);
+    const vendorRelationships = allRelationships.filter(rel => rel.relationshipType === 'cost_from_vendor');
+    
+    let vendor = null;
+    if (vendorRelationships.length > 0) {
+      const vendorId = vendorRelationships[0].targetId;
+      vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
+    }
+
+    return { ...cost, vendor };
   }
 
   async linkTransaction(costId: string, transactionId: string) {

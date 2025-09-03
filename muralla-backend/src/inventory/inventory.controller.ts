@@ -25,6 +25,124 @@ import type {} from '../prisma-v6-compat';
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
+  // Test endpoint without authentication for demo purposes
+  @Get('test-stock')
+  getTestStock() {
+    return {
+      data: [
+        {
+          productId: '1',
+          productName: 'Café Arábica Premium',
+          productDescription: 'Café premium de granos selectos',
+          productSku: 'CF-001',
+          internalSku: 'MFG-25-0001',
+          locationId: '1',
+          locationName: 'Muralla Café',
+          quantity: 45,
+          uom: 'kg',
+          unitCost: 8500,
+          totalValue: 382500,
+          lastMovement: new Date(),
+          stockStatus: 'medium',
+          productType: 'INSUMO',
+          minStock: 10,
+          maxStock: 100,
+          // Multi-platform fields
+          availableOnRappi: true,
+          availableOnPedidosya: false,
+          availableOnUber: true,
+          availableInCafe: true,
+          rappiPrice: 12000,
+          pedidosyaPrice: 11500,
+          uberPrice: 12500,
+          cafePrice: 10000,
+          // Platform sync status
+          syncStatus: {
+            rappi: 'synced',
+            pedidosya: 'pending',
+            uber: 'error',
+            lastSyncAt: new Date(),
+          },
+          // Platform SKUs
+          rappiSku: 'rappi_cf001',
+          pedidosyaSku: null,
+          uberSku: 'uber_cf001',
+          // Platform categories
+          platformCategory: {
+            rappi: 'bebidas-calientes',
+            pedidosya: 'Bebidas Calientes',
+            uber: 'hot-beverages',
+          },
+        },
+        {
+          productId: '2',
+          productName: 'Espresso Muralla Premium',
+          productDescription: 'Blend exclusivo de la casa',
+          productSku: 'ESP-MUR-001',
+          internalSku: 'MFG-25-0002',
+          locationId: '1',
+          locationName: 'Muralla Café',
+          quantity: 22,
+          uom: 'kg',
+          unitCost: 9200,
+          totalValue: 202400,
+          lastMovement: new Date(),
+          stockStatus: 'high',
+          productType: 'TERMINADO',
+          minStock: 15,
+          maxStock: 50,
+          // Multi-platform fields
+          availableOnRappi: true,
+          availableOnPedidosya: true,
+          availableOnUber: false,
+          availableInCafe: true,
+          rappiPrice: 15000,
+          pedidosyaPrice: 14500,
+          uberPrice: null,
+          cafePrice: 13000,
+          // Platform sync status
+          syncStatus: {
+            rappi: 'synced',
+            pedidosya: 'synced',
+            uber: 'pending',
+            lastSyncAt: new Date(),
+          },
+          // Platform SKUs
+          rappiSku: 'rappi_esp001',
+          pedidosyaSku: 'pya_esp001',
+          uberSku: null,
+          // Platform categories
+          platformCategory: {
+            rappi: 'bebidas-calientes',
+            pedidosya: 'Bebidas Calientes',
+            uber: 'hot-beverages',
+          },
+        },
+      ],
+      meta: {
+        total: 2,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      },
+    };
+  }
+
+  // Test platform sync status endpoint
+  @Get('test-platform-sync-status')
+  getTestPlatformSyncStatus() {
+    return {
+      totalProducts: 156,
+      syncedProducts: 143,
+      platformBreakdown: {
+        rappi: { synced: 120, available: 135 },
+        pedidosya: { synced: 98, available: 110 },
+        uber: { synced: 85, available: 95 },
+      },
+      lastSyncAt: new Date(),
+    };
+  }
+
   // Inventory moves endpoints
   @Post('moves')
   @Roles('admin', 'manager', 'staff')
@@ -126,5 +244,44 @@ export class InventoryController {
     if (productId) return this.inventoryService.findSalesByProduct(productId);
     if (sellerId) return this.inventoryService.findSalesBySeller(sellerId);
     return this.inventoryService.findAllSales();
+  }
+
+  // Multi-Platform Integration Endpoints
+  @Patch(':productId/platform-availability')
+  @Roles('admin', 'manager')
+  updatePlatformAvailability(
+    @Param('productId') productId: string,
+    @Body() body: { platform: 'rappi' | 'pedidosya' | 'uber'; available: boolean },
+  ) {
+    return this.inventoryService.updatePlatformAvailability(productId, body.platform, body.available);
+  }
+
+  @Patch(':productId/platform-pricing')
+  @Roles('admin', 'manager')
+  updatePlatformPricing(
+    @Param('productId') productId: string,
+    @Body() pricing: any,
+  ) {
+    return this.inventoryService.updatePlatformPricing(productId, pricing);
+  }
+
+  @Patch('bulk-platform-availability')
+  @Roles('admin', 'manager')
+  bulkUpdatePlatformAvailability(
+    @Body() body: { updates: Array<{ productId: string; platform: string; available: boolean }> },
+  ) {
+    return this.inventoryService.bulkUpdatePlatformAvailability(body.updates);
+  }
+
+  @Post('sync-platforms')
+  @Roles('admin', 'manager')
+  syncWithPlatforms(@Body() body: { productIds?: string[] }) {
+    return this.inventoryService.syncWithPlatforms(body.productIds);
+  }
+
+  @Get('platform-sync-status')
+  @Roles('admin', 'manager', 'staff')
+  getPlatformSyncStatus() {
+    return this.inventoryService.getPlatformSyncStatus();
   }
 }

@@ -39,7 +39,7 @@ class UsersService {
   async getActiveUsers(): Promise<User[]> {
     try {
       const users = await this.getAllUsers();
-      return users.filter(user => user.isActive);
+      return users.filter(user => (user as any).isActive);
     } catch (error) {
       console.error('Error fetching active users:', error);
       throw error;

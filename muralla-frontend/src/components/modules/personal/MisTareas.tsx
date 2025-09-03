@@ -20,7 +20,7 @@ import {
   PencilIcon,
   UserPlusIcon
 } from '@heroicons/react/24/outline';
-import { tasksService, Task as ServiceTask } from '../../../services/tasksService';
+import { tasksService, type Task as ServiceTask } from '../../../services/tasksService';
 
 // Extended interface for UI-specific properties
 interface UITask extends ServiceTask {
@@ -56,8 +56,10 @@ const MisTareas: React.FC = () => {
   const transformToUITask = (serviceTask: ServiceTask): UITask => {
     // Map service status to UI status
     const statusMap = {
+      'TODO': 'todo',
       'PENDING': 'todo',
       'IN_PROGRESS': 'in_progress', 
+      'REVIEW': 'review',
       'DONE': 'completed'
     } as const;
 
@@ -71,10 +73,10 @@ const MisTareas: React.FC = () => {
 
     return {
       ...serviceTask,
-      status: statusMap[serviceTask.status] || 'todo',
-      priority: priorityMap[serviceTask.priority] || 'medium',
+      status: (statusMap as any)[serviceTask.status] || 'todo',
+      priority: (priorityMap as any)[serviceTask.priority] || 'medium',
       tags: ['backend', 'frontend', 'api'].slice(0, Math.floor(Math.random() * 3) + 1), // Mock tags
-      subtasks: serviceTask.subtasks?.map((subtask, index) => ({
+      subtasks: serviceTask.subtasks?.map((subtask) => ({
         id: subtask.id,
         title: subtask.title,
         completed: subtask.status === 'DONE'
@@ -82,14 +84,9 @@ const MisTareas: React.FC = () => {
       comments: Math.floor(Math.random() * 10),
       attachments: Math.floor(Math.random() * 5),
       estimatedHours: Math.floor(Math.random() * 16) + 4,
-      actualHours: Math.floor(Math.random() * 12) + 2,
-      completedAt: serviceTask.status === 'DONE' ? serviceTask.updatedAt : undefined,
-      assignedBy: {
-        id: 'manager',
-        name: 'Manager User',
-        avatar: '/api/placeholder/32/32'
-      }
-    } as UITask;
+      actualHours: Math.floor(Math.random() * 12),
+      completedAt: serviceTask.status === 'DONE' ? serviceTask.updatedAt : null
+    } as any;
   };
 
   // Load tasks from service
@@ -138,7 +135,7 @@ const MisTareas: React.FC = () => {
           return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         case 'priority':
           const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
+          return priorityOrder[b.priority.toLowerCase() as keyof typeof priorityOrder] - priorityOrder[a.priority.toLowerCase() as keyof typeof priorityOrder];
         case 'updated':
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         case 'created':
@@ -152,7 +149,7 @@ const MisTareas: React.FC = () => {
   }, [tasks, searchQuery, statusFilter, priorityFilter, sortBy]);
 
   const getStatusConfig = (status: UITask['status']) => {
-    const configs = {
+    const statusConfigs = {
       todo: { 
         label: 'Por Hacer', 
         color: 'text-gray-600 dark:text-gray-300', 
@@ -178,7 +175,7 @@ const MisTareas: React.FC = () => {
         icon: CheckCircleIcon 
       }
     };
-    return configs[status];
+    return statusConfigs[status];
   };
 
   const getPriorityConfig = (priority: UITask['priority']) => {
@@ -219,15 +216,15 @@ const MisTareas: React.FC = () => {
 
   const handleStatusChange = async (taskId: string, newStatus: UITask['status']) => {
     // Map UI status back to service status
-    const statusMap = {
-      'todo': 'PENDING',
+    const statusMapping = {
+      'todo': 'TODO',
       'in_progress': 'IN_PROGRESS',
-      'review': 'IN_PROGRESS', // No direct review status in service
+      'review': 'REVIEW',
       'completed': 'DONE'
     } as const;
 
     try {
-      const serviceStatus = statusMap[newStatus];
+      const serviceStatus = statusMapping[newStatus];
       await tasksService.updateTask(taskId, { status: serviceStatus });
       
       // Update local state optimistically
@@ -243,7 +240,10 @@ const MisTareas: React.FC = () => {
   };
 
   const TaskCard: React.FC<{ task: UITask }> = ({ task }) => {
-    const statusConfig = getStatusConfig(task.status);
+    const statusKey = task.status === 'TODO' ? 'todo' : 
+                     task.status === 'IN_PROGRESS' ? 'in_progress' : 
+                     task.status === 'REVIEW' ? 'review' : 'completed';
+    const statusConfig = getStatusConfig(statusKey);
     const priorityConfig = getPriorityConfig(task.priority);
     const StatusIcon = statusConfig.icon;
     const subtaskProgress = getSubtaskProgress(task.subtasks);

@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { PlusIcon, MagnifyingGlassIcon, TagIcon, CubeIcon, XMarkIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, TagIcon, CubeIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AuthService } from '../../../services/authService'
 import { useTranslation } from 'react-i18next'
 import { useEditingStatus } from '../../../hooks/useEditingStatus'
 import { EditingIndicator } from '../../common/EditingIndicator'
 import { PresenceIndicator } from '../../common/PresenceIndicator'
+import { CreateProductModal } from './CreateProductModal'
+import { CreateRecipeProductModal } from './CreateRecipeProductModal'
+import { CategoryManagementModal } from './CategoryManagementModal'
+// import { recipesService, type ProjectedInventory } from '../../../services/recipesService'
 
 interface Product {
   id: string
@@ -132,7 +136,14 @@ const ProductCatalog: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [showRecipeModal, setShowRecipeModal] = useState(false)
+  const [categories, setCategories] = useState<ProductCategory[]>([
+    // Default categories for development
+    { id: '1', name: 'Bebidas', emoji: '☕', description: 'Bebidas calientes y frías', color: '#8B4513', isActive: true },
+    { id: '2', name: 'Alimentos', emoji: '🍕', description: 'Comida y snacks', color: '#FF6347', isActive: true },
+    { id: '3', name: 'Postres', emoji: '🍰', description: 'Dulces y postres', color: '#FFB6C1', isActive: true },
+    { id: '4', name: 'Suministros', emoji: '📦', description: 'Materiales y suministros', color: '#4682B4', isActive: true }
+  ])
   const [showCategoriesModal, setShowCategoriesModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryEmoji, setNewCategoryEmoji] = useState('')
@@ -219,20 +230,38 @@ const ProductCatalog: React.FC = () => {
           uom: p.uom || 'UN',
           category: p.category?.name,
           unitCost: p.unitCost ?? p.price ?? 0,
-          isActive: p.isActive,
-          stockLevel: p.stock,
+          isActive: p.isActive ?? true,
+          stockLevel: p.stock ?? 0,
+          minOrderQuantity: p.minOrderQuantity ?? 1,
+          maxOrderQuantity: p.maxOrderQuantity ?? 100,
+          availableOnRappi: p.availableOnRappi ?? false,
+          availableOnPedidosya: p.availableOnPedidosya ?? false,
+          availableOnUberEats: p.availableOnUberEats ?? false,
+          availableOnDidiFood: p.availableOnDidiFood ?? false,
+          availableOnUber: p.availableOnUber ?? false,
+          availableInCafe: p.availableInCafe ?? true,
         }))
         setProducts(mapped)
 
-        const cats = await AuthService.apiCall<any[]>(`/products/categories/all`)
-        setCategories((cats || []).map((c: any) => ({ 
-          id: c.id, 
-          name: c.name, 
-          emoji: c.emoji,
-          description: c.description,
-          color: c.color || '#64748B',
-          isActive: c.isActive !== false
-        })))
+        try {
+          const cats = await AuthService.apiCall<any[]>(`/products/categories/all`)
+          const apiCategories = (cats || []).map((c: any) => ({ 
+            id: c.id, 
+            name: c.name, 
+            emoji: c.emoji,
+            description: c.description,
+            color: c.color || '#64748B',
+            isActive: c.isActive !== false
+          }))
+          
+          // If API returns categories, use those; otherwise keep defaults
+          if (apiCategories.length > 0) {
+            setCategories(apiCategories)
+          }
+        } catch (categoryError) {
+          console.log('Using default categories - API categories not available:', categoryError)
+          // Keep the default categories that are already set
+        }
       } catch (e) {
         console.error('Error loading products/categories', e)
       }
@@ -271,6 +300,11 @@ const ProductCatalog: React.FC = () => {
     if (level < 20) return { color: 'bg-red-100 text-red-800', label: 'Stock bajo' }
     if (level < 50) return { color: 'bg-yellow-100 text-yellow-800', label: 'Stock medio' }
     return { color: 'bg-green-100 text-green-800', label: 'Stock alto' }
+  }
+
+  const handleProductCreated = (newProduct: Product) => {
+    setProducts(prev => [newProduct, ...prev])
+    setShowCreateModal(false)
   }
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -569,13 +603,22 @@ const ProductCatalog: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Producto Comprado
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Producto Comprado
+                </button>
+                <button
+                  onClick={() => setShowRecipeModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <CubeIcon className="h-4 w-4 mr-2" />
+                  Producto con Receta
+                </button>
+              </div>
             </div>
           </div>
 
@@ -705,9 +748,30 @@ const ProductCatalog: React.FC = () => {
             onClose={() => setShowCreateModal(false)} 
             onSuccess={handleProductCreated} 
             categories={categories}
+            onCategoriesUpdate={setCategories}
           />
         )}
       </AnimatePresence>
+
+      {/* Recipe Product Creation Modal */}
+      <AnimatePresence>
+        {showRecipeModal && (
+          <CreateRecipeProductModal 
+            onClose={() => setShowRecipeModal(false)} 
+            onSuccess={handleProductCreated} 
+            categories={categories}
+            ingredients={products.filter(p => p.type === 'PURCHASED')}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        isOpen={showCategoriesModal}
+        onClose={() => setShowCategoriesModal(false)}
+        categories={categories}
+        onCategoriesUpdate={setCategories}
+      />
     </div>
   )
 }

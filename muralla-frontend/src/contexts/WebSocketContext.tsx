@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { websocketService } from '../services/websocket.service';
 import type { User } from '../types';
 
@@ -78,55 +78,57 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     if (user && token) {
       websocketService.connect(token, user);
 
-      // Set up event listeners
-      websocketService.onUserPresence((data: UserPresence) => {
+      // Define handlers so we can unsubscribe on cleanup
+      const presenceHandler = (data: UserPresence) => {
         setUserPresences(prev => {
           const newMap = new Map(prev);
           newMap.set(data.user.id, data);
           return newMap;
         });
-      });
+      };
 
-      websocketService.onEditingStatus((data: EditingStatus) => {
+      const editingHandler = (data: EditingStatus) => {
         const key = `${data.resource}:${data.resourceId}`;
-        
         setEditingStatuses(prev => {
           const newMap = new Map(prev);
           const currentStatuses = newMap.get(key) || [];
-          
           // Remove any existing status for this user
           const filteredStatuses = currentStatuses.filter(
             status => status.user.id !== data.user.id
           );
-          
           // Add new status if user is editing, otherwise just remove old status
           if (data.isEditing) {
             filteredStatuses.push(data);
           }
-          
           if (filteredStatuses.length > 0) {
             newMap.set(key, filteredStatuses);
           } else {
             newMap.delete(key);
           }
-          
           return newMap;
         });
-      });
+      };
 
-      websocketService.onNotification((notification: any) => {
+      const notificationHandler = (notification: any) => {
         setNotifications(prev => [notification, ...prev]);
-      });
+      };
 
-      // Set up conflict event listener
-      websocketService.socket?.on('conflict-detected', (conflictEvent: ConflictEvent) => {
-        setConflictEvents(prev => [conflictEvent, ...prev]);
-      });
+      const conflictHandler = (conflictEvent: ConflictEvent) => {
+        if (user && conflictEvent.conflictingUser.id !== user.id) {
+          setConflictEvents(prev => [conflictEvent, ...prev]);
+        }
+      };
 
-      websocketService.socket?.on('data-change', (changeEvent: any) => {
-        // Handle incoming data changes that might conflict with local edits
+      const dataChangeHandler = (changeEvent: any) => {
         console.log('Data change received:', changeEvent);
-      });
+      };
+
+      // Register all listeners via service so they survive reconnects
+      websocketService.on('user-presence-update', presenceHandler);
+      websocketService.on('editing-status-update', editingHandler);
+      websocketService.on('notification', notificationHandler);
+      websocketService.on('conflict-detected', conflictHandler);
+      websocketService.on('data-change', dataChangeHandler);
 
       // Check connection status periodically
       const connectionInterval = setInterval(() => {
@@ -135,6 +137,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
       return () => {
         clearInterval(connectionInterval);
+        // Unbind listeners to avoid duplicates on re-mount
+        websocketService.off('user-presence-update', presenceHandler);
+        websocketService.off('editing-status-update', editingHandler);
+        websocketService.off('notification', notificationHandler);
+        websocketService.off('conflict-detected', conflictHandler);
+        websocketService.off('data-change', dataChangeHandler);
         websocketService.disconnect();
       };
     }

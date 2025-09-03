@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { AuthService } from '../../../services/authService';
@@ -44,6 +45,7 @@ interface BankCategory {
 }
 
 const BankAccount: React.FC = () => {
+  const { t } = useTranslation();
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [summary, setSummary] = useState<BankSummary | null>(null);
   const [categories, setCategories] = useState<BankCategory[]>([]);
@@ -94,7 +96,7 @@ const BankAccount: React.FC = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching bank data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load bank data');
+      setError(err instanceof Error ? err.message : t('bankAccount.errorLoadingTitle'));
     } finally {
       setLoading(false);
     }
@@ -153,6 +155,15 @@ const BankAccount: React.FC = () => {
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed': return t('bankAccount.completed');
+      case 'pending': return t('bankAccount.pending');
+      case 'failed': return t('bankAccount.failed');
+      default: return status;
+    }
+  };
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
@@ -183,7 +194,7 @@ const BankAccount: React.FC = () => {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                Error loading bank account data
+                {t('bankAccount.errorLoadingTitle')}
               </h3>
               <p className="mt-2 text-sm text-red-700 dark:text-red-300">
                 {error}
@@ -192,7 +203,7 @@ const BankAccount: React.FC = () => {
                 onClick={fetchBankData}
                 className="mt-3 text-sm bg-red-100 hover:bg-red-200 dark:bg-red-800 dark:hover:bg-red-700 text-red-800 dark:text-red-200 px-3 py-1 rounded"
               >
-                Try Again
+                {t('bankAccount.tryAgain')}
               </button>
             </div>
           </div>
@@ -207,10 +218,10 @@ const BankAccount: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Bank Account
+            {t('bankAccount.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Premium bank account management with Mercado Pago integration
+            {t('bankAccount.subtitle')}
           </p>
         </div>
         <div className="flex gap-3">
@@ -218,10 +229,10 @@ const BankAccount: React.FC = () => {
             onClick={fetchBankData}
             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
           >
-            🔄 Refresh
+            🔄 {t('bankAccount.refresh')}
           </button>
           <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-            📊 Export Report
+            📊 {t('bankAccount.exportReport')}
           </button>
         </div>
       </div>
@@ -232,7 +243,7 @@ const BankAccount: React.FC = () => {
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                Current Balance
+                {t('bankAccount.currentBalance')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -240,7 +251,7 @@ const BankAccount: React.FC = () => {
                 {formatCurrency(summary.currentBalance)}
               </div>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Updated in real-time
+                {t('bankAccount.updatedRealTime')}
               </p>
             </CardContent>
           </Card>
@@ -248,7 +259,7 @@ const BankAccount: React.FC = () => {
           <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">
-                Monthly Income
+                {t('bankAccount.monthlyIncome')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -256,7 +267,7 @@ const BankAccount: React.FC = () => {
                 {formatCurrency(summary.monthlyIncome)}
               </div>
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                This month
+                {t('bankAccount.thisMonth')}
               </p>
             </CardContent>
           </Card>
@@ -264,7 +275,7 @@ const BankAccount: React.FC = () => {
           <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">
-                Monthly Expenses
+                {t('bankAccount.monthlyExpenses')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -280,7 +291,7 @@ const BankAccount: React.FC = () => {
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                Net Profit
+                {t('bankAccount.netProfit')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -298,7 +309,7 @@ const BankAccount: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
+          <CardTitle>{t('bankAccount.filtersAndSearch')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -306,42 +317,42 @@ const BankAccount: React.FC = () => {
               <DatePicker
                 value={isoToDDMMYYYY(filters.startDate)}
                 onChange={(date) => handleFilterChange('startDate', dateToISO(date) || '')}
-                label="Fecha inicio"
-                placeholder="Seleccionar fecha inicio"
+                label={t('bankAccount.startDate')}
+                placeholder={t('bankAccount.selectStartDate')}
               />
             </div>
             <div>
               <DatePicker
                 value={isoToDDMMYYYY(filters.endDate)}
                 onChange={(date) => handleFilterChange('endDate', dateToISO(date) || '')}
-                label="Fecha fin"
-                placeholder="Seleccionar fecha fin"
+                label={t('bankAccount.endDate')}
+                placeholder={t('bankAccount.selectEndDate')}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Type
+                {t('bankAccount.type')}
               </label>
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
+                <option value="">{t('bankAccount.allTypes')}</option>
+                <option value="income">{t('bankAccount.income')}</option>
+                <option value="expense">{t('bankAccount.expense')}</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Category
+                {t('bankAccount.category')}
               </label>
               <select
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">All Categories</option>
+                <option value="">{t('bankAccount.allCategories')}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.name}>
                     {category.name}
@@ -351,11 +362,11 @@ const BankAccount: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Search
+                {t('bankAccount.search')}
               </label>
               <input
                 type="text"
-                placeholder="Search transactions..."
+                placeholder={t('bankAccount.searchTransactions')}
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -369,29 +380,29 @@ const BankAccount: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            💳 Recent Transactions
+            💳 {t('bankAccount.recentTransactions')}
             <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-              ({transactions.length} transactions)
+              ({transactions.length} {t('bankAccount.transactionCount')})
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <p>No transactions found</p>
-              <p className="text-sm mt-2">Try adjusting your filters</p>
+              <p>{t('bankAccount.noTransactions')}</p>
+              <p className="text-sm mt-2">{t('bankAccount.adjustFilters')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Description</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Category</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Method</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('bankAccount.date')}</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('bankAccount.description')}</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('bankAccount.category')}</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('bankAccount.amount')}</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('bankAccount.method')}</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,7 +418,7 @@ const BankAccount: React.FC = () => {
                           </p>
                           {transaction.reference && (
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Ref: {transaction.reference}
+                              {t('bankAccount.reference')}: {transaction.reference}
                             </p>
                           )}
                         </div>
@@ -428,7 +439,7 @@ const BankAccount: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={getStatusColor(transaction.status)}>
-                          {transaction.status}
+                          {getStatusText(transaction.status)}
                         </Badge>
                       </td>
                     </tr>
@@ -444,30 +455,30 @@ const BankAccount: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            🔗 Mercado Pago Integration
+            🔗 {t('bankAccount.mercadoPagoIntegration')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="text-2xl mb-2">⚡</div>
-              <div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">Real-time Webhooks</div>
+              <div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">{t('bankAccount.realTimeWebhooks')}</div>
               <p className="text-xs text-blue-600 dark:text-blue-400">
-                Automatic transaction updates via Mercado Pago webhooks
+                {t('bankAccount.webhooksDescription')}
               </p>
             </div>
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
               <div className="text-2xl mb-2">💳</div>
-              <div className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">Payment Processing</div>
+              <div className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">{t('bankAccount.paymentProcessing')}</div>
               <p className="text-xs text-green-600 dark:text-green-400">
-                Integrated payment preferences and checkout flows
+                {t('bankAccount.paymentDescription')}
               </p>
             </div>
             <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
               <div className="text-2xl mb-2">📊</div>
-              <div className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">Analytics</div>
+              <div className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">{t('bankAccount.analytics')}</div>
               <p className="text-xs text-purple-600 dark:text-purple-400">
-                Comprehensive financial analytics and reporting
+                {t('bankAccount.analyticsDescription')}
               </p>
             </div>
           </div>

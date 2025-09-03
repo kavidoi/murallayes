@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DocumentTextIcon, PaperClipIcon, BanknotesIcon, BuildingOfficeIcon, PlusIcon, PencilIcon, CheckIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline'
+import SupplierForm from './SupplierForm'
+import { CreateProductModal } from './CreateProductModal'
+import ExcelImportModal from './ExcelImportModal'
+import { DocumentTextIcon, PaperClipIcon, BanknotesIcon, BuildingOfficeIcon, PlusIcon, PencilIcon, CheckIcon, XMarkIcon, EyeIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import { PurchaseOrdersService } from '../../../services/purchaseOrdersService'
 import type { CostDTO, CostLine } from '../../../services/purchaseOrdersService'
 import { usersService } from '../../../services/usersService'
@@ -29,12 +32,29 @@ interface PurchaseOrderRow {
 
 interface Supplier {
   id: string
+  internalNumber?: string // Auto-generated: SUPP-001, SUPP-002, etc.
   name: string
+  vendorType: 'AGENTE' | 'PROVEEDOR_REGULAR' | 'EMPRENDEDOR'
+  taxId?: string // RUT - optional since not always available
   email?: string
   phone?: string
-  rut?: string
   address?: string
+  contactName?: string
+  paymentTerms?: string
   isActive: boolean
+  brandContactId?: string // Link to brand contact if this vendor is a brand
+  
+  // Legacy fields for backward compatibility
+  rut?: string
+}
+
+interface Brand {
+  id: string
+  name: string
+  contactName?: string
+  email?: string
+  phone?: string
+  isContact: boolean // true if it's a structured contact, false if just text
 }
 
 interface Product {
@@ -47,27 +67,55 @@ interface Product {
   uom: string
   category?: string
   isActive: boolean
+  // Brand can be either a structured contact or simple text
+  brand?: Brand
+  brandName?: string // Simple text field when brand is not a contact
 }
 
 interface PurchaseOrderFormData {
+  // Main supplier (creates factura)
+  mainSupplierId: string
+  mainSupplierName: string
+  
+  // Legacy fields for backward compatibility
   vendorName: string
   vendorId?: string
+  
   docType: string
   docNumber?: string // This will be auto-generated internal PO number
   thirdPartyDocType?: 'FACTURA' | 'BOLETA' | 'NONE'
   thirdPartyDocNumber?: string
   date: string
+  expectedDelivery?: string
   description?: string
   companyId: string
   receiptFile?: File
+  
+  // Sub-suppliers for delivery
+  subSuppliers: {
+    supplierId: string
+    supplierName: string
+    shippingCost?: number
+    expectedDelivery?: string
+    trackingNumber?: string
+    notes?: string
+    allowSharedShipping?: boolean
+  }[]
+  
   lines: {
     description: string
     quantity: number
     unitCost: number
     totalCost: number
+    shippingCostUnit?: number // Prorated shipping per unit
     isInventory: boolean
     productId?: string
     productName?: string
+    // Delivery assignment
+    deliveredBy: 'MAIN' | 'SUB' // Who delivers this line
+    subSupplierId?: string // If delivered by sub-supplier
+    deliveryDate?: string
+    trackingNumber?: string
   }[]
 }
 
@@ -82,21 +130,20 @@ interface UserInfo {
 // Function to generate automatic internal PO number
 const generatePONumber = (existingPOs: PurchaseOrderRow[]): string => {
   const currentYear = new Date().getFullYear()
-  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0')
   
-  // Find the highest number for this year-month
-  const yearMonthPattern = `OC-${currentYear}-${currentMonth}`
+  // Find the highest number for this year
+  const yearPattern = `PO-${currentYear}`
   const existingNumbers = existingPOs
     .map(po => po.docNumber)
-    .filter(docNum => docNum && docNum.startsWith(yearMonthPattern))
+    .filter(docNum => docNum && docNum.startsWith(yearPattern))
     .map(docNum => {
-      const match = docNum.match(/OC-\d{4}-\d{2}-(\d+)$/)
+      const match = docNum?.match(/PO-\d{4}-(\d+)$/)
       return match ? parseInt(match[1], 10) : 0
     })
     .filter(num => !isNaN(num))
   
   const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1
-  return `${yearMonthPattern}-${String(nextNumber).padStart(3, '0')}`
+  return `${yearPattern}-${String(nextNumber).padStart(3, '0')}`
 }
 
 const PurchaseOrders: React.FC = () => {
@@ -110,6 +157,23 @@ const PurchaseOrders: React.FC = () => {
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrderRow | null>(null)
   const [currentUser, setCurrentUser] = useState<UserInfo | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showSupplierForm, setShowSupplierForm] = useState(false)
+  const [showProductForm, setShowProductForm] = useState(false)
+  const [showExcelImport, setShowExcelImport] = useState(false)
+  const [productCategories, setProductCategories] = useState<Array<{
+    id: string;
+    name: string;
+    emoji?: string;
+    description?: string;
+    color: string;
+    isActive: boolean;
+  }>>([
+    { id: '1', name: 'Bebidas', emoji: '☕', color: '#8B4513', isActive: true },
+    { id: '2', name: 'Comida', emoji: '🍕', color: '#FF6347', isActive: true },
+    { id: '3', name: 'Postres', emoji: '🍰', color: '#FFD700', isActive: true },
+    { id: '4', name: 'Ingredientes', emoji: '🥘', color: '#32CD32', isActive: true },
+    { id: '5', name: 'Suministros', emoji: '📦', color: '#4169E1', isActive: true }
+  ])
 
   // Function to log actions (this could be enhanced to send to backend)
   const logAction = (action: string, orderId: string, details?: any) => {
@@ -188,9 +252,9 @@ const PurchaseOrders: React.FC = () => {
         setCurrentUser({
           id: backendUser.id,
           email: backendUser.email,
-          firstName: backendUser.firstName,
-          lastName: backendUser.lastName,
-          fullName: `${backendUser.firstName} ${backendUser.lastName}`.trim() || backendUser.email
+          firstName: (backendUser as any).firstName || '',
+          lastName: (backendUser as any).lastName || '',
+          fullName: `${(backendUser as any).firstName || ''} ${(backendUser as any).lastName || ''}`.trim() || backendUser.email
         })
       } else {
         setCurrentUser(tokenUser)
@@ -433,6 +497,95 @@ const PurchaseOrders: React.FC = () => {
     }
   }
 
+  const handleSupplierCreated = (supplierData: any) => {
+    // This would typically integrate with the backend to create the supplier
+    // For now, we'll just show a success message
+    console.log('New supplier created:', supplierData)
+    setShowSupplierForm(false)
+    
+    // Show success toast notification
+    const toast = document.createElement('div')
+    toast.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ease-in-out'
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
+          <span class="text-white text-sm font-bold">✓</span>
+        </div>
+        <div>
+          <div class="font-medium">Proveedor Creado</div>
+          <div class="text-green-100 text-sm">${supplierData.name} agregado exitosamente</div>
+        </div>
+      </div>
+    `
+    document.body.appendChild(toast)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)'
+      setTimeout(() => toast.remove(), 300)
+    }, 3000)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)'
+    }, 10)
+  }
+
+  const handleProductCreated = (productData: any) => {
+    // This would typically integrate with the backend to create the product
+    console.log('New product created:', productData)
+    setShowProductForm(false)
+    
+    // Show success toast notification
+    const toast = document.createElement('div')
+    toast.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ease-in-out'
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
+          <span class="text-white text-sm font-bold">✓</span>
+        </div>
+        <div>
+          <div class="font-medium">Producto Creado</div>
+          <div class="text-green-100 text-sm">${productData.name} agregado exitosamente</div>
+        </div>
+      </div>
+    `
+    document.body.appendChild(toast)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)'
+      setTimeout(() => toast.remove(), 300)
+    }, 3000)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)'
+    }, 10)
+  }
+
+  const handleExcelImportComplete = async (result: { processedPOs: any[]; createdProducts: any[] }) => {
+    setShowExcelImport(false)
+    
+    // Show success toast notification
+    const toast = document.createElement('div')
+    toast.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ease-in-out'
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
+          <span class="text-white text-sm font-bold">✓</span>
+        </div>
+        <div>
+          <div class="font-medium">Importación Completada</div>
+          <div class="text-green-100 text-sm">${result.processedPOs.length} Órdenes y ${result.createdProducts.length} Productos importados</div>
+        </div>
+      </div>
+    `
+    document.body.appendChild(toast)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)'
+      setTimeout(() => toast.remove(), 300)
+    }, 4000)
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)'
+    }, 10)
+    
+    // Refresh the purchase orders list to show the newly imported data
+    await load()
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -444,6 +597,13 @@ const PurchaseOrders: React.FC = () => {
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Compras que impactan inventario (por líneas de productos)</p>
             </div>
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowExcelImport(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+                Importar desde Excel
+              </button>
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -677,6 +837,8 @@ const PurchaseOrders: React.FC = () => {
             currentUser={currentUser}
             loading={actionLoading === 'create' || actionLoading?.startsWith('edit-')}
             existingOrders={rows}
+            onOpenSupplierForm={() => setShowSupplierForm(true)}
+            onOpenProductForm={() => setShowProductForm(true)}
           />
         )}
 
@@ -686,6 +848,33 @@ const PurchaseOrders: React.FC = () => {
             isOpen={!!viewingOrder}
             onClose={() => setViewingOrder(null)}
             order={viewingOrder}
+          />
+        )}
+
+        {/* Supplier Creation Modal */}
+        {showSupplierForm && (
+          <SupplierForm
+            onClose={() => setShowSupplierForm(false)}
+            onAdd={handleSupplierCreated}
+          />
+        )}
+
+        {/* Product Creation Modal */}
+        {showProductForm && (
+          <CreateProductModal
+            onClose={() => setShowProductForm(false)}
+            onSuccess={handleProductCreated}
+            categories={productCategories}
+            onCategoriesUpdate={setProductCategories}
+          />
+        )}
+        
+        {/* Excel Import Modal */}
+        {showExcelImport && (
+          <ExcelImportModal
+            isOpen={showExcelImport}
+            onClose={() => setShowExcelImport(false)}
+            onImportComplete={handleExcelImportComplete}
           />
         )}
       </div>
@@ -700,35 +889,58 @@ const PurchaseOrderModal: React.FC<{
   onSubmit: (data: PurchaseOrderFormData) => void
   editingOrder?: PurchaseOrderRow | null
   currentUser: UserInfo | null
-  loading: boolean
+  loading?: boolean
   existingOrders: PurchaseOrderRow[]
-}> = ({ isOpen, onClose, onSubmit, editingOrder, currentUser, loading, existingOrders }) => {
+  onOpenSupplierForm: () => void
+  onOpenProductForm: () => void
+}> = ({ isOpen, onClose, onSubmit, editingOrder, currentUser, loading, existingOrders, onOpenSupplierForm, onOpenProductForm }) => {
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
+    // Main supplier fields
+    mainSupplierId: '',
+    mainSupplierName: editingOrder?.vendorName || '',
+    
+    // Legacy fields for backward compatibility
     vendorName: editingOrder?.vendorName || '',
     vendorId: '',
+    
     docType: 'OC', // Always set to OC for purchase orders
     docNumber: editingOrder?.docNumber || '', // Will be set when modal opens
     thirdPartyDocType: 'NONE',
     thirdPartyDocNumber: '',
     date: editingOrder?.date.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+    expectedDelivery: '',
     description: editingOrder?.description || '',
     companyId: editingOrder?.companyId || 'default-company',
     receiptFile: undefined,
+    
+    // Sub-suppliers array
+    subSuppliers: [],
+    
     lines: editingOrder?.lines?.map(line => ({
       description: line.description || '',
       quantity: Number(line.quantity) || 1,
       unitCost: Number(line.unitCost) || 0,
       totalCost: Number(line.totalCost) || 0,
+      shippingCostUnit: 0,
       isInventory: !!line.isInventory,
       productId: line.productId || undefined,
-      productName: line.description || ''
+      productName: line.description || '',
+      deliveredBy: 'MAIN' as const,
+      subSupplierId: undefined,
+      deliveryDate: '',
+      trackingNumber: ''
     })) || [{
       description: '',
       quantity: 1,
       unitCost: 0,
       totalCost: 0,
+      shippingCostUnit: 0,
       isInventory: true,
-      productName: ''
+      productName: '',
+      deliveredBy: 'MAIN' as const,
+      subSupplierId: undefined,
+      deliveryDate: '',
+      trackingNumber: ''
     }]
   })
 
@@ -739,6 +951,11 @@ const PurchaseOrderModal: React.FC<{
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false)
   const [productSearches, setProductSearches] = useState<{ [key: number]: string }>({})
   const [showProductDropdowns, setShowProductDropdowns] = useState<{ [key: number]: boolean }>({})
+  
+  // Sub-supplier search states
+  const [subSupplierSearches, setSubSupplierSearches] = useState<{ [key: number]: string }>({})
+  const [showSubSupplierDropdowns, setShowSubSupplierDropdowns] = useState<{ [key: number]: boolean }>({})
+  const [showSubSuppliersSection, setShowSubSuppliersSection] = useState(false)
 
   // Generate PO number when modal opens for new orders
   React.useEffect(() => {
@@ -751,15 +968,45 @@ const PurchaseOrderModal: React.FC<{
   // Mock data - in real app this would come from API
   React.useEffect(() => {
     const mockSuppliers: Supplier[] = [
-      { id: '1', name: 'Proveedor ABC S.A.', email: 'contacto@abc.cl', phone: '+56912345678', rut: '12345678-9', isActive: true },
-      { id: '2', name: 'Distribuidora XYZ Ltda.', email: 'ventas@xyz.cl', phone: '+56987654321', rut: '87654321-0', isActive: true },
-      { id: '3', name: 'Café Premium Import', email: 'info@cafeimport.cl', phone: '+56956789123', rut: '11223344-5', isActive: true }
+      { id: '1', name: 'Proveedor ABC S.A.', vendorType: 'PROVEEDOR_REGULAR', email: 'contacto@abc.cl', phone: '+56912345678', rut: '12345678-9', taxId: '12345678-9', isActive: true },
+      { id: '2', name: 'Distribuidora XYZ Ltda.', vendorType: 'AGENTE', email: 'ventas@xyz.cl', phone: '+56987654321', rut: '87654321-0', taxId: '87654321-0', isActive: true },
+      { id: '3', name: 'Café Premium Import', vendorType: 'EMPRENDEDOR', email: 'info@cafeimport.cl', phone: '+56956789123', rut: '11223344-5', taxId: '11223344-5', isActive: true }
     ]
     
     const mockProducts: Product[] = [
-      { id: '1', sku: 'CF-001', name: 'Café Arábica Premium', type: 'PURCHASED', unitCost: 8500, uom: 'kg', category: 'Café', isActive: true },
-      { id: '2', sku: 'MILK-001', name: 'Leche Entera', type: 'PURCHASED', unitCost: 950, uom: 'L', category: 'Lácteos', isActive: true },
-      { id: '3', sku: 'SUG-001', name: 'Azúcar Blanca', type: 'PURCHASED', unitCost: 850, uom: 'kg', category: 'Endulzantes', isActive: true }
+      { 
+        id: '1', 
+        sku: 'CF-001', 
+        name: 'Café Arábica Premium', 
+        type: 'PURCHASED', 
+        unitCost: 8500, 
+        uom: 'kg', 
+        category: 'Café', 
+        isActive: true,
+        brand: { id: 'b1', name: 'Café Premium', contactName: 'Juan Pérez', email: 'juan@cafepremium.cl', phone: '+56912345678', isContact: true }
+      },
+      { 
+        id: '2', 
+        sku: 'MILK-001', 
+        name: 'Leche Entera', 
+        type: 'PURCHASED', 
+        unitCost: 950, 
+        uom: 'L', 
+        category: 'Lácteos', 
+        isActive: true,
+        brandName: 'Colun' // Simple text field
+      },
+      { 
+        id: '3', 
+        sku: 'SUG-001', 
+        name: 'Azúcar Blanca', 
+        type: 'PURCHASED', 
+        unitCost: 850, 
+        uom: 'kg', 
+        category: 'Endulzantes', 
+        isActive: true,
+        brand: { id: 'b2', name: 'Iansa', isContact: false }
+      }
     ]
     
     setSuppliers(mockSuppliers)
@@ -773,6 +1020,7 @@ const PurchaseOrderModal: React.FC<{
       if (!target.closest('.relative')) {
         setShowSupplierDropdown(false)
         setShowProductDropdowns({})
+        setShowSubSupplierDropdowns({})
       }
     }
 
@@ -794,9 +1042,52 @@ const PurchaseOrderModal: React.FC<{
   }
 
   const handleSupplierSelect = (supplier: Supplier) => {
-    setFormData(prev => ({ ...prev, vendorName: supplier.name, vendorId: supplier.id }))
+    setFormData(prev => ({ 
+      ...prev, 
+      vendorName: supplier.name, 
+      vendorId: supplier.id,
+      mainSupplierName: supplier.name,
+      mainSupplierId: supplier.id
+    }))
     setSupplierSearch(supplier.name)
     setShowSupplierDropdown(false)
+  }
+
+  const handleSubSupplierSelect = (subSupplierIndex: number, supplier: Supplier) => {
+    const newSubSuppliers = [...formData.subSuppliers]
+    newSubSuppliers[subSupplierIndex] = {
+      ...newSubSuppliers[subSupplierIndex],
+      supplierId: supplier.id,
+      supplierName: supplier.name
+    }
+    setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+    setSubSupplierSearches(prev => ({ ...prev, [subSupplierIndex]: supplier.name }))
+    setShowSubSupplierDropdowns(prev => ({ ...prev, [subSupplierIndex]: false }))
+  }
+
+  const getFilteredSubSuppliers = (searchTerm: string) => {
+    return suppliers.filter(supplier =>
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.rut?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }
+
+  const getSupplierTypeLabel = (vendorType: string) => {
+    switch (vendorType) {
+      case 'AGENTE': return 'Agente'
+      case 'PROVEEDOR_REGULAR': return 'Proveedor Regular'
+      case 'EMPRENDEDOR': return 'Emprendedor'
+      default: return vendorType
+    }
+  }
+
+  const getBrandDisplay = (product: Product) => {
+    if (product.brand) {
+      return product.brand.isContact 
+        ? `${product.brand.name} (${product.brand.contactName})`
+        : product.brand.name
+    }
+    return product.brandName || 'Sin marca'
   }
 
   const handleProductSelect = (lineIndex: number, product: Product) => {
@@ -820,38 +1111,14 @@ const PurchaseOrderModal: React.FC<{
   }
 
   const openSupplierCreationToast = () => {
-    // Open in a popup window with appropriate sizing
-    const popup = window.open(
-      'https://admin.murallacafe.cl/crm/contacts', 
-      'supplier-creation',
-      'width=900,height=700,scrollbars=yes,resizable=yes,location=yes'
-    )
-    
-    if (popup) {
-      popup.focus()
-      // You could add a listener here to refresh suppliers when the window closes
-      // popup.addEventListener('beforeunload', () => { /* refresh suppliers */ })
-    } else {
-      alert('Por favor permite ventanas emergentes para crear un nuevo proveedor')
-    }
+    onOpenSupplierForm()
+    setShowSupplierDropdown(false)
   }
 
   const openProductCreationToast = () => {
-    // Open in a popup window with appropriate sizing
-    const popup = window.open(
-      'https://admin.murallacafe.cl/operations/products', 
-      'product-creation',
-      'width=900,height=700,scrollbars=yes,resizable=yes,location=yes'
-    )
-    
-    if (popup) {
-      popup.focus()
-      // You could add a listener here to refresh products when the window closes
-      // popup.addEventListener('beforeunload', () => { /* refresh products */ })
-    } else {
-      alert('Por favor permite ventanas emergentes para crear un nuevo producto')
-    }
+    onOpenProductForm()
   }
+
 
   const updateLineTotal = (index: number) => {
     const line = formData.lines[index]
@@ -870,8 +1137,13 @@ const PurchaseOrderModal: React.FC<{
         quantity: 1,
         unitCost: 0,
         totalCost: 0,
+        shippingCostUnit: 0,
         isInventory: true,
-        productName: ''
+        productName: '',
+        deliveredBy: 'MAIN' as const,
+        subSupplierId: undefined,
+        deliveryDate: '',
+        trackingNumber: ''
       }]
     }))
   }
@@ -893,6 +1165,25 @@ const PurchaseOrderModal: React.FC<{
   if (!isOpen) return null
 
   const totalAmount = formData.lines.reduce((sum, line) => sum + line.totalCost, 0)
+  
+  // Calculate shipping cost proration
+  const calculateShippingCosts = () => {
+    const mainSupplierLines = formData.lines.filter(line => line.deliveredBy === 'MAIN')
+    const subSupplierLines = formData.lines.filter(line => line.deliveredBy === 'SUB')
+    
+    const mainSupplierTotal = mainSupplierLines.reduce((sum, line) => sum + line.totalCost, 0)
+    const subSupplierShipping = subSupplierLines.reduce((sum, line) => sum + (line.shippingCostUnit || 0) * line.quantity, 0)
+    const totalShipping = formData.subSuppliers.reduce((sum, sub) => sum + (sub.shippingCost || 0), 0) + subSupplierShipping
+    
+    return {
+      mainSupplierTotal,
+      subSupplierShipping,
+      totalShipping,
+      grandTotal: totalAmount + totalShipping
+    }
+  }
+  
+  const shippingCosts = calculateShippingCosts()
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -925,12 +1216,20 @@ const PurchaseOrderModal: React.FC<{
                     </div>
                   </div>
 
-                  {/* Header Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div className="relative md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Proveedor *
-                      </label>
+                  {/* Main Supplier Selection */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                      🏢 Proveedor Principal (Facturador)
+                    </h3>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                      El proveedor principal es quien emite la factura y es responsable del pago.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="relative md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Proveedor Principal *
+                        </label>
                       <div className="flex gap-2">
                         <div className="flex-1 relative">
                           <input
@@ -939,7 +1238,13 @@ const PurchaseOrderModal: React.FC<{
                             value={supplierSearch || formData.vendorName}
                             onChange={(e) => {
                               setSupplierSearch(e.target.value)
-                              setFormData(prev => ({ ...prev, vendorName: e.target.value, vendorId: '' }))
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                vendorName: e.target.value, 
+                                vendorId: '',
+                                mainSupplierName: e.target.value,
+                                mainSupplierId: ''
+                              }))
                               setShowSupplierDropdown(true)
                             }}
                             onFocus={() => setShowSupplierDropdown(true)}
@@ -958,6 +1263,9 @@ const PurchaseOrderModal: React.FC<{
                                   >
                                     <div className="font-medium text-gray-900 dark:text-white">{supplier.name}</div>
                                     <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-2">
+                                        {getSupplierTypeLabel(supplier.vendorType)}
+                                      </span>
                                       {supplier.rut} • {supplier.email}
                                     </div>
                                   </div>
@@ -985,8 +1293,307 @@ const PurchaseOrderModal: React.FC<{
                           <PlusIcon className="h-4 w-4" />
                         </button>
                       </div>
+                      
+                      {/* Display selected main supplier info */}
+                      {formData.mainSupplierId && (
+                        <div className="md:col-span-3 mt-2">
+                          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                            <p className="text-sm text-green-800 dark:text-green-200">
+                              ✓ Proveedor seleccionado: <strong>{formData.mainSupplierName}</strong>
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  
+                  {/* Sub-suppliers Toggle */}
+                  <div className="mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowSubSuppliersSection(!showSubSuppliersSection)}
+                      className="w-full flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">🚚</span>
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
+                            Sub-proveedores (Entrega Opcional)
+                          </h3>
+                          <p className="text-sm text-orange-700 dark:text-orange-300">
+                            Configura proveedores adicionales para entrega de productos específicos
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {formData.subSuppliers.length > 0 && (
+                          <span className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full">
+                            {formData.subSuppliers.length}
+                          </span>
+                        )}
+                        <motion.div
+                          animate={{ rotate: showSubSuppliersSection ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </motion.div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Sub-suppliers Section */}
+                  <AnimatePresence>
+                    {showSubSuppliersSection && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800 mb-6 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-md font-medium text-orange-900 dark:text-orange-100">
+                            Gestión de Sub-proveedores
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                subSuppliers: [...prev.subSuppliers, {
+                                  supplierId: '',
+                                  supplierName: '',
+                                  shippingCost: 0,
+                                  expectedDelivery: '',
+                                  trackingNumber: '',
+                                  notes: ''
+                                }]
+                              }))
+                            }}
+                            className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-sm flex items-center gap-2"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                            Agregar Sub-proveedor
+                          </button>
+                        </div>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-4">
+                      Los sub-proveedores se encargan de la entrega de productos específicos. Opcional si el proveedor principal entrega todo.
+                    </p>
                     
+                    {formData.subSuppliers.length > 0 ? (
+                      <div className="space-y-4">
+                        {formData.subSuppliers.map((subSupplier, index) => (
+                          <div key={index} className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                                Sub-proveedor #{index + 1}
+                              </h4>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    subSuppliers: prev.subSuppliers.filter((_, i) => i !== index)
+                                  }))
+                                }}
+                                className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Sub-proveedor *
+                                </label>
+                                <div className="flex gap-2">
+                                  <div className="flex-1 relative">
+                                    <input
+                                      type="text"
+                                      value={subSupplierSearches[index] || subSupplier.supplierName}
+                                      onChange={(e) => {
+                                        setSubSupplierSearches(prev => ({ ...prev, [index]: e.target.value }))
+                                        const newSubSuppliers = [...formData.subSuppliers]
+                                        newSubSuppliers[index] = { 
+                                          ...subSupplier, 
+                                          supplierName: e.target.value,
+                                          supplierId: ''
+                                        }
+                                        setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                        setShowSubSupplierDropdowns(prev => ({ ...prev, [index]: true }))
+                                      }}
+                                      onFocus={() => setShowSubSupplierDropdowns(prev => ({ ...prev, [index]: true }))}
+                                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
+                                      placeholder="Buscar sub-proveedor..."
+                                    />
+                                    
+                                    {showSubSupplierDropdowns[index] && (subSupplierSearches[index] || subSupplier.supplierName) && (
+                                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+                                        {getFilteredSubSuppliers(subSupplierSearches[index] || subSupplier.supplierName).length > 0 ? (
+                                          getFilteredSubSuppliers(subSupplierSearches[index] || subSupplier.supplierName).map(supplier => (
+                                            <div
+                                              key={supplier.id}
+                                              onClick={() => handleSubSupplierSelect(index, supplier)}
+                                              className="px-3 py-2 hover:bg-orange-50 dark:hover:bg-orange-900/50 cursor-pointer transition-colors"
+                                            >
+                                              <div className="font-medium text-gray-900 dark:text-white">{supplier.name}</div>
+                                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 mr-2">
+                                                  {getSupplierTypeLabel(supplier.vendorType)}
+                                                </span>
+                                                {supplier.rut} • {supplier.email}
+                                              </div>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                                            No se encontraron sub-proveedores
+                                          </div>
+                                        )}
+                                        <div 
+                                          onClick={openSupplierCreationToast}
+                                          className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 hover:bg-orange-50 dark:hover:bg-orange-900 cursor-pointer text-orange-600 dark:text-orange-400 font-medium"
+                                        >
+                                          + Crear nuevo sub-proveedor
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={openSupplierCreationToast}
+                                    className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-sm"
+                                    title="Crear nuevo sub-proveedor"
+                                  >
+                                    <PlusIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                
+                                {/* Display selected sub-supplier info */}
+                                {subSupplier.supplierId && (
+                                  <div className="mt-2">
+                                    <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                                      <p className="text-xs text-green-800 dark:text-green-200">
+                                        ✓ Sub-proveedor: <strong>{subSupplier.supplierName}</strong>
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Costo de Envío
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subSupplier.shippingCost || ''}
+                                  onChange={(e) => {
+                                    const newSubSuppliers = [...formData.subSuppliers]
+                                    newSubSuppliers[index] = { ...subSupplier, shippingCost: Number(e.target.value) }
+                                    setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
+                                  placeholder="0"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Entrega Esperada
+                                </label>
+                                <input
+                                  type="date"
+                                  value={subSupplier.expectedDelivery || ''}
+                                  onChange={(e) => {
+                                    const newSubSuppliers = [...formData.subSuppliers]
+                                    newSubSuppliers[index] = { ...subSupplier, expectedDelivery: e.target.value }
+                                    setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Número de Seguimiento
+                                </label>
+                                <input
+                                  type="text"
+                                  value={subSupplier.trackingNumber || ''}
+                                  onChange={(e) => {
+                                    const newSubSuppliers = [...formData.subSuppliers]
+                                    newSubSuppliers[index] = { ...subSupplier, trackingNumber: e.target.value }
+                                    setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
+                                  placeholder="Número de tracking..."
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="mt-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Notas
+                              </label>
+                              <textarea
+                                value={subSupplier.notes || ''}
+                                onChange={(e) => {
+                                  const newSubSuppliers = [...formData.subSuppliers]
+                                  newSubSuppliers[index] = { ...subSupplier, notes: e.target.value }
+                                  setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                }}
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
+                                placeholder="Notas adicionales sobre este sub-proveedor..."
+                              />
+                            </div>
+                            
+                            {/* Shared shipping option */}
+                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                              <label className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={subSupplier.allowSharedShipping || false}
+                                  onChange={(e) => {
+                                    const newSubSuppliers = [...formData.subSuppliers]
+                                    newSubSuppliers[index] = { 
+                                      ...subSupplier, 
+                                      allowSharedShipping: e.target.checked 
+                                    }
+                                    setFormData(prev => ({ ...prev, subSuppliers: newSubSuppliers }))
+                                  }}
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                                />
+                                <span className="text-sm text-blue-800 dark:text-blue-200">
+                                  <strong>Envío compartido:</strong> Permitir que el proveedor principal entregue productos de este sub-proveedor con costo prorrateado
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 dark:text-gray-400 mb-2">
+                          No hay sub-proveedores configurados
+                        </p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">
+                          El proveedor principal se encargará de toda la entrega
+                        </p>
+                      </div>
+                    )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  {/* Order Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Número Interno
@@ -1016,7 +1623,16 @@ const PurchaseOrderModal: React.FC<{
                     </div>
                     
                     <div>
-                      {/* Empty div to maintain grid layout */}
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Entrega Esperada
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.expectedDelivery || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, expectedDelivery: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
                     </div>
                   </div>
                   
@@ -1107,7 +1723,7 @@ const PurchaseOrderModal: React.FC<{
                     
                     <div className="space-y-4 max-h-60 overflow-y-auto">
                       {formData.lines.map((line, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div key={index} className="grid grid-cols-14 gap-2 items-end p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div className="col-span-4 relative">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Producto *
@@ -1142,6 +1758,9 @@ const PurchaseOrderModal: React.FC<{
                                         >
                                           <div className="font-medium text-gray-900 dark:text-white text-sm">{product.name}</div>
                                           <div className="text-xs text-gray-500 dark:text-gray-400">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 mr-1">
+                                              {getBrandDisplay(product)}
+                                            </span>
                                             {product.sku} • ${product.unitCost?.toLocaleString()} / {product.uom}
                                           </div>
                                         </div>
@@ -1171,7 +1790,7 @@ const PurchaseOrderModal: React.FC<{
                             </div>
                           </div>
                           
-                          <div className="col-span-2">
+                          <div className="col-span-1">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Cantidad *
                             </label>
@@ -1194,7 +1813,7 @@ const PurchaseOrderModal: React.FC<{
                           
                           <div className="col-span-2">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Precio Unitario *
+                              Precio Unit. *
                             </label>
                             <input
                               type="number"
@@ -1209,11 +1828,11 @@ const PurchaseOrderModal: React.FC<{
                                 }))
                                 setTimeout(() => updateLineTotal(index), 0)
                               }}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
+                              className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
                             />
                           </div>
                           
-                          <div className="col-span-2">
+                          <div className="col-span-1">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Total
                             </label>
@@ -1222,6 +1841,82 @@ const PurchaseOrderModal: React.FC<{
                               readOnly
                               value={line.totalCost.toFixed(2)}
                               className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm bg-gray-100 dark:bg-gray-800 dark:text-gray-300"
+                            />
+                          </div>
+                          
+                          {/* Delivery Assignment */}
+                          <div className="col-span-2">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Entregado por
+                            </label>
+                            <select
+                              value={line.deliveredBy}
+                              onChange={(e) => {
+                                const deliveredBy = e.target.value as 'MAIN' | 'SUB'
+                                setFormData(prev => ({
+                                  ...prev,
+                                  lines: prev.lines.map((l, i) => i === index ? { 
+                                    ...l, 
+                                    deliveredBy,
+                                    subSupplierId: deliveredBy === 'MAIN' ? undefined : l.subSupplierId,
+                                    shippingCostUnit: deliveredBy === 'MAIN' ? 0 : l.shippingCostUnit
+                                  } : l)
+                                }))
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
+                            >
+                              <option value="MAIN">Proveedor Principal</option>
+                              <option value="SUB" disabled={formData.subSuppliers.length === 0}>
+                                Sub-proveedor {formData.subSuppliers.length === 0 ? '(Ninguno configurado)' : ''}
+                              </option>
+                            </select>
+                            
+                            {/* Sub-supplier selection when SUB is selected */}
+                            {line.deliveredBy === 'SUB' && formData.subSuppliers.length > 0 && (
+                              <select
+                                value={line.subSupplierId || ''}
+                                onChange={(e) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    lines: prev.lines.map((l, i) => i === index ? { 
+                                      ...l, 
+                                      subSupplierId: e.target.value
+                                    } : l)
+                                  }))
+                                }}
+                                className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-600 dark:text-white mt-1"
+                              >
+                                <option value="">Seleccionar sub-proveedor...</option>
+                                {formData.subSuppliers.map((subSupplier, subIndex) => (
+                                  <option key={subIndex} value={subSupplier.supplierId}>
+                                    {subSupplier.supplierName || `Sub-proveedor #${subIndex + 1}`}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                          
+                          {/* Shipping Cost Unit (only for sub-suppliers) */}
+                          <div className="col-span-1">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Envío/Unidad
+                            </label>
+                            <input
+                              type="number"
+                              value={line.shippingCostUnit || ''}
+                              onChange={(e) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  lines: prev.lines.map((l, i) => i === index ? { 
+                                    ...l, 
+                                    shippingCostUnit: Number(e.target.value) || 0
+                                  } : l)
+                                }))
+                              }}
+                              disabled={line.deliveredBy === 'MAIN'}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500"
+                              placeholder="0"
+                              title={line.deliveredBy === 'MAIN' ? 'Solo para sub-proveedores' : 'Costo de envío prorrateado por unidad'}
                             />
                           </div>
                           
@@ -1242,25 +1937,68 @@ const PurchaseOrderModal: React.FC<{
                             />
                           </div>
                           
-                          <div className="col-span-1">
+                          <div className="col-span-1 flex items-end">
                             <button
                               type="button"
                               onClick={() => removeLine(index)}
-                              disabled={formData.lines.length === 1}
-                              className="p-1 text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                              disabled={formData.lines.length <= 1}
+                              className="w-full px-2 py-1 text-xs bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded"
                               title="Eliminar línea"
                             >
-                              <XMarkIcon className="h-4 w-4" />
+                              <XMarkIcon className="h-3 w-3 mx-auto" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
                     
+                    {/* Shipping Cost Summary */}
+                    {(formData.subSuppliers.length > 0 || shippingCosts.subSupplierShipping > 0) && (
+                      <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <h4 className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-3">
+                          📦 Resumen de Costos de Envío
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-700 dark:text-gray-300">Productos (Proveedor Principal):</span>
+                            <span className="font-medium">${shippingCosts.mainSupplierTotal.toLocaleString()}</span>
+                          </div>
+                          {shippingCosts.subSupplierShipping > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700 dark:text-gray-300">Envío Sub-proveedores:</span>
+                              <span className="font-medium text-orange-600">${shippingCosts.subSupplierShipping.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {formData.subSuppliers.some(sub => (sub.shippingCost || 0) > 0) && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700 dark:text-gray-300">Envío Base Sub-proveedores:</span>
+                              <span className="font-medium text-orange-600">
+                                ${formData.subSuppliers.reduce((sum, sub) => sum + (sub.shippingCost || 0), 0).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                          <div className="border-t border-orange-200 dark:border-orange-700 pt-2 flex justify-between font-semibold">
+                            <span className="text-gray-900 dark:text-white">Total con Envío:</span>
+                            <span className="text-orange-600 dark:text-orange-400">${shippingCosts.grandTotal.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="mt-4 text-right">
-                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Total: ${totalAmount.toLocaleString()} CLP
-                      </span>
+                      <div className="space-y-1">
+                        <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Subtotal: ${totalAmount.toLocaleString()} CLP
+                        </div>
+                        {shippingCosts.totalShipping > 0 && (
+                          <div className="text-sm text-orange-600 dark:text-orange-400">
+                            + Envío: ${shippingCosts.totalShipping.toLocaleString()} CLP
+                          </div>
+                        )}
+                        <div className="text-xl font-bold text-gray-900 dark:text-white border-t pt-2">
+                          Total: ${shippingCosts.grandTotal.toLocaleString()} CLP
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -1401,37 +2139,15 @@ const ViewPurchaseOrderModal: React.FC<{
                   })()}
                   
                   {/* File Attachments */}
-                  {order.attachments && order.attachments.length > 0 && (
+                  {order.attachments && order.attachments > 0 && (
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        📎 Archivos Adjuntos
+                        📎 Archivos Adjuntos ({order.attachments})
                       </label>
-                      <div className="space-y-2">
-                        {order.attachments.map((attachment, index) => (
-                          <div key={index} className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
-                            <PaperClipIcon className="h-5 w-5 text-gray-400 mr-3" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {attachment.fileName || 'Archivo'}
-                              </p>
-                              {attachment.fileSize && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {(attachment.fileSize / 1024).toFixed(1)} KB
-                                </p>
-                              )}
-                            </div>
-                            {attachment.fileUrl && (
-                              <a
-                                href={attachment.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="ml-3 text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                              >
-                                <EyeIcon className="h-4 w-4" />
-                              </a>
-                            )}
-                          </div>
-                        ))}
+                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {order.attachments} archivo{order.attachments > 1 ? 's' : ''} adjunto{order.attachments > 1 ? 's' : ''}
+                        </p>
                       </div>
                     </div>
                   )}

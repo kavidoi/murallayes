@@ -1,13 +1,15 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards, UseInterceptors, UploadedFile, Req } from '@nestjs/common';
-import { CostsService } from './costs.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../common/roles.guard';
-import { Roles } from '../common/roles.decorator';
-import type {} from '../prisma-v6-compat';
-import { CreateCostDto } from './dto/create-cost.dto';
-import { ListCostsQueryDto } from './dto/list-costs.dto';
-import { LinkTransactionDto } from './dto/link-transaction.dto';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CostsService } from './costs.service';
+import { CreateCostDto } from './dto/create-cost.dto';
+// import { UpdateCostDto } from './dto/update-cost.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { StorageService } from '../storage/storage.service';
+import { Roles } from '../common/roles.decorator';
+import { RolesGuard } from '../common/roles.guard';
+import { LinkTransactionDto } from './dto/link-transaction.dto';
+import { ListCostsQueryDto } from './dto/list-costs.dto';
+import type {} from '../prisma-v6-compat';
 import { diskStorage } from 'multer';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -16,7 +18,10 @@ import { existsSync, mkdirSync } from 'fs';
 @Roles('admin', 'manager', 'staff')
 @Controller('costs')
 export class CostsController {
-  constructor(private readonly costs: CostsService) {}
+  constructor(
+    private readonly costs: CostsService,
+    private readonly storageService: StorageService
+  ) {}
 
   @Post()
   create(@Req() req: any, @Body() dto: CreateCostDto) {
@@ -47,39 +52,52 @@ export class CostsController {
     return this.costs.linkTransaction(costId, dto.transactionId);
   }
 
-  // Simple upload endpoint for receipts (mobile-friendly)
+  // Upload receipt using cloud storage
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (_req, _file, cb) => {
-          const dest = join(process.cwd(), 'uploads', 'receipts');
-          if (!existsSync(dest)) {
-            mkdirSync(dest, { recursive: true });
-          }
-          cb(null, dest);
-        },
-        filename: (_req, file, cb) => {
-          const ts = Date.now();
-          const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-          cb(null, `${ts}-${safeName}`);
-        },
-      }),
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+        ];
+        if (!allowedTypes.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException('Only PDF and image files are allowed'),
+            false
+          );
+        }
+        cb(null, true);
+      },
     })
   )
-  uploadReceipt(@Req() req: any, @UploadedFile() file: any) {
+  async uploadReceipt(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      return { error: 'No file uploaded' };
+      throw new BadRequestException('No file uploaded');
     }
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const baseUrl = `${protocol}://${host}`;
-    return {
-      fileUrl: `${baseUrl}/uploads/receipts/${file.filename}`,
-      fileName: file.originalname,
-      fileType: file.mimetype,
-      fileSize: file.size,
-    };
+
+    try {
+      const result = await this.storageService.uploadDocument(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        { folder: 'receipts' }
+      );
+
+      return {
+        success: true,
+        data: {
+          ...result,
+          uploadedBy: req.user?.userId,
+        },
+        message: 'Receipt uploaded successfully',
+      };
+    } catch (error) {
+      throw new BadRequestException(`Upload failed: ${error.message}`);
+    }
   }
 }

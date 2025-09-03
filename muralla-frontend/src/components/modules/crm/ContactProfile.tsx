@@ -1,46 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface Contact {
-  id: string;
-  name: string;
-  type: 'supplier' | 'customer' | 'important';
-  entityType: 'business' | 'person';
-  phone?: string;
-  email?: string;
-  instagram?: string;
-  rut?: string;
-  company?: string;
-  address?: string;
-  notes?: string;
-  tags: string[];
-  createdAt: string;
-  lastContact?: string;
-  // Business-specific fields
-  contactPersonName?: string;
-  giro?: string;
-  // Bank account details
-  bankDetails?: {
-    bankName?: string;
-    accountType?: 'checking' | 'savings' | 'business';
-    accountNumber?: string;
-    accountHolder?: string;
-    rutAccount?: string;
-  };
-  // Supplier portal access
-  portalToken?: string;
-  portalEnabled?: boolean;
-  currentStock?: any[];
-  pendingOrders?: any[];
-  totalPurchases?: number;
-  totalSales?: number;
-  averagePurchase?: number;
-  averageSale?: number;
-  lastPurchaseAmount?: number;
-  lastSaleAmount?: number;
-  purchaseCount: number;
-  salesCount: number;
-  relationshipScore: number;
-}
+import { type Contact } from '../../../services/contactsService';
 
 interface Transaction {
   id: string;
@@ -78,6 +37,7 @@ interface ContactProfileProps {
   history: HistoryEntry[];
   onClose: () => void;
   onEdit?: (contact: Contact) => void;
+  onDelete?: (contactId: string) => void;
   onAddNote?: (note: string) => void;
 }
 
@@ -106,10 +66,10 @@ const getCategoryColor = (category: string) => {
   }
 };
 
-const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClose, onEdit, onAddNote }) => {
+const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClose, onEdit, onDelete, onAddNote }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'analytics' | 'history'>('info');
-  const [newNote, setNewNote] = useState('');
+  const [_newNote, _setNewNote] = useState('');
 
   useEffect(() => {
     // Mock transaction data - replace with actual API call
@@ -204,7 +164,7 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -224,8 +184,8 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                   <span className={`px-3 py-1 text-sm font-medium rounded-full ${getTypeColor(contact.type)}`}>
                     {getTypeText(contact.type)}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Relación: {getRelationshipStars(contact.relationshipScore)}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Relación: {getRelationshipStars(contact.relationshipScore || 1)}
                   </span>
                 </div>
               </div>
@@ -247,6 +207,18 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
               >
                 ✏️ Editar
               </button>
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`¿Estás seguro de que deseas eliminar el contacto "${contact.name}"?`)) {
+                      onDelete(contact.id);
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md"
+                >
+                  🗑️ Eliminar
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 text-2xl px-2"
@@ -431,11 +403,32 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                   </div>
                 )}
 
-                {/* Supplier Portal Section */}
-                {contact.type === 'supplier' && (
+                {/* Stock section disabled - currentStock not in Contact model */}
+                {false && (
                   <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
-                      Portal del Proveedor
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Stock Actual (0 productos)
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Estado del Portal:</span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          contact.portalEnabled 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        }`}>
+                          {contact.portalEnabled ? '✅ Activo' : '❌ Inactivo'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Supplier Portal Section */}
+                {false && contact.type === 'supplier' && (
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Stock Actual (0 productos)
                     </h4>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
@@ -481,25 +474,9 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                             </div>
                           </div>
                           
-                          {contact.currentStock && (
-                            <div className="flex items-center">
-                              <span className="w-8 text-gray-400">📦</span>
-                              <span className="text-gray-900 dark:text-gray-100">
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Productos en Stock: </span>
-                                {contact.currentStock.length} productos
-                              </span>
-                            </div>
-                          )}
+                          {/* Stock info disabled - currentStock not in Contact model */}
                           
-                          {contact.pendingOrders && (
-                            <div className="flex items-center">
-                              <span className="w-8 text-gray-400">📋</span>
-                              <span className="text-gray-900 dark:text-gray-100">
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Órdenes Pendientes: </span>
-                                {contact.pendingOrders.length} órdenes
-                              </span>
-                            </div>
-                          )}
+                          {/* Pending orders disabled - pendingOrders not in Contact model */}
                         </>
                       )}
                       
@@ -531,11 +508,9 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                   </div>
                 )}
 
-                {contact.tags.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">
-                      Etiquetas
-                    </h4>
+                {contact.tags && contact.tags.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Etiquetas</h4>
                     <div className="flex flex-wrap gap-2">
                       {contact.tags.map((tag, index) => (
                         <span
@@ -706,11 +681,11 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                       <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                         Frecuencia de Compra
                       </h4>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {contact.purchaseCount} compras
+                      <p className="text-2xl font-semibold text-blue-600">
+                        {contact.purchaseCount || 0}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        ~{Math.round(contact.purchaseCount / 12)} por mes
+                        ~{Math.round((contact.purchaseCount || 0) / 12)} por mes
                       </p>
                     </div>
                     <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border">
@@ -733,11 +708,11 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                       <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                         Frecuencia de Compra
                       </h4>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {contact.salesCount} ventas
+                      <p className="text-2xl font-semibold text-green-600">
+                        {contact.salesCount || 0}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        ~{Math.round(contact.salesCount / 12)} por mes
+                        ~{Math.round((contact.salesCount || 0) / 12)} por mes
                       </p>
                     </div>
                     <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border">
@@ -759,7 +734,7 @@ const ContactProfile: React.FC<ContactProfileProps> = ({ contact, history, onClo
                     Calidad de Relación
                   </h4>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {getRelationshipStars(contact.relationshipScore)}
+                    {getRelationshipStars(contact.relationshipScore || 1)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {contact.relationshipScore}/5 estrellas

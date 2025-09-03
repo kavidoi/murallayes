@@ -595,7 +595,7 @@ const BudgetManager: React.FC = () => {
 
       {/* Create Budget Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
             <form onSubmit={handleCreateBudget} className="p-6 space-y-6">
               <div className="flex justify-between items-center">
@@ -619,7 +619,7 @@ const BudgetManager: React.FC = () => {
                     type="text"
                     value={budgetForm.name}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
@@ -631,7 +631,7 @@ const BudgetManager: React.FC = () => {
                   <select
                     value={budgetForm.projectId}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, projectId: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
                     <option value="">Seleccionar proyecto</option>
@@ -648,7 +648,7 @@ const BudgetManager: React.FC = () => {
                   <select
                     value={budgetForm.category}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, category: e.target.value as any }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
                     <option value="OPEX">OPEX (Gastos Operacionales)</option>
@@ -667,7 +667,7 @@ const BudgetManager: React.FC = () => {
                     step="0.01"
                     value={budgetForm.totalPlanned}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, totalPlanned: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
@@ -680,7 +680,7 @@ const BudgetManager: React.FC = () => {
                     type="date"
                     value={budgetForm.startDate}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -692,7 +692,7 @@ const BudgetManager: React.FC = () => {
                     type="date"
                     value={budgetForm.endDate}
                     onChange={(e) => setBudgetForm(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -704,8 +704,9 @@ const BudgetManager: React.FC = () => {
                 <textarea
                   value={budgetForm.description}
                   onChange={(e) => setBudgetForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   rows={3}
+                  placeholder="Descripción del presupuesto..."
                 />
               </div>
 
@@ -748,7 +749,7 @@ const BudgetManager: React.FC = () => {
                             type="text"
                             value={line.name}
                             onChange={(e) => updateBudgetLine(index, 'name', e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             required
                           />
                         </div>
@@ -762,7 +763,7 @@ const BudgetManager: React.FC = () => {
                             step="0.01"
                             value={line.plannedAmount}
                             onChange={(e) => updateBudgetLine(index, 'plannedAmount', e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             required
                           />
                         </div>
@@ -775,7 +776,7 @@ const BudgetManager: React.FC = () => {
                             type="text"
                             value={line.vendor}
                             onChange={(e) => updateBudgetLine(index, 'vendor', e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
 
@@ -787,7 +788,7 @@ const BudgetManager: React.FC = () => {
                             type="text"
                             value={line.category}
                             onChange={(e) => updateBudgetLine(index, 'category', e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
 
@@ -799,7 +800,7 @@ const BudgetManager: React.FC = () => {
                             type="date"
                             value={line.dueDate}
                             onChange={(e) => updateBudgetLine(index, 'dueDate', e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
 
@@ -824,7 +825,7 @@ const BudgetManager: React.FC = () => {
                         <textarea
                           value={line.description}
                           onChange={(e) => updateBudgetLine(index, 'description', e.target.value)}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           rows={2}
                         />
                       </div>

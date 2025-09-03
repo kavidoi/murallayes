@@ -10,6 +10,8 @@ import { EditingIndicator } from '../../common/EditingIndicator';
 import { useWebSocket } from '../../../contexts/WebSocketContext';
 import MentionInput, { type EntityMention } from '../../universal/MentionInput';
 import RelationshipManager, { type EntityRelationship } from '../../universal/RelationshipManager';
+import { DevLoginModal } from '../../common/DevLoginModal';
+import { AuthService } from '../../../services/authService';
 
 interface ExpenseCategory {
   id: string;
@@ -106,6 +108,10 @@ const Gastos: React.FC = () => {
   const [supplierMentions, setSupplierMentions] = useState<EntityMention[]>([]);
   const [descriptionMentions, setDescriptionMentions] = useState<EntityMention[]>([]);
   const [expenseRelationships, setExpenseRelationships] = useState<EntityRelationship[]>([]);
+  
+  // Authentication state
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Real-time collaboration state
   const [editingExpense, setEditingExpense] = useState<DirectExpense | null>(null);
@@ -231,6 +237,14 @@ const Gastos: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showProviderDropdown]);
+
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setShowLoginModal(false);
+    // Try to create the expense again after authentication
+    handleCreateExpense();
+  };
 
   // Filter suppliers based on search term
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -397,7 +411,8 @@ const Gastos: React.FC = () => {
         };
         
         // Show user-friendly message
-        alert('💡 Demo Mode: Expense created locally (backend requires authentication). Universal Interconnection features still work!');
+        // Show login modal instead of alert
+        setShowLoginModal(true);
       }
       
       // Convert backend/demo response to local format for immediate UI update
@@ -1651,6 +1666,13 @@ const Gastos: React.FC = () => {
           onCreateSupplier={() => setShowAddContact(true)}
         />
       )}
+
+      {/* Login Modal for Authentication */}
+      <DevLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 };

@@ -228,7 +228,7 @@ const AssigneeSelector: React.FC<{
 }> = ({ selectedUserIds, users, onSelectionChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null)
-  const availableUsers = users.filter(user => user.email !== 'admin@murallacafe.cl')
+  const availableUsers = users.filter(user => user.email !== 'contacto@murallacafe.cl')
   const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id))
   
   const toggleUser = (userId: string) => {
@@ -1064,9 +1064,18 @@ const TasksList: React.FC = () => {
     
     try {
       // Optimistic update - immediate UI response
-      setTasks(prev => prev.map(task => 
-        task.id === taskId ? { ...task, ...updates } : task
-      ))
+      setTasks(prev => prev.map(task => {
+        if (task.id === taskId) {
+          const updatedTask = { ...task, ...updates }
+          // When projectId is updated, also update projectName for immediate UI feedback
+          if ('projectId' in updates && updates.projectId) {
+            const project = projects.find(p => p.id === updates.projectId)
+            updatedTask.projectName = project?.name || 'Unknown Project'
+          }
+          return updatedTask
+        }
+        return task
+      }))
       
       // Skip API calls for temporary tasks (they don't exist in the backend yet)
       if (taskId.startsWith('temp-')) {
@@ -1117,7 +1126,7 @@ const TasksList: React.FC = () => {
       // Clear error after 3 seconds
       setTimeout(() => setError(null), 3000)
     }
-  }, [tasks])
+  }, [tasks, projects])
   
   const handleSubtaskUpdate = useCallback(async (parentTaskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     const originalTasks = tasks
@@ -1182,7 +1191,7 @@ const TasksList: React.FC = () => {
       setSavingItems(prev => new Set(prev.add(tempId)))
       
       // Optimistic UI update
-      setTasks(prev => [...prev, tempTask])
+      setTasks(prev => [tempTask, ...prev])
       
       const defaultProject = await projectsService.getOrCreateDefaultProject()
       const newTask = await tasksService.createTask({

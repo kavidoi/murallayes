@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, IsArray, IsInt, Min, Max, IsNumber } from 'class-validator';
-import { ProductType } from '@prisma/client';
+import { ProductType, ProductFormat, ProductExtra } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 
 export class CreateProductDto {
@@ -98,4 +98,24 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean = true;
+
+  // Product Classification for SKU Generation
+  @IsOptional()
+  @IsEnum(ProductFormat)
+  format?: ProductFormat;
+
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ProductExtra, { each: true })
+  extras?: ProductExtra[];
+
+  // Brand Management
+  @IsOptional()
+  @IsString()
+  brandId?: string;
+
+  @IsOptional()
+  @IsString()
+  brandName?: string;
 }

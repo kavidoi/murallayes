@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
+import { useTaskStatus, useTaskStatusActions } from '../../../hooks/useTaskStatus';
 import { useTranslation } from 'react-i18next';
 import { useEditingStatus } from '../../../hooks/useEditingStatus';
 import { useConflictResolution } from '../../../hooks/useConflictResolution';
@@ -8,27 +9,40 @@ import { useWebSocket } from '../../../contexts/WebSocketContext';
 import { ConflictResolutionModal } from '../../common/ConflictResolutionModal';
 import { EditingIndicator } from '../../common/EditingIndicator';
 import DatePicker from '../../ui/DatePicker';
+import { MentionInput } from '../../common/MentionInput';
+import { CollaborativeTextEditor } from '../../common/CollaborativeTextEditor';
 import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO } from '../../../utils/dateUtils';
 import type { User } from '../../../types';
+import { AuthService } from '../../../services/authService';
 
 interface Project {
   id: string;
   name: string;
 }
 
-type Status = 'New' | 'In Progress' | 'Completed' | 'Overdue';
+type Status = 'Nuevo' | 'En progreso' | 'Listo' | 'Atrasado';
 
 interface Task {
   id: string;
   name: string;
   status: Status;
-  assigneeIds: string[];
+  // REMOVED: assigneeIds - now handled by EntityRelationship system
   dueDate?: string | null; // DD/MM/YYYY format
   expanded?: boolean;
   subtasks: any[];
   order: number;
   projectId?: string;
   projectName?: string;
+  // Intelligent status fields
+  title: string;
+  description?: string;
+  createdAt: string;
+  dueDateModifiedAt?: string;
+  statusModifiedByUser: boolean;
+  wasEnProgreso: boolean;
+  // Universal relationship data
+  relationships?: any[];
+  allAssignees?: any[];
 }
 
 interface TaskEditModalProps {
@@ -61,7 +75,7 @@ const AssigneeSelector: React.FC<{
   onSelectionChange: (userIds: string[]) => void
   disabled?: boolean
 }> = ({ selectedUserIds, users, onSelectionChange, disabled }) => {
-  const availableUsers = users.filter(user => user.email !== 'admin@murallacafe.cl')
+  const availableUsers = users.filter(user => user.email !== 'contacto@murallacafe.cl')
   const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id))
   
   const toggleUser = (userId: string) => {
@@ -132,6 +146,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const [currentVersion, setCurrentVersion] = useState(initialVersion || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
 
   // Real-time collaboration hooks
   const {
@@ -170,11 +185,30 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     }
   });
 
+  // Load current user for collaborative editing
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const user = await AuthService.getCurrentUser();
+        if (user) {
+          setCurrentUser({
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`.trim() || user.email
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load current user:', error);
+      }
+    };
+
+    loadCurrentUser();
+  }, []);
+
   // Field labels for conflict resolution
   const fieldLabels = {
     name: 'Nombre de la Tarea',
     status: 'Estado',
-    assigneeIds: 'Usuarios Asignados',
+    description: 'Descripción',
     dueDate: 'Fecha de Vencimiento',
     projectId: 'Proyecto',
   };
@@ -197,15 +231,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   // Status options and colors
   const getStatusColor = (status: Status) => {
     switch (status) {
-      case 'New': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-      case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-      case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-      case 'Overdue': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+      case 'Nuevo': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      case 'En progreso': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+      case 'Listo': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+      case 'Atrasado': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
     }
   }
 
-  const statusOptions: Status[] = ['New', 'In Progress', 'Completed'];
+  const statusOptions: Status[] = ['Nuevo', 'En progreso', 'Listo'];
 
   // Save handler
   const handleSave = async (taskData: Task = formData, skipConflictCheck = false) => {
@@ -255,7 +289,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     <>
       <div className="fixed inset-0 z-40 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleClose} />
+          <div className="fixed inset-0 bg-black bg-opacity-75 transition-opacity" onClick={handleClose} />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -298,7 +332,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             {isOthersEditing && (
               <div className="px-6 py-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-700">
                 <div className="flex items-center space-x-2">
-                  <ExclamationTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="w-5 h-5 text-red-600 dark:text-red-400">⚠️</div>
                   <div>
                     <p className="text-sm font-medium text-red-800 dark:text-red-200">
                       Cuidado: Edición Simultánea
@@ -390,16 +424,66 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   />
                 </div>
 
-                {/* Assignees */}
+                {/* Description with Collaborative Editor */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Usuarios Asignados
+                    Descripción
                   </label>
-                  <AssigneeSelector
-                    selectedUserIds={formData.assigneeIds}
-                    users={users}
-                    onSelectionChange={(assigneeIds) => handleInputChange('assigneeIds', assigneeIds)}
-                  />
+                  
+                  {currentUser ? (
+                    <CollaborativeTextEditor
+                      value={formData.description || ''}
+                      onChange={(description) => {
+                        console.log('CollaborativeTextEditor onChange called with:', description);
+                        handleInputChange('description', description);
+                      }}
+                      placeholder="Describe la tarea... Usa @ para mencionar usuarios, productos, proyectos..."
+                      currentUser={currentUser}
+                      showAuthorship={true}
+                      onMentionCreated={async (mention) => {
+                        // Create relationship when entity is mentioned
+                        try {
+                          await fetch('/entity-relationships', {
+                            method: 'POST',
+                            headers: { 
+                              'Content-Type': 'application/json',
+                              ...AuthService.getAuthHeaders(),
+                            },
+                            body: JSON.stringify({
+                              relationshipType: 'mentioned_in',
+                              sourceType: mention.entityType,
+                              sourceId: mention.entityId,
+                              targetType: 'Task',
+                              targetId: formData.id,
+                              metadata: {
+                                mentionText: mention.text,
+                                context: 'task_description'
+                              },
+                              tags: ['mention', 'task']
+                            })
+                          });
+                        } catch (error) {
+                          console.error('Failed to create mention relationship:', error);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <textarea
+                      value={formData.description || ''}
+                      onChange={(e) => {
+                        console.log('Fallback textarea onChange called with:', e.target.value);
+                        handleInputChange('description', e.target.value);
+                      }}
+                      placeholder="Describe la tarea... (Cargando editor colaborativo...)"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 dark:text-white dark:bg-gray-700"
+                      rows={3}
+                    />
+                  )}
+                  
+                  <p className="text-xs text-gray-500 mt-1">
+                    👥 Editor colaborativo: rastrea quién escribió qué y muestra el desglose de autoría. 
+                    Menciona usuarios con @ para crear relaciones automáticamente.
+                  </p>
                 </div>
               </div>
             </div>
@@ -435,19 +519,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       </div>
 
       {/* Conflict Resolution Modal */}
-      <AnimatePresence>
-        {isConflictModalOpen && currentConflict && (
-          <ConflictResolutionModal
-            isOpen={isConflictModalOpen}
-            onClose={handleConflictClose}
-            onResolve={handleConflictResolve}
-            resourceName={currentConflict.resourceName}
-            conflicts={currentConflict.conflicts}
-            currentUser="Tú"
-            conflictingUser={currentConflict.conflictingUser.name || currentConflict.conflictingUser.email}
-          />
-        )}
-      </AnimatePresence>
+      {isConflictModalOpen && currentConflict && (
+        <ConflictResolutionModal
+          isOpen={isConflictModalOpen}
+          onClose={handleConflictClose}
+          conflicts={currentConflict as any}
+          onResolve={handleConflictResolve}
+          resourceName="Task"
+          conflictingUser="Unknown User"
+        />
+      )}
     </>
   );
 };

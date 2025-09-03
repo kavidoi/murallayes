@@ -23,10 +23,10 @@ interface Task {
   subtasks: Subtask[];
   attachments: Attachment[];
   comments: Comment[];
-  cycleTime?: number; // in days
-  timeInStatus?: { [key: string]: number }; // time spent in each status
+  cycleTime?: number;
+  timeInStatus: { [key: string]: number };
   blockedReason?: string;
-  isBlocked?: boolean;
+  isBlocked: boolean;
 }
 
 interface Label {
@@ -71,8 +71,8 @@ const convertAPITaskToKanbanTask = (apiTask: APITask, allUsers: User[], projects
     const user = allUsers.find(u => u.id === assignee.userId);
     return user || {
       id: assignee.userId,
-      name: `${assignee.user?.firstName || ''} ${assignee.user?.lastName || ''}`.trim(),
-      avatar: `${assignee.user?.firstName?.charAt(0) || ''}${assignee.user?.lastName?.charAt(0) || ''}`,
+      name: `${(assignee.user as any)?.firstName || ''} ${(assignee.user as any)?.lastName || ''}`.trim(),
+      avatar: `${(assignee.user as any)?.firstName?.charAt(0) || ''}${(assignee.user as any)?.lastName?.charAt(0) || ''}`,
       email: assignee.user?.email || ''
     };
   }) || [];
@@ -99,8 +99,8 @@ const convertAPITaskToKanbanTask = (apiTask: APITask, allUsers: User[], projects
       completed: subtask.status === 'DONE',
       assignee: subtask.assignee ? {
         id: subtask.assignee.id,
-        name: `${subtask.assignee.firstName} ${subtask.assignee.lastName}`,
-        avatar: `${subtask.assignee.firstName.charAt(0)}${subtask.assignee.lastName.charAt(0)}`,
+        name: `${(subtask.assignee as any).firstName} ${(subtask.assignee as any).lastName}`,
+        avatar: `${(subtask.assignee as any).firstName?.charAt(0) || ''}${(subtask.assignee as any).lastName?.charAt(0) || ''}`,
         email: subtask.assignee.email
       } : undefined
     })),
@@ -142,10 +142,10 @@ const KanbanBoard: React.FC = () => {
   const boardRef = useRef<HTMLDivElement>(null);
 
   const columns: Column[] = [
-    { id: 'TODO', title: 'To Do', status: 'TODO', color: 'bg-electric-blue/10 dark:bg-electric-blue/5', limit: 8 },
-    { id: 'IN_PROGRESS', title: 'In Progress', status: 'IN_PROGRESS', color: 'bg-electric-yellow/10 dark:bg-electric-yellow/5', limit: 5 },
-    { id: 'REVIEW', title: 'Review', status: 'REVIEW', color: 'bg-electric-purple/10 dark:bg-electric-purple/5', limit: 3 },
-    { id: 'DONE', title: 'Done', status: 'DONE', color: 'bg-electric-green/10 dark:bg-electric-green/5', limit: undefined }
+    { id: 'TODO', title: 'Por Hacer', status: 'TODO', color: 'bg-electric-blue/10 dark:bg-electric-blue/5', limit: 8 },
+    { id: 'IN_PROGRESS', title: 'En Progreso', status: 'IN_PROGRESS', color: 'bg-electric-yellow/10 dark:bg-electric-yellow/5', limit: 5 },
+    { id: 'REVIEW', title: 'Revisión', status: 'REVIEW', color: 'bg-electric-purple/10 dark:bg-electric-purple/5', limit: 3 },
+    { id: 'DONE', title: 'Completadas', status: 'DONE', color: 'bg-electric-green/10 dark:bg-electric-green/5', limit: undefined }
   ];
 
   // Keyboard shortcuts
@@ -193,8 +193,8 @@ const KanbanBoard: React.FC = () => {
       // Convert API users to local user format
       const convertedUsers: User[] = usersData.map((apiUser, index) => ({
         id: apiUser.id,
-        name: `${apiUser.firstName} ${apiUser.lastName}`,
-        avatar: `${apiUser.firstName.charAt(0)}${apiUser.lastName.charAt(0)}`,
+        name: `${(apiUser as any).firstName || ''} ${(apiUser as any).lastName || ''}`.trim(),
+        avatar: `${(apiUser as any).firstName?.charAt(0) || ''}${(apiUser as any).lastName?.charAt(0) || ''}`,
         email: apiUser.email
       }));
       
@@ -264,7 +264,7 @@ const KanbanBoard: React.FC = () => {
 
       // Update all tasks via API
       await Promise.all(
-        taskIds.map(taskId => tasksService.updateTask(taskId, { status: newStatus }))
+        taskIds.map(taskId => tasksService.updateTask(taskId, { status: newStatus === 'TODO' ? 'PENDING' : newStatus as any }))
       );
       console.log(`${taskIds.length} tasks updated to ${newStatus}`);
     } catch (error) {
@@ -317,7 +317,7 @@ const KanbanBoard: React.FC = () => {
         setDraggedOver(null);
 
         // Update via API
-        await tasksService.updateTask(draggedTask.id, { status });
+        await tasksService.updateTask(draggedTask.id, { status: status === 'TODO' ? 'PENDING' : status as any });
         console.log(`Tarea "${draggedTask.title}" movida a ${status}`);
       } catch (error) {
         console.error('Error updating task status:', error);
@@ -542,7 +542,7 @@ const KanbanBoard: React.FC = () => {
                     className="relative w-8 h-8 rounded-full bg-electric-blue text-white flex items-center justify-center text-sm font-medium border-2 border-white dark:border-gray-800"
                     title={`${user.name} está activo`}
                   >
-                    {user.avatar}
+                    src={(user as any).avatar}
                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-electric-green rounded-full border-2 border-white dark:border-gray-800"></div>
                   </div>
                 ))}
@@ -773,7 +773,7 @@ const KanbanBoard: React.FC = () => {
                   className="input transition-colors"
                 >
                   <option value="all">Todos los usuarios</option>
-                  {users.filter(user => user.email !== 'admin@murallacafe.cl').map(user => (
+                  {users.filter(user => user.email !== 'contacto@murallacafe.cl').map(user => (
                     <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
@@ -987,7 +987,7 @@ const KanbanBoard: React.FC = () => {
                               className="w-6 h-6 rounded-full bg-electric-blue text-white flex items-center justify-center text-xs font-medium border-2 border-white dark:border-gray-800"
                               title={assignee.name}
                             >
-                              {assignee.avatar}
+                              src={(assignee as any).avatar}
                             </div>
                           ))}
                           {task.assignees.length > 3 && (
@@ -1028,7 +1028,7 @@ const KanbanBoard: React.FC = () => {
 
       {/* Task Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -1112,8 +1112,8 @@ const KanbanBoard: React.FC = () => {
                     <div className="space-y-3">
                       {selectedTask.comments.map((comment) => (
                         <div key={comment.id} className="flex items-start p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                          <div className="w-8 h-8 rounded-full bg-electric-blue text-white flex items-center justify-center text-sm font-medium mr-3">
-                            {comment.author.avatar}
+                          <div className="w-8 h-8 rounded-full bg-electric-purple text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
+                            src={(comment.author as any).avatar}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center mb-1">
@@ -1218,7 +1218,7 @@ const KanbanBoard: React.FC = () => {
 
       {/* Activity Sidebar */}
       {showActivity && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-end z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-end z-50">
           <div className="activity-sidebar bg-white dark:bg-gray-800 h-full w-80 shadow-xl">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Actividad Reciente</h3>
@@ -1241,7 +1241,7 @@ const KanbanBoard: React.FC = () => {
                     <div key={user.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="relative">
                         <div className="w-8 h-8 rounded-full bg-electric-blue text-white flex items-center justify-center text-sm font-medium">
-                          {user.avatar}
+                          src={(user as any).avatar}
                         </div>
                         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-electric-green rounded-full border-2 border-white dark:border-gray-800"></div>
                       </div>
@@ -1263,7 +1263,7 @@ const KanbanBoard: React.FC = () => {
                   {recentActivity.map(activity => (
                     <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="w-8 h-8 rounded-full bg-electric-purple text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
-                        {activity.user.avatar}
+                        {(activity.user as any).avatar}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-900 dark:text-white">

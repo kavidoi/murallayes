@@ -2,7 +2,7 @@
 
 Repository: https://github.com/kavidoi/murallayes.git
 
-> NestJS • React • Prisma • BullMQ • PostgreSQL • Redis • Railway
+> NestJS • React • Prisma • BullMQ • PostgreSQL • Redis • Render
 
 ## Contents
 
@@ -19,44 +19,32 @@ Repository: https://github.com/kavidoi/murallayes.git
 # install all workspaces
 pnpm install
 
-# backend dev (runs on :3000)
-pnpm -C muralla-backend run start:dev
+# backend dev (runs on :4000)
+cd muralla-backend && pnpm start:dev
 
 # frontend dev (runs on :5173)
-pnpm -C muralla-frontend run dev
+cd muralla-frontend && pnpm dev
 ```
 
 ### Environment
-Railway is the source of truth for variables. Prefer running locally with Railway-injected vars:
+Use local `.env` files for development. See `docs/reference/env-vars.md` for details.
 
 ```sh
-# Backend (uses Railway vars, no local files written)
-railway run -s Backend -e <environment> -- pnpm -C muralla-backend start:dev
-# Frontend
-railway run -s Frontend -e <environment> -- pnpm -C muralla-frontend dev
+# Backend (.env file in muralla-backend/)
+cd muralla-backend && pnpm start:dev
+
+# Frontend (.env file in muralla-frontend/)
+cd muralla-frontend && pnpm dev
 ```
 
-Optionally mirror Railway vars to local dotenv files for temporary dev:
+## Deployment (Render)
+Deploy using Render's Git integration:
 
-```sh
-RAILWAY_PROJECT_NAME=<project> RAILWAY_ENVIRONMENT=<environment> \
-  ./scripts/pull_railway_vars.sh
-# Writes muralla-backend/.env.railway and muralla-frontend/.env.railway (gitignored)
-```
+1. **Backend**: Connect your repo to a new Render Web Service
+2. **Frontend**: Connect your repo to a new Render Static Site
+3. Set environment variables in Render dashboard
 
-Full reference: see `docs/reference/env-vars.md`.
-
-## Deployment (Railway)
-See `docs/platform/railway-api.md` for the full guide.
-
-TL;DR:
-```bash
-./scripts/set_railway_vars.sh   # sets env vars via CLI
-railway up -s Backend           # deploy API
-railway up -s Frontend          # deploy SPA
-```
-
-Backend health check: `https://api.<domain>/health/healthz`
+Backend health check: `https://your-api.onrender.com/health/healthz`
 
 ## Auth flow
 1. `POST /auth/login` returns `{access_token}`.  
@@ -76,12 +64,12 @@ See `docs/reference/env-vars.md` for the canonical list and details. Summary bel
 ### Backend service
 | Variable | Purpose | Example / Note |
 |----------|---------|-----------------|
-| `DATABASE_URL` | Postgres connection string | Provided by Railway Postgres |
-| `REDIS_URL` | Redis connection string | Provided by Railway Redis |
+| `DATABASE_URL` | Postgres connection string | Provided by Render PostgreSQL |
+| `REDIS_URL` | Redis connection string | Provided by Render Redis |
 | `JWT_SECRET` | JWT signing secret | Use a strong random string |
 | `JWT_EXPIRES_IN` | Token lifetime | e.g. `24h` |
-| `FRONTEND_URL` | CORS allowed origin | `${{ Frontend.RAILWAY_PUBLIC_DOMAIN }}` |
-| `BACKEND_URL` | Public API base URL | `${{ Backend.RAILWAY_PUBLIC_DOMAIN }}` |
+| `FRONTEND_URL` | CORS allowed origin | Your Render frontend URL |
+| `BACKEND_URL` | Public API base URL | Your Render backend URL |
 | `DISABLE_QUEUES` | Disable BullMQ queues | `true` to disable when Redis absent |
 | `LOG_LEVEL` | Backend log level | `info` (default) |
 | `SMTP_HOST` | SMTP server host (email) | Optional |
@@ -106,7 +94,7 @@ See `docs/reference/env-vars.md` for the canonical list and details. Summary bel
 ### Frontend service
 | Variable | Purpose | Example / Note |
 |----------|---------|-----------------|
-| `VITE_API_BASE_URL` | Backend base URL | `${{ Backend.RAILWAY_PUBLIC_DOMAIN }}` |
+| `VITE_API_BASE_URL` | Backend base URL | Your Render backend URL |
 | `VITE_MP_PUBLIC_KEY` | MercadoPago public key (if using payments) | Set in Frontend service |
 | `VITE_ENABLE_DEMO` | Preload demo token (non-prod) | `true` only for staging/dev |
 | `NIXPACKS_NODE_VERSION` | Node pin for Nixpacks | `20.19.0` |

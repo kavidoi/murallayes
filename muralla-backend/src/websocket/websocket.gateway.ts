@@ -40,6 +40,8 @@ interface DataChange {
   cors: {
     origin: '*',
   },
+  namespace: '/',
+  transports: ['websocket', 'polling'],
 })
 export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { XMarkIcon, ExclamationTriangleIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { useTranslation } from 'react-i18next';
+// import { useTranslation } from 'react-i18next'; // Commented out as unused
 
 interface ConflictField {
   field: string;
@@ -17,7 +17,6 @@ interface ConflictResolutionProps {
   onResolve: (resolvedFields: Record<string, any>) => void;
   resourceName: string;
   conflicts: ConflictField[];
-  currentUser: string;
   conflictingUser: string;
 }
 
@@ -27,10 +26,9 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionProps> = ({
   onResolve,
   resourceName,
   conflicts,
-  currentUser,
   conflictingUser,
 }) => {
-  const { t } = useTranslation();
+  // const _t = useTranslation(); // Commented out as unused
   const [resolvedFields, setResolvedFields] = useState<Record<string, any>>({});
   const [resolutionStrategy, setResolutionStrategy] = useState<'manual' | 'mine' | 'theirs' | 'merge'>('manual');
 
@@ -104,7 +102,7 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-black bg-opacity-75 transition-opacity" onClick={onClose} />
         
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

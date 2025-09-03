@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Search, Filter, Plus, TrendingUp, Heart, MessageCircle, Calendar, Phone, Mail, Star, Eye, Edit3, MoreVertical, DollarSign, Target, Award, Activity } from 'lucide-react';
+import { Users, Plus, Search, Filter, MoreVertical, Phone, Mail, Calendar, DollarSign, Heart, Eye, Edit3, MessageCircle, Target } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -267,10 +267,10 @@ const CRMHub: React.FC = () => {
       customFields: {
         industry_focus: 'FinTech',
         company_size: '500-1000 employees',
-        decision_influence: 'High'
+        tags: ['vip', 'enterprise'],
       },
-      createdAt: '2023-06-15T09:00:00Z',
-      updatedAt: '2024-01-20T14:30:00Z'
+      createdAt: '2023-06-01',
+      updatedAt: '2024-01-15'
     },
     {
       id: '2',
@@ -514,6 +514,12 @@ const CRMHub: React.FC = () => {
       stage: 'consideration',
       source: 'cold-outreach',
       tags: ['enterprise', 'it-decision-maker', 'budget-holder'],
+      socialMedia: {
+        linkedin: 'https://linkedin.com/in/miguel-herrera',
+        twitter: '',
+        facebook: '',
+        instagram: ''
+      },
       preferences: {
         communicationChannel: 'email',
         language: 'Spanish',
@@ -1174,7 +1180,7 @@ const CRMHub: React.FC = () => {
 
       {/* Contact Detail Modal */}
       {selectedContact && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between">

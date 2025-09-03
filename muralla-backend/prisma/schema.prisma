@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
 datasource db {
@@ -37,43 +38,47 @@ model Project {
   tenantId    String?
   deadline    DateTime?
   kind        ProjectKind @default(DEADLINE)
-  budgets     Budget[]
+  // REMOVED: budgets Budget[] - now handled by EntityRelationship system
   tasks       Task[]
 
   @@map("projects")
 }
 
 model Task {
-  id           String         @id @default(cuid())
-  title        String
-  description  String?
-  status       TaskStatus     @default(PENDING)
-  projectId    String
-  assigneeId   String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  createdBy    String?
-  deletedAt    DateTime?
-  deletedBy    String?
-  isDeleted    Boolean        @default(false)
-  tenantId     String?
-  priority     TaskPriority   @default(MEDIUM)
-  actualCost   Decimal?       @db.Decimal(10, 4)
-  budgetLineId String?
-  dueDate      DateTime?
-  dueTime      String?
-  orderIndex   Int            @default(0)
-  parentTaskId String?
+  id                   String         @id @default(cuid())
+  title                String
+  description          String?
+  status               TaskStatus     @default(PENDING)
+  projectId            String
+  // REMOVED: assigneeId String? - now handled by EntityRelationship system only
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  createdBy            String?
+  deletedAt            DateTime?
+  deletedBy            String?
+  isDeleted            Boolean        @default(false)
+  tenantId             String?
+  priority             TaskPriority   @default(MEDIUM)
+  actualCost           Decimal?       @db.Decimal(10, 4)
+  budgetLineId         String?
+  dueDate              DateTime?
+  dueTime              String?
+  orderIndex           Int            @default(0)
+  parentTaskId         String?
+  // Intelligent status tracking fields
+  dueDateModifiedAt    DateTime?
+  statusModifiedByUser Boolean        @default(false)
+  wasEnProgreso        Boolean        @default(false)
   comments     Comment[]
-  assignees    TaskAssignee[]
-  assignee     User?          @relation("TaskPrimaryAssignee", fields: [assigneeId], references: [id])
+  // REMOVED: assignees TaskAssignee[] - now handled by EntityRelationship system
+  // REMOVED: assignee relation - now handled by EntityRelationship system only
   budgetLine   BudgetLine?    @relation(fields: [budgetLineId], references: [id])
   parentTask   Task?          @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]         @relation("TaskSubtasks")
   project      Project        @relation(fields: [projectId], references: [id])
 
   @@index([projectId])
-  @@index([assigneeId])
+  // REMOVED: @@index([assigneeId]) - field no longer exists
   @@index([parentTaskId])
   @@index([orderIndex])
   @@index([status])
@@ -81,25 +86,14 @@ model Task {
   @@map("tasks")
 }
 
-model TaskAssignee {
-  id        String   @id @default(cuid())
-  taskId    String
-  userId    String
-  role      String   @default("assignee")
-  tenantId  String?
-  createdAt DateTime @default(now())
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation("TaskAssignees", fields: [userId], references: [id])
-
-  @@unique([taskId, userId])
-  @@map("task_assignees")
-}
+// REMOVED: TaskAssignee - migrated to EntityRelationship system
+// All task assignments now handled through Universal Relationship system
 
 model Budget {
   id             String         @id @default(cuid())
   name           String
   description    String?
-  projectId      String
+  // REMOVED: projectId String - now handled by EntityRelationship system
   status         BudgetStatus   @default(DRAFT)
   category       BudgetCategory @default(OPEX)
   totalPlanned   Decimal        @db.Decimal(12, 4)
@@ -118,7 +112,7 @@ model Budget {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   lines          BudgetLine[]
-  project        Project        @relation(fields: [projectId], references: [id])
+  // REMOVED: project Project - now handled by EntityRelationship system
   comments       Comment[]
 
   @@map("budgets")
@@ -240,12 +234,20 @@ model Product {
   deletedBy           String?
   isDeleted           Boolean              @default(false)
   tenantId            String?
-  categoryId          String?
+  // REMOVED: categoryId String? - now handled by EntityRelationship system
   isActive            Boolean              @default(true)
   sku                 String               @unique
   type                ProductType          @default(TERMINADO)
   unitCost            Decimal?             @db.Decimal(10, 4)
   uom                 String               @default("UN")
+  
+  // Brand Management
+  // REMOVED: brandId String? - now handled by EntityRelationship system only
+  brandName           String?              // Or simple brand name string
+  
+  // Product Classification for SKU Generation
+  format              ProductFormat?       // Envasados (100), Congelados (200), Frescos (300)
+  extras              ProductExtra[]       // Vegano (8), Sin Azucar (9), Sin Gluten (6), Keto (7)
   
   // Phase 1: Multi-Platform Integration Fields
   displayName         String?              // Platform-specific display name
@@ -255,6 +257,11 @@ model Product {
   rappiProductId      String?              // Rappi platform ID
   pedidosyaProductId  String?              // PedidosYa platform ID
   uberProductId       String?              // Uber Eats platform ID
+  
+  // Platform Sync Timestamps
+  rappiLastSync       DateTime?            // Last sync with Rappi
+  pedidosyaLastSync   DateTime?            // Last sync with PedidosYa
+  uberLastSync        DateTime?            // Last sync with Uber Eats
   
   // Platform-Specific Pricing (in CLP)
   cafePrice           Decimal?             @db.Decimal(10, 2) // In-house café price
@@ -276,10 +283,20 @@ model Product {
   bomComponents       BOMComponent[]       @relation("ProductBOM")
   costLines           CostLine[]           @relation("ProductCostLines")
   inventoryMoves      InventoryMove[]      @relation("ProductInventoryMoves")
-  category            ProductCategory?     @relation("ProductCategoryProducts", fields: [categoryId], references: [id])
+  // REMOVED: category ProductCategory? - now handled by EntityRelationship system
   sales               Sale[]
   workOrderComponents WorkOrderComponent[]
-  workOrders          WorkOrder[]          @relation("ProductWorkOrders")
+  // REMOVED: workOrders WorkOrder[] @relation("ProductWorkOrders") - now handled by EntityRelationship system
+  purchaseOrderLines  PurchaseOrderLine[]
+  
+  // REMOVED: brand relation - now handled by EntityRelationship system only
+  
+  // Recipe-based product relationships
+  recipes             Recipe[]             @relation("ProductRecipes")
+  recipeIngredients   RecipeIngredient[]   @relation("IngredientProduct")
+  variants            ProductVariant[]     @relation("ProductVariants")
+  ingredientUsage     IngredientUsage[]    @relation("UsedIngredient")
+  preparedProducts    IngredientUsage[]    @relation("PreparedProduct")
 
   @@map("products")
 }
@@ -300,6 +317,128 @@ model Sale {
   seller    User      @relation(fields: [soldBy], references: [id])
 
   @@map("sales")
+}
+
+// Recipe-based product system
+model Recipe {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  productId   String
+  isDefault   Boolean            @default(true)
+  servingSize Int                @default(1)
+  prepTime    Int?               // in minutes
+  difficulty  RecipeDifficulty   @default(EASY)
+  instructions String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   String?
+  tenantId    String?
+  isDeleted   Boolean            @default(false)
+  deletedAt   DateTime?
+  deletedBy   String?
+  
+  product     Product            @relation("ProductRecipes", fields: [productId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[] @relation("RecipeIngredients")
+  variants    ProductVariant[]   @relation("VariantRecipes")
+  
+  @@index([productId])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id           String   @id @default(cuid())
+  recipeId     String
+  ingredientId String   // References Product with type INSUMO
+  quantity     Decimal  @db.Decimal(10, 4)
+  unit         String   @default("UN")
+  isOptional   Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenantId     String?
+  
+  recipe     Recipe  @relation("RecipeIngredients", fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Product @relation("IngredientProduct", fields: [ingredientId], references: [id])
+  
+  @@unique([recipeId, ingredientId])
+  @@index([recipeId])
+  @@index([ingredientId])
+  @@map("recipe_ingredients")
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  productId   String
+  recipeId    String?
+  priceAdjustment Decimal? @db.Decimal(10, 2) // Price difference from base product
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  tenantId    String?
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
+  deletedBy   String?
+  
+  product Product @relation("ProductVariants", fields: [productId], references: [id], onDelete: Cascade)
+  recipe  Recipe? @relation("VariantRecipes", fields: [recipeId], references: [id])
+  sales   VariantSale[] @relation("VariantSales")
+  ingredientUsage IngredientUsage[] @relation("VariantUsage")
+  
+  @@index([productId])
+  @@index([recipeId])
+  @@map("product_variants")
+}
+
+// Track ingredient usage for analytics
+model IngredientUsage {
+  id           String   @id @default(cuid())
+  ingredientId String
+  productId    String   // The prepared product that used this ingredient
+  variantId    String?  // If a specific variant was used
+  quantity     Decimal  @db.Decimal(10, 4)
+  unit         String
+  usedAt       DateTime @default(now())
+  saleId       String?  // Link to sale if applicable
+  cost         Decimal? @db.Decimal(10, 4) // Cost of ingredient at time of use
+  tenantId     String?
+  createdBy    String?
+  
+  ingredient Product       @relation("UsedIngredient", fields: [ingredientId], references: [id])
+  product    Product       @relation("PreparedProduct", fields: [productId], references: [id])
+  variant    ProductVariant? @relation("VariantUsage", fields: [variantId], references: [id])
+  
+  @@index([ingredientId])
+  @@index([productId])
+  @@index([usedAt])
+  @@map("ingredient_usage")
+}
+
+// Enhanced sales to support variants
+model VariantSale {
+  id        String         @id @default(cuid())
+  variantId String
+  quantity  Int
+  total     Decimal        @db.Decimal(10, 2)
+  soldBy    String
+  saleDate  DateTime       @default(now())
+  createdAt DateTime       @default(now())
+  createdBy String?
+  tenantId  String?
+  isDeleted Boolean        @default(false)
+  deletedAt DateTime?
+  deletedBy String?
+  
+  variant ProductVariant @relation("VariantSales", fields: [variantId], references: [id])
+  seller  User           @relation(fields: [soldBy], references: [id])
+  
+  @@index([variantId])
+  @@index([saleDate])
+  @@map("variant_sales")
 }
 
 model BankAccount {
@@ -453,11 +592,14 @@ model User {
   salaryAdjustmentsApproved    SalaryAdjustment[]     @relation("SalaryAdjustmentApprover")
   salaryAdjustments            SalaryAdjustment[]     @relation("SalaryAdjustmentEmployee")
   sales                        Sale[]
-  taskAssignments              TaskAssignee[]         @relation("TaskAssignees")
-  tasks                        Task[]                 @relation("TaskPrimaryAssignee")
+  // REMOVED: taskAssignments TaskAssignee[] - now handled by EntityRelationship system
+  // REMOVED: tasks relation - now handled by EntityRelationship system only
   transactions                 Transaction[]
   role                         Role                   @relation(fields: [roleId], references: [id])
   workOrdersCreated            WorkOrder[]            @relation("WorkOrderCreator")
+  calendarEventsCreated        CalendarEvent[]        @relation("CalendarEventCreator")
+  staffShifts                  StaffShift[]           @relation("StaffShiftUser")
+  variantSales                 VariantSale[]
 
   @@map("users")
 }
@@ -601,19 +743,30 @@ model Company {
 }
 
 model Vendor {
-  id           String   @id @default(cuid())
-  name         String
-  taxId        String?
-  phone        String?
-  email        String?
-  address      String?
-  contactName  String?
-  paymentTerms String?
-  isActive     Boolean  @default(true)
-  tenantId     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  costs        Cost[]
+  id             String     @id @default(cuid())
+  internalNumber String     @unique // Auto-generated: SUPP-001, SUPP-002, etc.
+  name           String
+  taxId          String?    // RUT - optional since not always available
+  phone          String?
+  email          String?
+  address        String?
+  contactName    String?
+  paymentTerms   String?
+  isActive       Boolean    @default(true)
+  tenantId       String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  // New fields
+  vendorType     VendorType @default(SUPPLIER)
+  brandContactId String?    // Link to brand contact if this vendor is a brand
+  
+  // Relationships
+  // REMOVED: costs Cost[] - now handled by EntityRelationship system
+  mainSupplierOrders PurchaseOrder[] @relation("MainSupplier")
+  subSupplierOrders  PurchaseOrderSubSupplier[]
+  subSupplierLines   PurchaseOrderLine[] @relation("SubSupplierLines")
+  brandContact       BrandContact?   @relation(fields: [brandContactId], references: [id])
 
   @@map("vendors")
 }
@@ -621,6 +774,7 @@ model Vendor {
 model ProductCategory {
   id          String            @id @default(cuid())
   name        String            @unique
+  code        String?           @unique
   description String?
   color       String?
   emoji       String?
@@ -633,7 +787,7 @@ model ProductCategory {
   costs       Cost[]
   parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    ProductCategory[] @relation("CategoryHierarchy")
-  products    Product[]         @relation("ProductCategoryProducts")
+  // REMOVED: products Product[] - now handled by EntityRelationship system
 
   @@map("product_categories")
 }
@@ -642,7 +796,7 @@ model Cost {
   id                  String                @id @default(cuid())
   companyId           String
   categoryId          String?
-  vendorId            String?
+  // REMOVED: vendorId String? - now handled by EntityRelationship system
   docType             DocumentKind
   docNumber           String?
   date                DateTime
@@ -667,12 +821,12 @@ model Cost {
   company             Company               @relation(fields: [companyId], references: [id])
   creator             User?                 @relation("CostCreator", fields: [createdBy], references: [id])
   staff               User?                 @relation("CostStaff", fields: [staffId], references: [id])
-  vendor              Vendor?               @relation(fields: [vendorId], references: [id])
+  // REMOVED: vendor Vendor? - now handled by EntityRelationship system
 
   @@index([companyId])
   @@index([categoryId])
-  @@index([vendorId])
   @@index([date])
+  // REMOVED: @@index([vendorId]) - field no longer exists
   @@map("costs")
 }
 
@@ -780,7 +934,7 @@ model BOMComponent {
 model WorkOrder {
   id           String               @id @default(cuid())
   companyId    String
-  productId    String
+  // REMOVED: productId String - now handled by EntityRelationship system
   locationId   String
   qtyPlanned   Decimal              @db.Decimal(12, 3)
   qtyProduced  Decimal?             @db.Decimal(12, 3)
@@ -801,9 +955,8 @@ model WorkOrder {
   company      Company              @relation(fields: [companyId], references: [id])
   creator      User                 @relation("WorkOrderCreator", fields: [createdBy], references: [id])
   location     Location             @relation("WorkOrderLocation", fields: [locationId], references: [id])
-  product      Product              @relation("ProductWorkOrders", fields: [productId], references: [id])
+  // REMOVED: product Product @relation("ProductWorkOrders") - now handled by EntityRelationship system
 
-  @@index([productId])
   @@index([locationId])
   @@index([status])
   @@map("work_orders")
@@ -1031,6 +1184,31 @@ enum ProjectKind {
   CORE
 }
 
+enum RecipeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+enum ProductFormat {
+  ENVASADOS   // Code 100
+  CONGELADOS  // Code 200
+  FRESCOS     // Code 300
+}
+
+
+enum ProductExtra {
+  VEGANO      // Code 8
+  SIN_AZUCAR  // Code 9
+  SIN_GLUTEN  // Code 6
+  KETO        // Code 7
+  ORGANICO    // Code 5
+  LIGHT       // Code 4
+  INTEGRAL    // Code 3
+  ARTESANAL   // Code 2
+}
+
 enum BudgetStatus {
   DRAFT
   SUBMITTED
@@ -1212,4 +1390,435 @@ enum ExpenseStatus {
   REJECTED
   REIMBURSED
   CANCELLED
+}
+
+// Calendar Models
+model CalendarEvent {
+  id          String           @id @default(cuid())
+  type        CalendarEventType
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  location    String?
+  attendees   String[]         // Array of user emails
+  assignedTo  String?
+  priority    CalendarPriority @default(MEDIUM)
+  status      EventStatus      @default(SCHEDULED)
+  color       String?
+  createdBy   String
+  tenantId    String?
+  isDeleted   Boolean          @default(false)
+  deletedAt   DateTime?
+  deletedBy   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Recurring events
+  isRecurring       Boolean   @default(false)
+  recurringType     String?   // 'daily', 'weekly', 'monthly'
+  recurringInterval Int?      // Every N days/weeks/months
+  recurringEndDate  DateTime?
+  parentEventId     String?   // For recurring event instances
+  
+  creator     User           @relation("CalendarEventCreator", fields: [createdBy], references: [id])
+  parentEvent CalendarEvent? @relation("RecurringEvents", fields: [parentEventId], references: [id])
+  childEvents CalendarEvent[] @relation("RecurringEvents")
+
+  @@index([startTime])
+  @@index([endTime])
+  @@index([type])
+  @@index([createdBy])
+  @@index([assignedTo])
+  @@map("calendar_events")
+}
+
+model StaffShift {
+  id        String      @id @default(cuid())
+  userId    String
+  date      DateTime    // Date of the shift
+  startTime String      // HH:MM format
+  endTime   String      // HH:MM format
+  position  String
+  status    ShiftStatus @default(SCHEDULED)
+  notes     String?
+  tenantId  String?
+  isDeleted Boolean     @default(false)
+  deletedAt DateTime?
+  deletedBy String?
+  createdBy String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  user User @relation("StaffShiftUser", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("staff_shifts")
+}
+
+model CafeSchedule {
+  id           String    @id @default(cuid())
+  date         DateTime  @unique // Date for the schedule
+  status       CafeStatus
+  openTime     String?   // HH:MM format
+  closeTime    String?   // HH:MM format
+  
+  // Special hours (holidays, events, etc.)
+  specialReason String?
+  specialOpen   String?   // Special opening time HH:MM
+  specialClose  String?   // Special closing time HH:MM
+  
+  notes     String?
+  tenantId  String?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  deletedBy String?
+  createdBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([date])
+  @@map("cafe_schedules")
+}
+
+// Calendar Enums
+enum CalendarEventType {
+  TASK
+  MEETING
+  HOLIDAY
+  SHIFT
+  CAFE_STATUS
+}
+
+enum CalendarPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EventStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum CafeStatus {
+  OPEN
+  CLOSED
+  LIMITED
+}
+
+enum VendorType {
+  SUPPLIER      // Regular supplier
+  BRAND_CONTACT // Brand that can also act as supplier
+  AGENT         // Agent for brands
+}
+
+enum POStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  ORDERED
+  PARTIALLY_DELIVERED
+  DELIVERED
+  CANCELLED
+}
+
+// Brand Models
+model Brand {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  website     String?
+  logo        String?
+  isActive    Boolean  @default(true)
+  tenantId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  // REMOVED: products relation - now handled by EntityRelationship system only
+  contacts     BrandContact[]
+  
+  @@map("brands")
+}
+
+model BrandContact {
+  id            String   @id @default(cuid())
+  brandId       String
+  name          String
+  role          String?
+  email         String?
+  phone         String?
+  skuAbbreviation String? // SKU abbreviation for this contact
+  isPrimary     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  tenantId      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  brand   Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  vendors Vendor[] // Brand contacts can become suppliers
+  
+  @@map("brand_contacts")
+}
+
+// Enhanced Purchase Order Models
+model PurchaseOrder {
+  id                String   @id @default(cuid())
+  poNumber          String   @unique // Auto-generated: PO-2024-001
+  mainSupplierId    String   // Who creates the factura
+  date              DateTime
+  expectedDelivery  DateTime?
+  status            POStatus @default(DRAFT)
+  notes             String?
+  
+  // Financial tracking
+  subtotal          Decimal  @db.Decimal(12, 2)
+  shippingCost      Decimal? @db.Decimal(12, 2)
+  taxAmount         Decimal  @db.Decimal(12, 2)
+  totalAmount       Decimal  @db.Decimal(12, 2)
+  currency          String   @default("CLP")
+  
+  tenantId          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relationships
+  mainSupplier      Vendor                     @relation("MainSupplier", fields: [mainSupplierId], references: [id])
+  lines             PurchaseOrderLine[]
+  subSuppliers      PurchaseOrderSubSupplier[]
+  
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  quantity        Decimal  @db.Decimal(12, 3)
+  unitCost        Decimal  @db.Decimal(12, 4)
+  totalCost       Decimal  @db.Decimal(12, 2)
+  shippingCostUnit Decimal? @db.Decimal(12, 4) // Prorated shipping per unit
+  
+  // Delivery tracking
+  subSupplierId   String?  // If delivered by sub-supplier
+  deliveryDate    DateTime?
+  trackingNumber  String?
+  
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id])
+  subSupplier     Vendor?       @relation("SubSupplierLines", fields: [subSupplierId], references: [id])
+  
+  @@map("purchase_order_lines")
+}
+
+model PurchaseOrderSubSupplier {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  subSupplierId   String
+  shippingCost    Decimal? @db.Decimal(12, 2)
+  deliveryDate    DateTime?
+  trackingNumber  String?
+  notes           String?
+  
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  subSupplier     Vendor        @relation(fields: [subSupplierId], references: [id])
+  
+  @@unique([purchaseOrderId, subSupplierId])
+  @@map("purchase_order_sub_suppliers")
+}
+
+// General Contacts Model
+model Contact {
+  id                  String      @id @default(cuid())
+  name                String
+  type                ContactType
+  entityType          EntityType
+  
+  // Contact Information
+  phone               String?
+  email               String?
+  instagram           String?
+  rut                 String?
+  company             String?
+  address             String?
+  notes               String?
+  
+  // Business-specific fields
+  contactPersonName   String?     // For businesses: name of the contact person
+  giro                String?     // Business activity/industry
+  skuAbbreviation     String?     // For suppliers/brands
+  
+  // Bank account details (stored as JSON)
+  bankDetails         Json?
+  
+  // Metadata
+  tags                String[]    @default([])
+  portalToken         String?     // Random token for supplier portal access
+  portalEnabled       Boolean     @default(false)
+  
+  // Analytics data
+  totalPurchases      Decimal?    @db.Decimal(12, 2)
+  totalSales          Decimal?    @db.Decimal(12, 2)
+  averagePurchase     Decimal?    @db.Decimal(12, 2)
+  averageSale         Decimal?    @db.Decimal(12, 2)
+  lastPurchaseAmount  Decimal?    @db.Decimal(12, 2)
+  lastSaleAmount      Decimal?    @db.Decimal(12, 2)
+  purchaseCount       Int         @default(0)
+  salesCount          Int         @default(0)
+  relationshipScore   Int         @default(1) // 1-5 rating
+  
+  // Standard fields
+  tenantId            String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  createdBy           String?
+  deletedAt           DateTime?
+  deletedBy           String?
+  isDeleted           Boolean     @default(false)
+  lastContact         DateTime?
+  
+  @@map("contacts")
+}
+
+enum ContactType {
+  supplier
+  customer
+  important
+  brand
+}
+
+enum EntityType {
+  business
+  person
+}
+
+// Universal Entity Relationship System
+model EntityRelationship {
+  id               String   @id @default(cuid())
+  relationshipType String   // "supplier", "assigned_to", "mentioned_in", "works_with", etc.
+  sourceType       String   // "Product", "Contact", "User", "WorkOrder", "Task", "Project", "Budget"
+  sourceId         String
+  targetType       String   // "Contact", "Product", "User", "Project", "Task", "Budget"
+  targetId         String
+  metadata         Json?    // Rich relationship context
+  strength         Int      @default(1) // 1-5 relationship strength score
+  isActive         Boolean  @default(true)
+  validFrom        DateTime? // Relationship validity period
+  validUntil       DateTime? // Relationship expiry
+  priority         Int      @default(1) // 1-10 priority for relationship importance
+  tags             String[] @default([]) // Flexible tagging system
+  createdBy        String?
+  tenantId         String?
+  isDeleted        Boolean  @default(false)
+  deletedAt        DateTime?
+  deletedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // History tracking for relationship changes
+  relationshipHistory Json? // Track relationship evolution
+  lastInteractionAt   DateTime? // When this relationship was last active
+  interactionCount    Int      @default(0) // Number of times entities interacted
+  
+  @@index([sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@index([relationshipType])
+  @@index([strength])
+  @@index([isActive])
+  @@index([createdAt])
+  @@unique([sourceType, sourceId, targetType, targetId, relationshipType]) // Prevent duplicates
+  @@map("entity_relationships")
+}
+
+// Relationship Type Registry for standardization
+model RelationshipType {
+  id               String   @id @default(cuid())
+  name             String   @unique // "supplier", "assigned_to", "mentioned_in"
+  displayName      String   // "Supplier", "Assigned To", "Mentioned In"
+  description      String?
+  sourceTypes      String[] // Which entity types can be source
+  targetTypes      String[] // Which entity types can be target
+  isBidirectional  Boolean  @default(false) // If true, creates reverse relationship
+  reverseTypeName  String? // Name for reverse relationship
+  defaultStrength  Int      @default(1) // Default strength value
+  isSystem         Boolean  @default(false) // System-managed vs user-created
+  isActive         Boolean  @default(true)
+  color            String?  // For UI visualization
+  icon             String?  // Icon identifier
+  tenantId         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@map("relationship_types")
+}
+
+// Universal SKU System
+model EntitySKU {
+  id            String   @id @default(cuid())
+  entityType    String   // "Product", "WorkOrder", "Contact", "Task", "Project"
+  entityId      String
+  skuValue      String   @unique // The actual SKU: "100-SMT-CAF-56"
+  templateId    String?  // Reference to SKU template used
+  components    Json     // Component breakdown: {"category": "CAF", "supplier": "SMT"}
+  isActive      Boolean  @default(true)
+  version       Int      @default(1) // SKU version for updates
+  generatedAt   DateTime @default(now())
+  expiresAt     DateTime? // For temporary SKUs
+  metadata      Json?    // Additional SKU metadata
+  tenantId      String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Link to template if used
+  template      SKUTemplate? @relation(fields: [templateId], references: [id])
+  
+  @@index([entityType, entityId])
+  @@index([skuValue])
+  @@index([templateId])
+  @@unique([entityType, entityId]) // One SKU per entity
+  @@map("entity_skus")
+}
+
+// SKU Template System for customizable generation
+model SKUTemplate {
+  id               String   @id @default(cuid())
+  name             String   @unique // "Product SKU", "Work Order SKU"
+  description      String?
+  entityType       String   // "Product", "WorkOrder", "Contact"
+  template         String   // "{category}-{supplier}-{format}-{sequence}"
+  components       Json     // Component definitions and rules
+  isActive         Boolean  @default(true)
+  isDefault        Boolean  @default(false) // Default template for entity type
+  validationRules  Json?    // Rules for SKU validation
+  exampleOutput    String?  // Example of generated SKU
+  tenantId         String?
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Track usage
+  usageCount       Int      @default(0)
+  lastUsedAt       DateTime?
+  
+  // Relations
+  generatedSKUs    EntitySKU[] // SKUs generated from this template
+  
+  @@map("sku_templates")
 }

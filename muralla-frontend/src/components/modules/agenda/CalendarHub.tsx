@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Clock, Users, Plus, Filter, MapPin, Video, Phone, ChevronLeft, ChevronRight, Settings, Bell, Eye, Edit3, Trash2, Copy, Share } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, MapPin, Clock, Users, Video, Edit3, Bell, Settings, Eye, Share, Copy } from 'lucide-react';
 
 interface CalendarEvent {
   id: string;
@@ -108,7 +108,7 @@ const CalendarHub: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [_showCreateForm, setShowCreateForm] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [showResourceManager, setShowResourceManager] = useState(false);
 
@@ -801,60 +801,62 @@ const CalendarHub: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Eventos Hoy</p>
-              <p className="text-2xl font-bold text-electric-blue">{stats.todayEvents}</p>
+      {/* Stats Cards - Hidden in day and week views */}
+      {(viewMode === 'month' || viewMode === 'agenda') && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Eventos Hoy</p>
+                <p className="text-2xl font-bold text-electric-blue">{stats.todayEvents}</p>
+              </div>
+              <Calendar className="w-8 h-8 text-electric-blue" />
             </div>
-            <Calendar className="w-8 h-8 text-electric-blue" />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Programados para hoy
+            </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Programados para hoy
-          </p>
-        </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Esta Semana</p>
-              <p className="text-2xl font-bold text-electric-green">{stats.thisWeekEvents}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Esta Semana</p>
+                <p className="text-2xl font-bold text-electric-green">{stats.thisWeekEvents}</p>
+              </div>
+              <Clock className="w-8 h-8 text-electric-green" />
             </div>
-            <Clock className="w-8 h-8 text-electric-green" />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Total semanal
+            </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Total semanal
-          </p>
-        </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Recordatorios</p>
-              <p className="text-2xl font-bold text-electric-orange">{stats.upcomingReminders}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Recordatorios</p>
+                <p className="text-2xl font-bold text-electric-orange">{stats.upcomingReminders}</p>
+              </div>
+              <Bell className="w-8 h-8 text-electric-orange" />
             </div>
-            <Bell className="w-8 h-8 text-electric-orange" />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Pendientes de envío
+            </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Pendientes de envío
-          </p>
-        </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Recursos en Uso</p>
-              <p className="text-2xl font-bold text-electric-purple">{stats.resourcesInUse}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Recursos en Uso</p>
+                <p className="text-2xl font-bold text-electric-purple">{stats.resourcesInUse}</p>
+              </div>
+              <MapPin className="w-8 h-8 text-electric-purple" />
             </div>
-            <MapPin className="w-8 h-8 text-electric-purple" />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Asignaciones activas
+            </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Asignaciones activas
-          </p>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -1052,7 +1054,7 @@ const CalendarHub: React.FC = () => {
 
       {/* Event Detail Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between">
@@ -1367,7 +1369,7 @@ const CalendarHub: React.FC = () => {
 
       {/* Resource Manager Modal */}
       {showResourceManager && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between">

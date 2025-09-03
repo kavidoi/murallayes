@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntityRelationshipService } from '../relationships/entity-relationship.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductFiltersDto } from './dto/product-filters.dto';
 import { BOMComponentDto } from './dto/bom-component.dto';
+import { SKUGeneratorService } from './sku-generator.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private skuGenerator: SKUGeneratorService,
+    private entityRelationshipService: EntityRelationshipService
+  ) {}
 
   async create(createProductDto: CreateProductDto): Promise<any> {
     try {
@@ -18,16 +24,32 @@ export class ProductsService {
         sku = await this.generateIntelligentSku(createProductDto);
       }
 
-      // Ensure required fields are set for current schema
+      // Remove categoryId from product data since it's now handled by EntityRelationship
+      const { categoryId, ...productDataWithoutCategory } = createProductDto;
       const productData = {
-        ...createProductDto,
+        ...productDataWithoutCategory,
         sku,
         price: createProductDto.price || 0, // Set default price if not provided
       };
 
-      return await this.prisma.product.create({
+      const product = await this.prisma.product.create({
         data: productData,
       });
+
+      // Create category relationship if categoryId was provided
+      if (categoryId) {
+        await this.entityRelationshipService.create({
+          relationshipType: 'belongs_to_category',
+          sourceType: 'Product',
+          sourceId: product.id,
+          targetType: 'ProductCategory',
+          targetId: categoryId,
+          strength: 5,
+          metadata: { assignedAt: new Date() }
+        });
+      }
+
+      return product;
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException('Product with this name already exists');
@@ -73,11 +95,22 @@ export class ProductsService {
     const { search, page, limit, type, categoryId, isActive } = filters;
     const skip = (page - 1) * limit;
 
+    // Get product IDs that belong to the specified category (if categoryId filter is provided)
+    let categoryFilteredProductIds: string[] | undefined;
+    if (categoryId) {
+      const categoryRelationships = await this.entityRelationshipService.findAll({
+        relationshipType: 'belongs_to_category',
+        targetType: 'ProductCategory',
+        targetId: categoryId
+      });
+      categoryFilteredProductIds = categoryRelationships.data.map(rel => rel.sourceId);
+    }
+
     const where: Prisma.ProductWhereInput = {
       isDeleted: false,
       ...(typeof isActive === 'boolean' ? { isActive } : {}),
       ...(type ? { type } : {}),
-      ...(categoryId ? { categoryId } : {}),
+      ...(categoryFilteredProductIds ? { id: { in: categoryFilteredProductIds } } : {}),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -93,7 +126,7 @@ export class ProductsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { category: true },
+        // REMOVED: include: { category: true } - now handled by EntityRelationship
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -124,9 +157,23 @@ export class ProductsService {
       );
     }
 
-    const data = products.map(p => ({
-      ...p,
-      unitCost: avgCostByProductId[p.id] ?? (p.unitCost as any ?? p.price ?? 0),
+    // Add category information from EntityRelationship system
+    const data = await Promise.all(products.map(async (p) => {
+      // Get category relationship
+      const allRelationships = await this.entityRelationshipService.getEntityRelationships('Product', p.id);
+      const categoryRelationships = allRelationships.filter(rel => rel.relationshipType === 'belongs_to_category');
+      
+      let category = null;
+      if (categoryRelationships.length > 0) {
+        const categoryId = categoryRelationships[0].targetId;
+        category = await this.prisma.productCategory.findUnique({ where: { id: categoryId } });
+      }
+
+      return {
+        ...p,
+        category,
+        unitCost: avgCostByProductId[p.id] ?? (p.unitCost as any ?? p.price ?? 0),
+      };
     }));
 
     return {

@@ -66,6 +66,7 @@ export class PrismaService implements OnModuleInit {
   get productCategory() { return this.prisma.productCategory; }
   get bankAccount() { return this.prisma.bankAccount; }
   get magicToken() { return this.prisma.magicToken; }
+  get contact() { return this.prisma.contact; }
 
   // New product pipeline models
   get company() { return this.prisma.company; }

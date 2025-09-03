@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntityRelationshipService } from '../relationships/entity-relationship.service';
 import { Prisma, Budget, BudgetLine, Task, Project } from '@prisma/client';
 import type {} from '../prisma-v6-compat';
 
@@ -53,7 +54,10 @@ export interface CreateCommentDto {
 
 @Injectable()
 export class BudgetsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private entityRelationshipService: EntityRelationshipService
+  ) {}
 
   private async getGeneralProject(): Promise<Project> {
     let generalProject = await this.prisma.project.findFirst({
@@ -83,19 +87,20 @@ export class BudgetsService {
     }
 
     // Verify project exists
-    const project = await this.prisma.project.findUnique({
+    const targetProject = await this.prisma.project.findUnique({
       where: { id: projectId }
     });
 
-    if (!project) {
+    if (!targetProject) {
       throw new NotFoundException('Project not found');
     }
 
-    return await this.prisma.budget.create({
+    // Create budget with temporary project connection (will be replaced by EntityRelationship)
+    const budget = await this.prisma.budget.create({
       data: {
         name: data.name,
         description: data.description,
-        projectId,
+        project: { connect: { id: projectId } }, // Temporary connection for Prisma validation
         category: data.category,
         totalPlanned: data.totalPlanned,
         currency: data.currency || 'CLP',
@@ -152,6 +157,20 @@ export class BudgetsService {
         }
       }
     });
+
+    // Create EntityRelationship for future queries
+    await this.entityRelationshipService.create({
+      relationshipType: 'budgets_for',
+      sourceType: 'Budget',
+      sourceId: budget.id,
+      targetType: 'Project',
+      targetId: projectId,
+      strength: 5,
+      priority: 10,
+      metadata: { assignedAt: new Date() }
+    });
+
+    return budget;
   }
 
   async findAll(filters?: {
@@ -159,13 +178,21 @@ export class BudgetsService {
     status?: string;
     category?: string;
   }) {
+    // Get budget IDs that belong to the specified project (if projectId filter is provided)
+    let projectFilteredBudgetIds: string[] | undefined;
+    if (filters?.projectId) {
+      const projectRelationships = await this.entityRelationshipService.findAll({
+        relationshipType: 'budgets_for',
+        targetType: 'Project',
+        targetId: filters.projectId
+      });
+      projectFilteredBudgetIds = projectRelationships.data.map(rel => rel.sourceId);
+    }
+
     const where: Prisma.BudgetWhereInput = {
       isDeleted: false,
+      ...(projectFilteredBudgetIds ? { id: { in: projectFilteredBudgetIds } } : {}),
     };
-
-    if (filters?.projectId) {
-      where.projectId = filters.projectId;
-    }
 
     if (filters?.status) {
       where.status = filters.status as any;
@@ -175,10 +202,10 @@ export class BudgetsService {
       where.category = filters.category as any;
     }
 
-    return await this.prisma.budget.findMany({
+    const budgets = await this.prisma.budget.findMany({
       where,
       include: {
-        project: true,
+        // REMOVED: project: true - now handled by EntityRelationship
         lines: {
           include: {
             tasks: true,
@@ -211,6 +238,22 @@ export class BudgetsService {
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    // Add project information from EntityRelationship system
+    const budgetsWithProjects = await Promise.all(budgets.map(async (budget) => {
+      const allRelationships = await this.entityRelationshipService.getEntityRelationships('Budget', budget.id);
+      const projectRelationships = allRelationships.filter(rel => rel.relationshipType === 'budgets_for');
+      
+      let project = null;
+      if (projectRelationships.length > 0) {
+        const projectId = projectRelationships[0].targetId;
+        project = await this.prisma.project.findUnique({ where: { id: projectId } });
+      }
+
+      return { ...budget, project };
+    }));
+
+    return budgetsWithProjects;
   }
 
   async findOne(id: string) {

@@ -40,7 +40,7 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
       {/* Online users avatars */}
       {onlineUsers.length > 0 && (
         <div className="flex -space-x-1">
-          {onlineUsers.slice(0, 5).map((user, index) => (
+          {onlineUsers.slice(0, 5).map((user, _index) => (
             <div
               key={user.id}
               className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium border border-white"

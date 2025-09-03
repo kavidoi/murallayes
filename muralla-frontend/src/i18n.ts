@@ -54,10 +54,19 @@ const resources = {
           cancel: 'Cancelar'
         },
       status: {
+        'Nuevo': 'Nuevo',
+        'En progreso': 'En progreso', 
+        'Listo': 'Listo',
+        'Revisar': 'Revisar',
+        'Empezar': 'Empezar',
+        'Limite': 'Limite',
+        'Postergado': 'Postergado',
+        'Atrasado': 'Atrasado',
+        // Legacy English mappings for compatibility
         'New': 'Nuevo',
         'In Progress': 'En progreso',
-        'Completed': 'Completado',
-        'Overdue': 'Vencido'
+        'Completed': 'Listo',
+        'Overdue': 'Atrasado'
       },
       tooltips: {
         autoOverdue: 'El estado se define automáticamente como Vencido según la fecha de vencimiento',
@@ -220,10 +229,8 @@ const resources = {
         noCompanyExpenses: 'No hay gastos de empresa registrados',
         addFirstCompanyExpense: 'Los gastos se generan automáticamente desde las órdenes de compra',
         addDirectExpense: 'Agregar Gasto',
-        createExpense: 'Crear Gasto',
         editExpense: 'Editar Gasto',
         expenseCategory: 'Categoría',
-        selectCategory: 'Seleccionar categoría',
         expenseAmount: 'Monto',
         expenseVendor: 'Proveedor',
         documentType: 'Tipo de Documento',
@@ -232,7 +239,17 @@ const resources = {
         save: 'Guardar',
         cancel: 'Cancelar',
         directExpense: 'Gasto Directo',
-        purchaseOrder: 'Orden de Compra'
+        purchaseOrder: 'Orden de Compra',
+        revenueCategories: 'Categorías de Ingresos',
+        expenseCategories: 'Categorías de Egresos',
+        addStaffDebtLoan: 'Agregar Deuda/Préstamo del Personal',
+        debtToStaff: 'Deuda a Personal',
+        staffMember: 'Miembro del Personal',
+        selectStaff: 'Seleccionar Personal',
+        enterDescription: 'Ingrese descripción',
+        selectDebtOption: 'Seleccionar opción de deuda',
+        paymentAmount: 'Monto de pago',
+        optionalNotes: 'Notas opcionales'
       },
       gastos: {
         subtitle: 'Gestión integral de gastos empresariales y operacionales',
@@ -247,7 +264,6 @@ const resources = {
         document: 'Documento',
         description: 'Descripción',
         amount: 'Monto',
-        createExpense: 'Crear Gasto',
         category: 'Categoría',
         selectCategory: 'Seleccionar categoría',
         manageCategories: 'Gestionar Categorías',
@@ -471,6 +487,80 @@ const resources = {
           error: 'Error al cargar presupuestos'
         }
       },
+
+      // Bank Account Management
+      bankAccount: {
+        title: 'Cuenta Bancaria',
+        subtitle: 'Gestión premium de cuenta bancaria con integración de Mercado Pago',
+        
+        // Header actions
+        refresh: 'Actualizar',
+        exportReport: 'Exportar Reporte',
+        
+        // Balance cards
+        currentBalance: 'Saldo Actual',
+        monthlyIncome: 'Ingresos Mensuales',
+        monthlyExpenses: 'Gastos Mensuales',
+        netProfit: 'Beneficio Neto',
+        updatedRealTime: 'Actualizado en tiempo real',
+        thisMonth: 'Este mes',
+        
+        // Filters section
+        filtersAndSearch: 'Filtros y Búsqueda',
+        startDate: 'Fecha inicio',
+        endDate: 'Fecha fin',
+        selectStartDate: 'Seleccionar fecha inicio',
+        selectEndDate: 'Seleccionar fecha fin',
+        type: 'Tipo',
+        allTypes: 'Todos los tipos',
+        income: 'Ingreso',
+        expense: 'Gasto',
+        category: 'Categoría',
+        allCategories: 'Todas las categorías',
+        search: 'Buscar',
+        searchTransactions: 'Buscar transacciones...',
+        
+        // Transactions table
+        recentTransactions: 'Transacciones Recientes',
+        transactionCount: 'transacciones',
+        noTransactions: 'No se encontraron transacciones',
+        adjustFilters: 'Intenta ajustar tus filtros',
+        date: 'Fecha',
+        description: 'Descripción',
+        amount: 'Monto',
+        method: 'Método',
+        reference: 'Ref',
+        
+        // Transaction status
+        completed: 'Completado',
+        pending: 'Pendiente',
+        failed: 'Fallido',
+        
+        // Categories with emojis (matching component)
+        sales: 'Ventas',
+        purchases: 'Compras',
+        payroll: 'Nómina',
+        services: 'Servicios',
+        transfers: 'Transferencias',
+        commissions: 'Comisiones',
+        
+        // Mercado Pago integration
+        mercadoPagoIntegration: 'Integración con Mercado Pago',
+        realTimeWebhooks: 'Webhooks en tiempo real',
+        webhooksDescription: 'Actualizaciones automáticas de transacciones vía webhooks de Mercado Pago',
+        paymentProcessing: 'Procesamiento de Pagos',
+        paymentDescription: 'Preferencias de pago integradas y flujos de checkout',
+        analytics: 'Analítica',
+        analyticsDescription: 'Analítica financiera integral y reportes',
+        
+        // Error states
+        errorLoadingTitle: 'Error al cargar datos de la cuenta bancaria',
+        tryAgain: 'Intentar de nuevo',
+        
+        // Loading states
+        loading: 'Cargando...'
+      },
+
       products: {
         manageCategories: 'Gestionar Categorías',
         addNewCategory: 'Agregar Nueva Categoría',
@@ -506,6 +596,118 @@ const resources = {
         availableOnPedidosya: 'Disponible en PedidosYa',
         availableOnUber: 'Disponible en Uber Eats',
         platformSettings: 'Configuración de Plataformas'
+      },
+
+      // Calendar & Schedule System
+      calendar: {
+        title: 'Calendario Muralla',
+        subtitle: 'Gestión integral de horarios, tareas y eventos',
+        
+        // Navigation
+        goToToday: 'Ir a Hoy',
+        previousMonth: 'Mes Anterior',
+        nextMonth: 'Mes Siguiente',
+        
+        // View Modes
+        monthView: 'Vista Mes',
+        weekView: 'Vista Semana',
+        dayView: 'Vista Día',
+        
+        // Filters
+        filters: 'Filtros de Calendario',
+        filterTasks: 'Tareas',
+        filterMeetings: 'Reuniones',
+        filterHolidays: 'Feriados',
+        filterShifts: 'Turnos',
+        filterCafeStatus: 'Estado del Café',
+        applyFilters: 'Aplicar Filtros',
+        
+        // Event Types
+        meeting: 'Reunión',
+        task: 'Tarea',
+        shift: 'Turno',
+        holiday: 'Feriado',
+        cafeStatus: 'Estado Café',
+        
+        // Today's Summary
+        todaySummary: 'Resumen de Hoy',
+        cafeOpen: 'Abierto',
+        cafeClosed: 'Cerrado',
+        cafeLimited: 'Horario Limitado',
+        staffOnShift: 'Personal en Turno',
+        meetingsToday: 'Reuniones',
+        tasksToday: 'Tareas',
+        
+        // Upcoming Events
+        upcomingEvents: 'Próximos Eventos',
+        noUpcomingEvents: 'No hay eventos próximos',
+        
+        // Event Creation
+        newEvent: 'Nuevo Evento',
+        createEvent: 'Crear Evento',
+        eventTitle: 'Título',
+        eventDescription: 'Descripción',
+        eventType: 'Tipo de Evento',
+        startDate: 'Fecha de Inicio',
+        startTime: 'Hora de Inicio',
+        endDate: 'Fecha de Fin',
+        endTime: 'Hora de Fin',
+        allDay: 'Todo el día',
+        location: 'Ubicación',
+        priority: 'Prioridad',
+        assignedTo: 'Asignado a',
+        attendees: 'Participantes',
+        eventColor: 'Color',
+        
+        // Priority Levels
+        lowPriority: 'Baja',
+        mediumPriority: 'Media',
+        highPriority: 'Alta',
+        
+        // Form Actions
+        saveEvent: 'Guardar Evento',
+        saving: 'Guardando...',
+        cancel: 'Cancelar',
+        
+        // Event Status
+        scheduled: 'Programado',
+        completed: 'Completado',
+        cancelled: 'Cancelado',
+        inProgress: 'En Progreso',
+        
+        // Chilean Holidays
+        newYear: 'Año Nuevo',
+        goodFriday: 'Viernes Santo',
+        holySaturday: 'Sábado Santo',
+        laborDay: 'Día del Trabajador',
+        navalGlories: 'Glorias Navales',
+        saintsPeterAndPaul: 'San Pedro y San Pablo',
+        virginCarmen: 'Día de la Virgen del Carmen',
+        assumption: 'Asunción de la Virgen',
+        independence: 'Independencia Nacional',
+        armyGlories: 'Glorias del Ejército',
+        twoWorldsEncounter: 'Encuentro de Dos Mundos',
+        evangelicalChurches: 'Día de las Iglesias Evangélicas',
+        allSaints: 'Día de Todos los Santos',
+        immaculateConception: 'Inmaculada Concepción',
+        christmas: 'Navidad',
+        
+        // Staff Management
+        scheduleShift: 'Programar Turno',
+        shiftStart: 'Inicio de Turno',
+        shiftEnd: 'Fin de Turno',
+        position: 'Posición',
+        
+        // Cafe Hours
+        openHours: 'Horario de Apertura',
+        closedDue: 'Cerrado por',
+        specialHours: 'Horario Especial',
+        sundayHours: 'Horario Dominical',
+        
+        // Loading States
+        loadingEvents: 'Cargando eventos...',
+        loadingCalendar: 'Cargando calendario...',
+        errorLoading: 'Error al cargar el calendario'
       },
 
       // Conflict Resolution System
@@ -699,7 +901,17 @@ const resources = {
         save: 'Save',
         cancel: 'Cancel',
         directExpense: 'Direct Expense',
-        purchaseOrder: 'Purchase Order'
+        purchaseOrder: 'Purchase Order',
+        revenueCategories: 'Revenue Categories',
+        expenseCategories: 'Expense Categories',
+        addStaffDebtLoan: 'Add Staff Debt/Loan',
+        debtToStaff: 'Debt to Staff',
+        staffMember: 'Staff Member',
+        selectStaff: 'Select Staff',
+        enterDescription: 'Enter description',
+        selectDebtOption: 'Select debt option',
+        paymentAmount: 'Payment amount',
+        optionalNotes: 'Optional notes'
       },
       gastos: {
         manageCategories: 'Manage Categories',

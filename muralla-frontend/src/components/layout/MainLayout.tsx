@@ -195,6 +195,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         { name: t('nav.insumos'), path: '/operations/insumos' },
         { name: t('nav.production'), path: '/operations/production' },
         { name: t('nav.products'), path: '/operations/products' },
+        { name: 'Inventario', path: '/operations/inventory' },
       ]
     },
     {
@@ -272,7 +273,7 @@ export default function MainLayout({ children, darkMode, toggleDarkMode }: MainL
         }`}
         onClick={() => setSidebarOpen(false)}
       >
-        <div className="fixed inset-0 bg-neutral-900 bg-opacity-50" />
+        <div className="fixed inset-0 bg-neutral-900 bg-opacity-75" />
       </div>
 
       {/* Sidebar */}

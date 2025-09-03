@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, User, Building2, Phone, Mail, Instagram, FileText, MapPin, CreditCard, Tag, Globe, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { contactsService, type CreateContactData } from '../../../services/contactsService';
 import { useTranslation } from 'react-i18next';
 
 interface Contact {
   id: string;
   name: string;
-  type: 'supplier' | 'customer' | 'important';
+  type: 'supplier' | 'customer' | 'important' | 'brand';
   entityType: 'business' | 'person';
   phone?: string;
   email?: string;
@@ -28,14 +31,14 @@ interface Contact {
 
 interface AddContactProps {
   onClose: () => void;
-  onAdd: (contact: Omit<Contact, 'id'>) => void;
+  onAdd: (contact: Contact) => void;
 }
 
 const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
-    type: 'customer' as 'supplier' | 'customer' | 'important',
+    type: 'customer' as 'supplier' | 'customer' | 'important' | 'brand',
     entityType: 'person' as 'business' | 'person',
     phone: '',
     email: '',
@@ -46,15 +49,18 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
     contactPersonName: '',
     giro: '',
     notes: '',
+    skuAbbreviation: '', // SKU abbreviation for brand contacts
     // Bank details
     bankName: '',
     accountType: 'checking' as 'checking' | 'savings' | 'business',
     accountNumber: '',
     accountHolder: '',
-    rutAccount: ''
+    rutAccount: '',
+    tags: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -87,44 +93,54 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    // Clean up Instagram handle
-    const cleanedInstagram = formData.instagram ? 
-      (formData.instagram.startsWith('@') ? formData.instagram : `@${formData.instagram}`) : '';
+    setLoading(true);
+    setErrors({});
 
-    // Prepare bank details if any field is filled
-    const bankDetails = (formData.bankName || formData.accountNumber || formData.accountHolder) ? {
-      bankName: formData.bankName || undefined,
-      accountType: formData.accountType,
-      accountNumber: formData.accountNumber || undefined,
-      accountHolder: formData.accountHolder || undefined,
-      rutAccount: formData.rutAccount || undefined,
-    } : undefined;
+    try {
+      // Create contact data for the general contacts API
+      const contactData: CreateContactData = {
+        name: formData.name,
+        type: formData.type,
+        entityType: formData.entityType,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        instagram: formData.instagram ? 
+          (formData.instagram.startsWith('@') ? formData.instagram : `@${formData.instagram}`) : undefined,
+        rut: formData.rut || undefined,
+        company: formData.company || undefined,
+        address: formData.address || undefined,
+        notes: formData.notes || undefined,
+        contactPersonName: formData.contactPersonName || undefined,
+        giro: formData.giro || undefined,
+        skuAbbreviation: formData.skuAbbreviation || undefined,
+        bankDetails: (formData.bankName || formData.accountNumber || formData.accountHolder) ? {
+          bankName: formData.bankName || undefined,
+          accountType: formData.accountType,
+          accountNumber: formData.accountNumber || undefined,
+          accountHolder: formData.accountHolder || undefined,
+          rutAccount: formData.rutAccount || undefined,
+        } : undefined,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
+      };
 
-    const contactData = {
-      name: formData.name,
-      type: formData.type,
-      entityType: formData.entityType,
-      // Remove empty fields
-      phone: formData.phone || undefined,
-      email: formData.email || undefined,
-      instagram: cleanedInstagram || undefined,
-      rut: formData.rut || undefined,
-      company: formData.company || undefined,
-      address: formData.address || undefined,
-      contactPersonName: formData.contactPersonName || undefined,
-      giro: formData.giro || undefined,
-      bankDetails,
-      notes: formData.notes || undefined,
-    };
-
-    onAdd(contactData);
+      // Create the contact via the general contacts API
+      const createdContact = await contactsService.createContact(contactData);
+      
+      onAdd(createdContact);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create contact:', error);
+      setErrors({ submit: 'Error al crear el contacto. Por favor intenta de nuevo.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -137,17 +153,18 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
     }
   };
 
-  const getTypeLabel = (type: string) => {
+  const _getTypeLabel = (type: string) => {
     switch (type) {
       case 'supplier': return 'Proveedor';
       case 'customer': return 'Cliente';
       case 'important': return 'Contacto Importante';
+      case 'brand': return 'Marca';
       default: return type;
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -162,6 +179,16 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error Display */}
+          {errors.submit && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+              <div className="flex">
+                <span className="text-red-400 mr-2">⚠️</span>
+                <p className="text-sm text-red-700 dark:text-red-300">{errors.submit}</p>
+              </div>
+            </div>
+          )}
+
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -193,6 +220,7 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
               >
                 <option value="customer">Cliente</option>
                 <option value="supplier">Proveedor</option>
+                <option value="brand">Marca</option>
                 <option value="important">Contacto Importante</option>
               </select>
             </div>
@@ -286,6 +314,28 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
               {errors.rut && <p className="mt-1 text-sm text-red-600">{errors.rut}</p>}
             </div>
           </div>
+
+          {/* SKU Abbreviation - Show for suppliers and brands */}
+          {(formData.type === 'supplier' || formData.type === 'brand') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Abreviación SKU
+                <span className="text-sm text-gray-500 ml-1">(para códigos de productos)</span>
+              </label>
+              <input
+                type="text"
+                name="skuAbbreviation"
+                value={formData.skuAbbreviation}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="ABC (ej: para productos ABC-001, ABC-002)"
+                maxLength={10}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Abreviación de 2-10 caracteres para identificar productos de esta marca/proveedor
+              </p>
+            </div>
+          )}
 
           {/* Conditional Fields based on Entity Type */}
           {formData.entityType === 'business' ? (
@@ -476,9 +526,17 @@ const AddContact: React.FC<AddContactProps> = ({ onClose, onAdd }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Agregar Contacto
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Guardando...
+                </div>
+              ) : (
+                'Agregar Contacto'
+              )}
             </button>
           </div>
         </form>
