@@ -647,8 +647,9 @@ const SortableTaskRow: React.FC<{
   onEditTask?: (task: Task) => void
   isUserEditing: (resource: string, resourceId: string) => boolean
   getEditingUsers: (resource: string, resourceId: string) => any[]
+  savingItems: Set<string>
   isSubtask?: boolean
-}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, onEditTask, isUserEditing, getEditingUsers, isSubtask = false }) => {
+}> = React.memo(({ task, users, projects, onTaskUpdate, onSubtaskUpdate, onAddSubtask, onDeleteSubtask, onDeleteTask, onEditTask, isUserEditing, getEditingUsers, savingItems, isSubtask = false }) => {
   const { t } = useTranslation()
   
   const {
@@ -826,6 +827,7 @@ const SortableTaskRow: React.FC<{
               onEditTask={onEditTask}
               isUserEditing={isUserEditing}
               getEditingUsers={getEditingUsers}
+              savingItems={savingItems}
               isSubtask={true}
             />
           ))}
@@ -1746,6 +1748,7 @@ const TasksList: React.FC = () => {
                       onEditTask={handleEditTask}
                       isUserEditing={isUserEditing}
                       getEditingUsers={getEditingUsers}
+                      savingItems={savingItems}
                     />
                   ))}
                 </div>
