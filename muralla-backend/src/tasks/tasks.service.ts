@@ -205,39 +205,59 @@ export class TasksService {
         const existingUsers = await this.prisma.user.findMany({
           where: { id: { in: userIds } }
         });
+        console.log('User lookup result:', { 
+          requestedUserIds: userIds, 
+          foundUsers: existingUsers.length,
+          foundUserIds: existingUsers.map(u => u.id)
+        });
+        
         const existingUserIds = existingUsers.map(u => u.id);
         const invalidUserIds = userIds.filter(id => !existingUserIds.includes(id));
         
         if (invalidUserIds.length > 0) {
+          console.error(`Invalid user IDs found: ${invalidUserIds.join(', ')}`);
           throw new Error(`Invalid user IDs: ${invalidUserIds.join(', ')}`);
         }
       }
 
       // Remove existing assignment relationships
-      const existingRelationships = await this.entityRelationshipService.getEntityRelationships(
-        'Task', taskId
-      );
+      console.log('Getting existing relationships...');
       
-      // Filter for assignment relationships
-      const existingAssignments = existingRelationships.filter(
-        rel => rel.relationshipType === 'assigned_to'
-      );
+      try {
+        const existingRelationships = await this.entityRelationshipService.getEntityRelationships(
+          'Task', taskId
+        );
+        console.log('Existing relationships found:', existingRelationships.length);
       
-      for (const relationship of existingAssignments) {
-        await this.entityRelationshipService.remove(relationship.id);
-      }
+        // Filter for assignment relationships
+        const existingAssignments = existingRelationships.filter(
+          rel => rel.relationshipType === 'assigned_to'
+        );
+        console.log('Existing assignments to remove:', existingAssignments.length);
+        
+        for (const relationship of existingAssignments) {
+          console.log('Removing relationship:', relationship.id);
+          await this.entityRelationshipService.remove(relationship.id);
+        }
 
-      // Create new assignment relationships
-      for (const userId of userIds) {
-        await this.entityRelationshipService.create({
-          relationshipType: 'assigned_to',
-          sourceType: 'Task',
-          sourceId: taskId,
-          targetType: 'User',
-          targetId: userId,
-          strength: 5,
-          metadata: { role: 'assignee' }
-        });
+        // Create new assignment relationships
+        console.log('Creating new assignments for users:', userIds);
+        for (const userId of userIds) {
+          console.log('Creating assignment relationship for user:', userId);
+          await this.entityRelationshipService.create({
+            relationshipType: 'assigned_to',
+            sourceType: 'Task',
+            sourceId: taskId,
+            targetType: 'User',
+            targetId: userId,
+            strength: 5,
+            metadata: { role: 'assignee' }
+          });
+        }
+        
+      } catch (relationshipError) {
+        console.error('Error in relationship operations:', relationshipError);
+        throw new Error(`Failed to update task assignments: ${relationshipError.message}`);
       }
 
       // Return updated task with assignee data
@@ -256,12 +276,18 @@ export class TasksService {
         })
       );
 
+      console.log('updateTaskAssignees completed successfully for task:', taskId);
       return {
         ...existingTask,
         assignees
       };
     } catch (error) {
-      console.error('Error updating task assignees:', error);
+      console.error('updateTaskAssignees failed:', {
+        taskId,
+        userIds,
+        error: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   }
