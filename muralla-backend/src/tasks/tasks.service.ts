@@ -182,6 +182,8 @@ export class TasksService {
   }
 
   async updateTaskAssignees(taskId: string, userIds: string[]) {
+    console.log('updateTaskAssignees called:', { taskId, userIds });
+    
     try {
       // Verify task exists
       const existingTask = await this.prisma.task.findFirst({
@@ -191,7 +193,10 @@ export class TasksService {
         }
       });
 
+      console.log('Task lookup result:', { taskId, taskExists: !!existingTask });
+
       if (!existingTask) {
+        console.error(`Task with id ${taskId} not found`);
         throw new Error(`Task with id ${taskId} not found`);
       }
 

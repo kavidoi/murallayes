@@ -131,16 +131,36 @@ const setManualOrder = (order: Record<string, number>) => {
 }
 
 const getInitials = (firstName: string, lastName: string): string => {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const first = firstName?.charAt(0) || '';
+  const last = lastName?.charAt(0) || '';
+  
+  // If we only have one name (like username), take first two characters
+  if (!first || !last) {
+    const singleName = firstName || lastName || '';
+    return singleName.substring(0, 2).toUpperCase();
+  }
+  
+  return `${first}${last}`.toUpperCase();
 };
 
-const convertAPIUserToUser = (apiUser: APIUser, index: number): User => ({
-  id: apiUser.id,
-  name: `${apiUser.firstName} ${apiUser.lastName}`,
-  initials: getInitials(apiUser.firstName, apiUser.lastName),
-  color: getColorForUser(index),
-  email: apiUser.email,
-});
+const convertAPIUserToUser = (apiUser: APIUser, index: number): User => {
+  // Create display name with fallback to username if firstName/lastName missing
+  const firstName = apiUser.firstName?.trim() || '';
+  const lastName = apiUser.lastName?.trim() || '';
+  const displayName = firstName && lastName 
+    ? `${firstName} ${lastName}`.trim()
+    : apiUser.username || apiUser.email || 'Unknown User';
+    
+  return {
+    id: apiUser.id,
+    name: displayName,
+    initials: firstName && lastName 
+      ? getInitials(firstName, lastName)
+      : getInitials(displayName, ''),
+    color: getColorForUser(index),
+    email: apiUser.email,
+  };
+};
 
 const convertAPIStatusToStatus = (apiStatus: APIStatus, dueDate?: string): Status => {
   if (apiStatus === 'DONE') return 'Completed';
