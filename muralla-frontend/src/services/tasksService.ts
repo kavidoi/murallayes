@@ -131,12 +131,31 @@ class TasksService {
   async updateTask(id: string, updates: UpdateTaskDto): Promise<Task> {
     try {
       await AuthService.ensureValidToken();
+      
+      // Detailed logging for debugging
+      console.log('TasksService.updateTask called:', {
+        id,
+        updates,
+        url: `${API_BASE_URL}/tasks/${id}`,
+        headers: this.getAuthHeaders()
+      });
+      
       const response = await axios.patch(`${API_BASE_URL}/tasks/${id}`, updates, {
         headers: this.getAuthHeaders(),
       });
+      
+      console.log('TasksService.updateTask success:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('Error updating task:', error);
+    } catch (error: any) {
+      console.error('TasksService.updateTask error:', {
+        id,
+        updates,
+        error,
+        errorMessage: error?.message,
+        errorResponse: error?.response?.data,
+        errorStatus: error?.response?.status,
+        requestData: error?.config?.data
+      });
       throw error;
     }
   }

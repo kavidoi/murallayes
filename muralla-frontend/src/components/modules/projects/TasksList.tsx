@@ -1112,8 +1112,31 @@ const TasksList: React.FC = () => {
       if ('dueDate' in updates) apiUpdates.dueDate = dateToISO(updates.dueDate)
       if ('projectId' in updates) apiUpdates.projectId = updates.projectId
       
-      // Debug logging
-      console.log('Sending API update:', { taskId, apiUpdates })
+      // Debug logging and validation
+      console.log('Sending API update:', { taskId, apiUpdates });
+      
+      // Validate project exists if updating projectId
+      if ('projectId' in apiUpdates) {
+        const projectExists = projects.find(p => p.id === apiUpdates.projectId);
+        console.log('Project validation:', {
+          projectId: apiUpdates.projectId,
+          projectExists: !!projectExists,
+          projectName: projectExists?.name,
+          availableProjects: projects.map(p => ({ id: p.id, name: p.name }))
+        });
+        if (!projectExists) {
+          console.error('Project not found in available projects list!');
+        }
+      }
+      
+      // Validate task exists
+      const taskExists = tasks.find(t => t.id === taskId);
+      console.log('Task validation:', {
+        taskId,
+        taskExists: !!taskExists,
+        taskTitle: taskExists?.name,
+        currentProjectId: taskExists?.projectId
+      });
       
       if (Object.keys(apiUpdates).length > 0) {
         // Debounce name updates (500ms) but send others immediately
@@ -1132,10 +1155,19 @@ const TasksList: React.FC = () => {
             if ('projectId' in updates) {
               console.log('Project update API success')
             }
-          } catch (err) {
-            console.error('Failed to update task:', err)
+          } catch (err: any) {
+            console.error('Failed to update task:', {
+              taskId,
+              apiUpdates,
+              originalUpdates: updates,
+              error: err,
+              errorMessage: err?.message,
+              errorResponse: err?.response?.data,
+              errorStatus: err?.response?.status,
+              errorConfig: err?.config
+            })
             setTasks(originalTasks)
-            setError('Failed to update task. Please try again.')
+            setError(`Failed to update task (${err?.response?.status || 'Unknown error'}). Please try again.`)
             setTimeout(() => setError(null), 3000)
           } finally {
             // Remove task from saving state

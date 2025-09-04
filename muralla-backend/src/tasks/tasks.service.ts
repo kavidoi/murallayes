@@ -118,6 +118,8 @@ export class TasksService {
   }
 
   async update(id: string, data: any) {
+    console.log('TasksService.update called:', { id, data });
+    
     // Task update - simplified for EntityRelationship migration
     const existingTask = await this.prisma.task.findFirst({
       where: {
@@ -128,17 +130,43 @@ export class TasksService {
       }
     });
 
+    console.log('Task lookup result:', { id, existingTask: !!existingTask });
+
     if (!existingTask) {
+      console.error(`Task with id ${id} not found in database`);
       throw new Error(`Task with id ${id} not found`);
     }
 
-    return this.prisma.task.update({
-      where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date()
+    // Validate projectId if provided
+    if (data.projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: { id: data.projectId, isDeleted: false }
+      });
+      console.log('Project lookup result:', { projectId: data.projectId, projectExists: !!project });
+      
+      if (!project) {
+        console.error(`Project with id ${data.projectId} not found`);
+        throw new Error(`Project with id ${data.projectId} not found`);
       }
-    });
+    }
+
+    console.log('Updating task with data:', { id, updateData: { ...data, updatedAt: new Date() } });
+
+    try {
+      const result = await this.prisma.task.update({
+        where: { id },
+        data: {
+          ...data,
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log('Task update successful:', { id, updatedTask: result });
+      return result;
+    } catch (error) {
+      console.error('Prisma update error:', { id, data, error });
+      throw error;
+    }
   }
 
   async remove(id: string) {
