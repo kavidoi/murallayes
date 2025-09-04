@@ -110,6 +110,7 @@ const Gastos: React.FC = () => {
   
   // Check authentication status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   // Real-time collaboration state
   const [editingExpense, setEditingExpense] = useState<DirectExpense | null>(null);
@@ -413,8 +414,9 @@ const Gastos: React.FC = () => {
         };
         
         // Show user-friendly message
-        // Show message directing user to login
-        alert('🔐 Por favor inicia sesión para guardar gastos en el servidor. Usa el botón de login en la esquina superior derecha.');
+        // Show login modal instead of alert
+        setShowLoginModal(true);
+        return; // Don't continue with expense creation
       }
       
       // Convert backend/demo response to local format for immediate UI update
@@ -1158,16 +1160,9 @@ const Gastos: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleCreateExpense}
-                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                      !isAuthenticated 
-                        ? 'bg-amber-500 hover:bg-amber-600' 
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                   >
-                    {!isAuthenticated 
-                      ? '🔐 Crear Gasto (Requiere Login)' 
-                      : t('gastos.createExpense')
-                    }
+                    {t('gastos.createExpense')}
                   </button>
                 </div>
               </form>
@@ -1675,6 +1670,18 @@ const Gastos: React.FC = () => {
           onCreateSupplier={() => setShowAddContact(true)}
         />
       )}
+
+      {/* Development Login Modal */}
+      <DevLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          setIsAuthenticated(true);
+          // Re-attempt expense creation after login
+          handleCreateExpense();
+        }}
+      />
 
     </div>
   );

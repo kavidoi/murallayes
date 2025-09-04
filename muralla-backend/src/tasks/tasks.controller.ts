@@ -71,6 +71,8 @@ export class TasksController {
   // Manage task assignees
   @Patch(':id/assignees')
   updateTaskAssignees(@Param('id') taskId: string, @Body() body: { userIds: string[] }) {
+    console.log('TasksController.updateTaskAssignees called:', { taskId, body });
+    console.log('Body type:', typeof body, 'userIds:', body.userIds, 'userIds type:', typeof body.userIds);
     return this.tasksService.updateTaskAssignees(taskId, body.userIds);
   }
 
