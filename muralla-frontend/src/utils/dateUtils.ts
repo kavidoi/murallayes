@@ -71,12 +71,10 @@ export const dateToISO = (date: Date | string | null | undefined): string | null
   
   if (isNaN(dateObj.getTime())) return null;
   
-  // Use local timezone instead of UTC to prevent date shifting
-  const year = dateObj.getFullYear();
-  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-  const day = dateObj.getDate().toString().padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
+  // Return full ISO datetime string for Prisma DateTime fields
+  // Use local timezone and set time to start of day to prevent timezone shifts
+  const localDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  return localDate.toISOString();
 };
 
 /**
