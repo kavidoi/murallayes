@@ -11,7 +11,7 @@ Repository: https://github.com/kavidoi/murallayes.git
 | `muralla-backend` | NestJS API, GraphQL, authentication, BullMQ queues, Prisma ORM |
 | `muralla-frontend` | React + Vite SPA served as static files |
 | `packages/common` | Shared TypeScript utilities & DTOs |
-| `scripts` | Bash helpers for Railway automation |
+| `scripts` | Bash deployment helpers |
 
 ## Local development
 
@@ -87,7 +87,6 @@ See `docs/reference/env-vars.md` for the canonical list and details. Summary bel
 | `NODE_VERSION` | Node pin for build env | `20.19.0` |
 
 ## Docs
-- Railway deployment and CI: `docs/platform/railway-api.md`
 - SSL/TLS setup: `docs/security/ssl-tls.md`
 - MercadoPago integration: `docs/integrations/mercadopago.md`
 

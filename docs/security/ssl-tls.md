@@ -1,15 +1,15 @@
 # SSL/TLS Implementation Guide for Muralla 4.0
 
-This guide covers the complete SSL/TLS setup for your Muralla application deployed on Railway.
+This guide covers the complete SSL/TLS setup for your Muralla application deployed on Render.
 
 ## 🔒 Overview
 
-Railway provides automatic SSL/TLS termination with Let's Encrypt certificates, but your application needs proper configuration to work securely with it.
+Render provides automatic SSL/TLS termination with Let's Encrypt certificates, but your application needs proper configuration to work securely with it.
 
 ## ✅ What's Already Implemented
 
 ### Backend (NestJS)
-- ✅ Trust proxy configuration for Railway
+- ✅ Trust proxy configuration for Render
 - ✅ Enhanced security headers with Helmet
 - ✅ HTTPS redirect middleware
 - ✅ CORS configuration with HTTPS enforcement
@@ -22,9 +22,9 @@ Railway provides automatic SSL/TLS termination with Let's Encrypt certificates, 
 - ✅ HTTPS-aware API communication
 - ✅ Secure service workers and resources
 
-## 🚀 Railway SSL/TLS Features
+## 🚀 Render SSL/TLS Features
 
-Railway automatically provides:
+Render automatically provides:
 - **Let's Encrypt SSL certificates** (RSA 2048-bit)
 - **Automatic certificate renewal** (every 60 days)
 - **TLS 1.2+ enforcement**
@@ -39,7 +39,7 @@ Railway automatically provides:
 ```typescript
 // src/main.ts
 const expressApp = app.getHttpAdapter().getInstance();
-expressApp.set('trust proxy', 1); // Trust Railway's proxy
+expressApp.set('trust proxy', 1); // Trust Render's proxy
 ```
 
 #### Enhanced Security Headers
@@ -64,7 +64,7 @@ app.use(helmet({
 ```typescript
 // src/common/https-redirect.middleware.ts
 // Automatically redirects HTTP to HTTPS in production
-// Respects Railway's x-forwarded-proto header
+// Respects Render's x-forwarded-proto header
 ```
 
 ### 2. Frontend HTTPS Configuration
@@ -86,24 +86,24 @@ export class HttpsUtils {
 
 ## 🌐 Setting Up Custom Domains
 
-### Step 1: Add Domain in Railway Dashboard
+### Step 1: Add Domain in Render Dashboard
 
-1. Go to your Railway project
+1. Go to your Render project
 2. Select your service (Backend or Frontend)
-3. Navigate to **Settings** → **Domains**
+3. Navigate to **Settings** → **Custom Domains**
 4. Click **Add Custom Domain**
 5. Enter your domain (e.g., `api.yourdomain.com`)
 
 ### Step 2: Configure DNS Records
 
-Railway will provide you with CNAME values. Set up your DNS:
+Render will provide you with CNAME values. Set up your DNS:
 
 ```dns
 # For backend API
-api.yourdomain.com.     CNAME   YOUR-BACKEND-RAILWAY-DOMAIN.up.railway.app.
+api.yourdomain.com.     CNAME   YOUR-BACKEND-RENDER-DOMAIN.onrender.com.
 
 # For frontend
-app.yourdomain.com.     CNAME   YOUR-FRONTEND-RAILWAY-DOMAIN.up.railway.app.
+app.yourdomain.com.     CNAME   YOUR-FRONTEND-RENDER-DOMAIN.onrender.com.
 
 # For SSL validation (if using wildcard)
 _acme-challenge.api.yourdomain.com.  CNAME   YOUR-ACME-CHALLENGE-DOMAIN
@@ -111,18 +111,17 @@ _acme-challenge.api.yourdomain.com.  CNAME   YOUR-ACME-CHALLENGE-DOMAIN
 
 ### Step 3: SSL Certificate Issuance
 
-- Railway automatically issues Let's Encrypt certificates
+- Render automatically issues Let's Encrypt certificates
 - Certificate issuance usually takes **5-60 minutes**
 - Certificates are valid for **90 days** and auto-renew at **30 days**
 
 ### Step 4: Update Environment Variables
 
-Set these in Railway under the respective service variables (Backend/Frontend):
+Set these in Render under the respective service variables (Backend/Frontend):
 
 ```bash
 # Backend
 FRONTEND_URL=https://app.yourdomain.com
-RAILWAY_PUBLIC_DOMAIN=api.yourdomain.com
 
 # Frontend
 VITE_API_BASE_URL=https://api.yourdomain.com
@@ -144,7 +143,7 @@ If using Cloudflare:
 WebSocket connections automatically use WSS in production:
 
 ```typescript
-// Automatically handled by Railway's SSL termination
+// Automatically handled by Render's SSL termination
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const wsUrl = `${protocol}//${window.location.host}/ws`;
 ```
@@ -189,7 +188,7 @@ curl -L http://api.yourdomain.com/health
 
 ### Certificate Expiry Monitoring
 
-Railway handles renewal automatically, but monitor:
+Render handles renewal automatically, but monitor:
 - Certificate expiry dates
 - SSL health checks
 - TLS handshake metrics
@@ -239,7 +238,7 @@ curl --verbose https://api.yourdomain.com/health
   - [ ] Production HTTPS enforcement
   - [ ] API base URL uses HTTPS
 
-- [ ] **Railway Setup**
+- [ ] **Render Setup**
   - [ ] Custom domains added
   - [ ] DNS records configured
   - [ ] SSL certificates issued
@@ -263,7 +262,7 @@ curl --verbose https://api.yourdomain.com/health
 
 ## 📚 Additional Resources
 
-- [Railway SSL Documentation](https://docs.railway.app/guides/public-networking)
+- [Render SSL Documentation](https://render.com/docs/tls)
 - [Let's Encrypt Documentation](https://letsencrypt.org/docs/)
 - [OWASP HTTPS Guidelines](https://owasp.org/www-project-web-security-testing-guide/)
 - [Mozilla SSL Configuration Generator](https://ssl-config.mozilla.org/)

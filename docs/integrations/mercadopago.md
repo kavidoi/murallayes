@@ -17,7 +17,7 @@ We've implemented the official MercadoPago SDK v2 in the frontend to comply with
 
 ### Frontend Environment Variables
 
-Set these in Railway under the Frontend service variables (see `docs/reference/env-vars.md`):
+Set these in Render under the Frontend service variables (see `docs/reference/env-vars.md`):
 
 ```bash
 # MercadoPago Configuration
@@ -26,7 +26,7 @@ VITE_MP_PUBLIC_KEY=your_mercadopago_public_key_here
 
 ### Backend Environment Variables
 
-Set these in Railway under the Backend service variables (see `docs/reference/env-vars.md`):
+Set these in Render under the Backend service variables (see `docs/reference/env-vars.md`):
 
 ```bash
 # MercadoPago Configuration  

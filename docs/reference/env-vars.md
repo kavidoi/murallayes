@@ -4,25 +4,13 @@ This reference consolidates all environment variables used across the Muralla 4.
 
 - Backend path: `muralla-backend/`
 - Frontend path: `muralla-frontend/`
-- Railway helper scripts: `scripts/`
+- Deployment scripts: `scripts/`
 
 Notes
-- Railway is the source of truth for environment variables. Manage per-service variables directly in Railway.
-- Run locally using Railway variables (no files written):
-  ```sh
-  # Backend
-  railway run -s Backend -e <environment> -- pnpm -C muralla-backend start:dev
-  # Frontend
-  railway run -s Frontend -e <environment> -- pnpm -C muralla-frontend dev
-  ```
-- Optionally mirror variables to local dotenv files for temporary development:
-  ```sh
-  RAILWAY_PROJECT_NAME=<project> RAILWAY_ENVIRONMENT=<environment> \
-    ./scripts/pull_railway_vars.sh
-  # Writes muralla-backend/.env.railway and muralla-frontend/.env.railway (gitignored)
-  ```
+- Render is the source of truth for environment variables. Manage per-service variables directly in Render dashboard.
+- Run locally using local .env files for development.
 - Vite only exposes variables prefixed with `VITE_` to the browser.
-- Railway provides built-ins like `PORT` and `RAILWAY_PUBLIC_DOMAIN` automatically.
+- Render provides built-ins like `PORT` automatically.
 
 ## Backend (muralla-backend)
 

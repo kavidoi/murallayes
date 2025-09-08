@@ -175,7 +175,6 @@ jest.config.js
 # Monorepo context optimization for backend Docker builds
 # Exclude large, irrelevant directories from root context (backend image)
 muralla-frontend/
-railway-docs/
 docs/
 .history/
 scripts/

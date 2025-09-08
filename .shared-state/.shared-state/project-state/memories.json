@@ -1,0 +1,76 @@
+{
+  "memories": [
+    {
+      "id": "memory-1757106316848-jv1chtq8v",
+      "title": "Muralla Shared State System v2.0",
+      "content": "Local-only shared source of truth for cross-IDE development. Uses filesystem watching for real-time sync. Commands: windsurf-sync context, todo add/list/complete, memory add/search, ai-log. All instances share TODOs, memories, and activity logs.",
+      "tags": [
+        "shared-state",
+        "windsurf",
+        "cross-ide",
+        "synchronization"
+      ],
+      "importance": "high",
+      "createdAt": "2025-09-05T21:05:16.848Z",
+      "updatedAt": "2025-09-05T21:05:16.848Z",
+      "createdBy": "windsurf-MacBook-Pro-de-Kavi.local-35292-1757106316843",
+      "accessCount": 0,
+      "lastAccessed": null
+    },
+    {
+      "id": "memory-1757106316849-8d76u6h0f",
+      "title": "Windsurf Development Rules",
+      "content": "Always use shared TODOs instead of individual tools. Log AI interactions with windsurf-sync ai-log. Create memories for important knowledge. Check context at session start. Use appropriate AI types: ai-generation, ai-refactor, ai-debug, ai-chat, ai-explanation, ai-optimization, ai-testing.",
+      "tags": [
+        "windsurf",
+        "development-rules",
+        "workflow",
+        "ai-integration"
+      ],
+      "importance": "high",
+      "createdAt": "2025-09-05T21:05:16.849Z",
+      "updatedAt": "2025-09-05T21:05:16.849Z",
+      "createdBy": "windsurf-MacBook-Pro-de-Kavi.local-35292-1757106316843",
+      "accessCount": 0,
+      "lastAccessed": null
+    },
+    {
+      "id": "memory-1757106316849-41cltm6ag",
+      "title": "Muralla Project Architecture",
+      "content": "Full-stack project management system. Backend: NestJS + Prisma + PostgreSQL on Render. Frontend: React + TypeScript on Render. Mobile: React Native + Capacitor. Shared state system in .shared-state/ directory for cross-IDE coordination.",
+      "tags": [
+        "architecture",
+        "project-structure",
+        "deployment"
+      ],
+      "importance": "medium",
+      "createdAt": "2025-09-05T21:05:16.849Z",
+      "updatedAt": "2025-09-05T21:05:16.849Z",
+      "createdBy": "windsurf-MacBook-Pro-de-Kavi.local-35292-1757106316843",
+      "accessCount": 0,
+      "lastAccessed": null
+    },
+    {
+      "id": "memory-1757107010907-emt35lhm4",
+      "title": "Windsurf Development Rule",
+      "content": "Always use shared state system for TODOs, AI logging, and knowledge capture. Mandatory session workflow: context → todo progress → ai-log → memory add → todo complete. Use correct AI types (ai-generation, ai-refactor, ai-debug, ai-chat, ai-explanation, ai-optimization, ai-testing) and comprehensive tagging (deployment, database, authentication, api, frontend, mobile, architecture, debugging, performance, testing). Cross-instance awareness required - other instances can see your work.",
+      "tags": [
+        "windsurf",
+        "development-rules",
+        "workflow",
+        "mandatory"
+      ],
+      "importance": "medium",
+      "createdAt": "2025-09-05T21:16:50.907Z",
+      "updatedAt": "2025-09-05T21:16:50.907Z",
+      "createdBy": "windsurf-MacBook-Pro-de-Kavi.local-36857-1757107010890",
+      "accessCount": 0,
+      "lastAccessed": null
+    }
+  ],
+  "_metadata": {
+    "lastUpdated": "2025-09-05T21:16:50.907Z",
+    "updatedBy": "windsurf-MacBook-Pro-de-Kavi.local-36857-1757107010890",
+    "version": 5
+  }
+}
