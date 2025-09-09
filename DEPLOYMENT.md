@@ -1,67 +1,99 @@
-# Muralla 4.0 – Railway Deployment Guide (2025-08)
+# Muralla 4.0 – Deployment Guide (2025-09)
 
-This short guide replaces the older, dashboard-heavy instructions.  All essential build & start settings now live **inside the repo** (`railway.json` + `nixpacks.toml`).
+This guide covers deployment to **Render** (production) and local development setup.
 
 ## 1 · Prerequisites
 
-• Railway project with **Backend** and **Frontend** services created and linked to this GitHub repo.  
-• PostgreSQL & Redis services added (Railway plugins).  
-• Local `pnpm` ≥ 8 if you want to run commands below.
+### For Production (Render)
+• Render account with **Backend** and **Frontend** services created and linked to this GitHub repo
+• PostgreSQL database service added in Render
+• `render.yaml` configuration file (already included in repo)
 
-## 2 · One-time setup (per environment)
+### For Local Development
+• Node.js 20.19.0 (use `.nvmrc`)
+• `pnpm` ≥ 8.15.0
+• PostgreSQL database (local or cloud)
+
+## 2 · Local Development Setup
 
 ```bash
-# clone & install dependencies
+# Install dependencies
 pnpm install
 
-# set common Railway variables (uses CLI)
-./scripts/set_railway_vars.sh               # non-interactive
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your local database URL and other settings
+
+# Start backend
+cd muralla-backend
+pnpm run dev
+
+# In another terminal, start frontend
+cd muralla-frontend  
+pnpm run dev
 ```
 
-The script fills in:
-* DATABASE_URL / REDIS_URL references
-* JWT settings
-* CROSS-SERVICE references (`${{Backend.RAILWAY_PUBLIC_DOMAIN}}`, etc.)
+## 3 · Render Deployment
 
-## 3 · Deploy
+### Automated Deployment
+Deployment is handled via `render.yaml` blueprint:
+- **Backend**: Docker-based web service with health checks
+- **Frontend**: Static site build
+- **Database**: Managed PostgreSQL
 
-```bash
-# Backend – Nixpacks builds with pnpm -C muralla-backend …
-railway up -s Backend    # or Redeploy in UI
+### Manual Deployment via Render Dashboard
+1. Connect your GitHub repository
+2. Deploy using the `render.yaml` blueprint
+3. Set required environment variables in Render dashboard
 
-# Frontend – static vite build served via Nixpacks
-railway up -s Frontend
-```
+### Required Environment Variables
+Set these in your Render dashboard:
+- `JWT_SECRET` - Secure random string
+- `MP_ACCESS_TOKEN` - MercadoPago access token (optional)
+- `MP_CLIENT_ID` - MercadoPago client ID (optional) 
+- `MP_CLIENT_SECRET` - MercadoPago client secret (optional)
 
-That’s it.  Because the services rely on `railway.json`, you **do not** need to touch the dashboard build / start commands.
+## 4 · Health Checks
+• Backend exposes `/health/healthz` endpoint
+• Frontend serves from root `/` 
+• Database connectivity verified on backend startup
 
-### Post-install Prisma
-A `postinstall` script runs `prisma generate` automatically during the build phase, so the Prisma client is ready at runtime.
+## 5 · Environment Variables
+See `render.yaml` for complete environment variable configuration.
+Frontend supports `VITE_ENABLE_DEMO=true` for demo mode (dev/staging only).
 
-## 4 · Health checks
-• Backend exposes `/health/healthz` (configured in `railway.json`).  
-• Thresholds set to 512 MB RSS to avoid false positives.
+## 6 · Troubleshooting
 
-## 5 · Environment variables
-See table in `README.md`  
-Frontend also supports `VITE_ENABLE_DEMO=true` for a temporary demo token (dev/staging only).
-
-## 6 · Troubleshooting cheat-sheet
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Build fails with workspace pkg not found | Root directory mismatch | Ensure service root is correct in Railway UI |
-| Runtime `MODULE_NOT_FOUND .prisma/client` | Prisma client not generated | Confirm `postinstall` ran; redeploy |
-| 401s from API | Missing JWT token | Authenticate (`/auth/login`) or enable demo flag |
+| Build fails | Missing dependencies | Check `pnpm install` in build logs |
+| Runtime `MODULE_NOT_FOUND .prisma/client` | Prisma client not generated | Verify build process includes `prisma generate` |
+| 401s from API | Missing JWT token | Check authentication setup |
+| CORS errors | Frontend/backend URL mismatch | Verify CORS settings in backend |
+
+## 7 · Node Version Policy
+
+The repo is pinned to Node 20.19.0 for consistency:
+- `.nvmrc` files set to `20.19.0`
+- `package.json` engines specify `"node": "^20.19.0"`
+- `engine-strict=true` in `.npmrc` enforces version matching
+
+If updating Node version, change all references in a single PR.
+
+## 8 · Local Development Workflow
+
+```bash
+# Full stack development
+pnpm run dev          # Starts backend only
+# In separate terminal:
+cd muralla-frontend && pnpm run dev
+
+# Build for production testing
+pnpm run build        # Builds both frontend and backend
+
+# Database operations
+pnpm run bootstrap    # Set up database schema
+pnpm run reset-db     # Reset database (dev only)
+```
 
 Happy shipping 🚀
-
-## 7 · Node version policy (must-read)
-
-To avoid EBADENGINE warnings and flaky builds, the repo is pinned to Node 20.19.0 across local, CI and Railway.
-
-- Root `.nvmrc` and `muralla-frontend/.nvmrc` are set to `20.19.0`.
-- Root `package.json` and each workspace `package.json` specify `"engines.node": "^20.19.0"`.
-- `muralla-frontend/nixpacks.toml` and `muralla-backend/nixpacks.toml` set `NODE_VERSION = "20.19.0"`.
-- Root `.npmrc` enables `engine-strict=true` to fail fast if a mismatched Node is used.
-
-If you need to bump Node, change all of the above in a single PR to keep environments unified.

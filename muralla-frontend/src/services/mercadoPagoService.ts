@@ -4,6 +4,7 @@
  */
 
 import { loadMercadoPago } from '@mercadopago/sdk-js';
+import api from './api';
 
 interface MercadoPagoConfig {
   publicKey: string;
@@ -91,7 +92,61 @@ declare global {
   }
 }
 
-export class MercadoPagoService {
+export interface MercadoPagoTransaction {
+  id: number;
+  date_created: string;
+  date_approved?: string;
+  status: string;
+  status_detail: string;
+  currency_id: string;
+  description?: string;
+  payer: {
+    id?: string;
+    email?: string;
+    type: string;
+  };
+  transaction_amount: number;
+  transaction_amount_refunded: number;
+  fee_details?: Array<{
+    type: string;
+    amount: number;
+    fee_payer: string;
+  }>;
+  installments: number;
+  payment_method_id: string;
+  payment_type_id: string;
+  operation_type: string;
+}
+
+export interface TransactionSummary {
+  period: { start: string; end: string };
+  balance: any;
+  overview: {
+    totalTransactions: number;
+    approvedCount: number;
+    pendingCount: number;
+    rejectedCount: number;
+    totalRevenue: number;
+    totalFees: number;
+  };
+  dailyStats: Array<{
+    date: string;
+    count: number;
+    approved: number;
+    rejected: number;
+    pending: number;
+    totalAmount: number;
+    totalFees: number;
+    netAmount: number;
+  }>;
+  paymentMethods: Array<{
+    method: string;
+    count: number;
+    totalAmount: number;
+  }>;
+}
+
+class MercadoPagoService {
   private static instance: MercadoPagoService;
   private mp: any = null;
   private bricks: any = null;
@@ -387,6 +442,111 @@ export class MercadoPagoService {
    */
   isSDKLoaded(): boolean {
     return this.sdkLoaded && !!window.MercadoPago;
+  }
+
+  // ============= Transaction Fetching Methods =============
+
+  /**
+   * Get all transactions with optional filters
+   */
+  async getTransactions(params: {
+    begin_date?: string;
+    end_date?: string;
+    status?: string;
+    operation_type?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<{
+    summary: any;
+    paging: any;
+    transactions: MercadoPagoTransaction[];
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.begin_date) queryParams.append('begin_date', params.begin_date);
+      if (params.end_date) queryParams.append('end_date', params.end_date);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.operation_type) queryParams.append('operation_type', params.operation_type);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.offset) queryParams.append('offset', params.offset.toString());
+
+      const response = await api.get(`/mercadopago/transactions?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific transaction by ID
+   */
+  async getTransaction(id: string): Promise<MercadoPagoTransaction> {
+    try {
+      const response = await api.get(`/mercadopago/transactions/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching transaction ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get account balance
+   */
+  async getBalance(): Promise<any> {
+    try {
+      const response = await api.get('/mercadopago/balance');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bank movements
+   */
+  async getBankMovements(params: {
+    begin_date: string;
+    end_date: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams({
+        begin_date: params.begin_date,
+        end_date: params.end_date,
+        limit: (params.limit || 50).toString(),
+        offset: (params.offset || 0).toString(),
+      });
+
+      const response = await api.get(`/mercadopago/bank-movements?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching bank movements:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get transaction summary for dashboard
+   */
+  async getTransactionSummary(params: {
+    begin_date?: string;
+    end_date?: string;
+  } = {}): Promise<TransactionSummary> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.begin_date) queryParams.append('begin_date', params.begin_date);
+      if (params.end_date) queryParams.append('end_date', params.end_date);
+
+      const response = await api.get(`/mercadopago/summary?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transaction summary:', error);
+      throw error;
+    }
   }
 }
 

@@ -145,6 +145,9 @@ prisma/migrations/
 *.tmp
 *.temp
 
+# Ephemeral shared state (do not commit)
+.shared-state/
+
 # Package manager lockfiles (enforce pnpm)
 package-lock.json
 **/package-lock.json

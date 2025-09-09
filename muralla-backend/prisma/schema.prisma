@@ -297,6 +297,9 @@ model Product {
   variants            ProductVariant[]     @relation("ProductVariants")
   ingredientUsage     IngredientUsage[]    @relation("UsedIngredient")
   preparedProducts    IngredientUsage[]    @relation("PreparedProduct")
+  
+  // POS integration
+  posTransactionItems POSTransactionItem[] @relation("POSItemProduct")
 
   @@map("products")
 }
@@ -816,6 +819,7 @@ model Cost {
   attachments         Attachment[]
   lines               CostLine[]
   links               CostTransactionLink[]
+  taxDocuments        TaxDocument[]
   bankAccount         BankAccount?          @relation("CostBankAccount", fields: [bankAccountId], references: [id])
   category            ProductCategory?      @relation(fields: [categoryId], references: [id])
   company             Company               @relation(fields: [companyId], references: [id])
@@ -1821,4 +1825,274 @@ model SKUTemplate {
   generatedSKUs    EntitySKU[] // SKUs generated from this template
   
   @@map("sku_templates")
+}
+
+// ===============================================
+// POS SALES SYSTEM - Tuu Integration
+// ===============================================
+
+// Main POS Transaction record from Tuu BranchReport
+model POSTransaction {
+  id                  String            @id @default(cuid())
+  
+  // Tuu API fields
+  tuuSaleId           String            @unique // saleId from Tuu
+  sequenceNumber      String?           // Receipt/sequence number
+  serialNumber        String?           // POS terminal serial
+  locationId          String?           // Tuu location ID
+  address             String?           // Physical location address
+  
+  // Transaction details
+  status              POSTransactionStatus
+  transactionDateTime DateTime          // When the transaction occurred
+  transactionType     String            // DEBIT, CREDIT, CASH
+  documentType        Int?              // Document type code
+  
+  // Payment details
+  cardBrand           String?           // VISA, MASTERCARD, etc.
+  cardBin             String?           // Card BIN number
+  cardOrigin          String?           // Nacional, Internacional
+  cardIssuer          String?           // Bank/issuer name
+  
+  // Amounts (stored in centavos for precision)
+  saleAmount          Decimal           @db.Decimal(12, 2)
+  tipAmount           Decimal           @default(0) @db.Decimal(12, 2)
+  cashbackAmount      Decimal           @default(0) @db.Decimal(12, 2)
+  totalAmount         Decimal           @db.Decimal(12, 2)
+  currencyCode        String            @default("CLP")
+  
+  // Installment info
+  installmentType     String?           // BANCO, etc.
+  installmentCount    Int               @default(1)
+  
+  // Processing info
+  acquirerId          String?           // Acquirer ID
+  instance            Int?              // Processing instance
+  
+  // Sync metadata
+  syncedAt            DateTime          @default(now())
+  syncSource          String            @default("TUU_BRANCH_REPORT")
+  lastUpdatedAt       DateTime          @updatedAt
+  
+  // Standard fields
+  tenantId            String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  
+  // Relations
+  items               POSTransactionItem[]
+  syncLogs            POSSyncLog[]      @relation("TransactionSyncLogs")
+  taxDocuments        TaxDocument[]
+  
+  @@index([tuuSaleId])
+  @@index([transactionDateTime])
+  @@index([status])
+  @@index([serialNumber])
+  @@index([locationId])
+  @@index([syncedAt])
+  @@map("pos_transactions")
+}
+
+// Individual items within a POS transaction
+model POSTransactionItem {
+  id              String         @id @default(cuid())
+  transactionId   String
+  
+  // Item details from Tuu
+  code            String?        // Product code
+  name            String         // Product name
+  quantity        Decimal        @db.Decimal(12, 3)
+  price           Decimal        @db.Decimal(12, 2)
+  
+  // Links to internal system
+  linkedProductId String?        // Link to internal Product if matched
+  
+  // Standard fields
+  createdAt       DateTime       @default(now())
+  
+  // Relations
+  transaction     POSTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  linkedProduct   Product?       @relation("POSItemProduct", fields: [linkedProductId], references: [id])
+  
+  @@index([transactionId])
+  @@index([linkedProductId])
+  @@map("pos_transaction_items")
+}
+
+// POS sync operations log
+model POSSyncLog {
+  id              String            @id @default(cuid())
+  
+  // Sync operation details
+  syncType        POSSyncType       // FULL_SYNC, INCREMENTAL, MANUAL
+  status          POSSyncStatus
+  startDate       DateTime          // Date range synced from
+  endDate         DateTime          // Date range synced to
+  
+  // Results
+  totalRequested  Int               @default(0)
+  totalProcessed  Int               @default(0)
+  totalCreated    Int               @default(0)
+  totalUpdated    Int               @default(0)
+  totalSkipped    Int               @default(0)
+  totalErrors     Int               @default(0)
+  
+  // Timing
+  startedAt       DateTime          @default(now())
+  completedAt     DateTime?
+  duration        Int?              // Duration in milliseconds
+  
+  // Error handling
+  errorMessage    String?
+  errorDetails    Json?
+  
+  // API details
+  apiEndpoint     String            @default("/BranchReport/branch-report")
+  requestPayload  Json?
+  responseData    Json?
+  
+  // Standard fields
+  tenantId        String?
+  createdBy       String?
+  createdAt       DateTime          @default(now())
+  
+  // Relations
+  transactions    POSTransaction[]  @relation("TransactionSyncLogs")
+  
+  @@index([status])
+  @@index([startedAt])
+  @@index([syncType])
+  @@map("pos_sync_logs")
+}
+
+// POS configuration and settings
+model POSConfiguration {
+  id                      String   @id @default(cuid())
+  
+  // Tuu API settings
+  apiKey                  String?  // Encrypted API key
+  baseUrl                 String   @default("https://integrations.payment.haulmer.com")
+  useRealAPI              Boolean  @default(false)
+  
+  // Sync settings
+  autoSyncEnabled         Boolean  @default(true)
+  syncIntervalHours       Int      @default(24) // Sync every 24 hours
+  maxDaysToSync          Int      @default(60)  // Maximum 60 days per sync
+  
+  // Data retention
+  retentionDays          Int      @default(365) // Keep data for 1 year
+  
+  // Business settings
+  defaultLocationId      String?  // Default location if not specified
+  merchantName           String?  // Business name from Tuu
+  partnerId              String?  // Tuu partner ID
+  
+  // Last sync tracking
+  lastSuccessfulSync     DateTime?
+  lastSyncAttempt        DateTime?
+  consecutiveFailures    Int      @default(0)
+  
+  // Standard fields
+  tenantId               String?  @unique
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  @@map("pos_configurations")
+}
+
+// Enums for POS system
+enum POSTransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum POSSyncType {
+  FULL_SYNC
+  INCREMENTAL
+  MANUAL
+  SCHEDULED
+}
+
+enum POSSyncStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Invoicing (OpenFactura) models
+model TaxDocument {
+  id              String           @id @default(cuid())
+  type            TaxDocumentType
+  folio           String?
+  documentCode    Int?             // e.g., 39 Boleta, 33 Factura
+  openFacturaId   String?          @unique
+  emitterRUT      String?
+  emitterName     String?
+  receiverRUT     String?
+  receiverName    String?
+  netAmount       Decimal?         @db.Decimal(12, 2)
+  taxAmount       Decimal?         @db.Decimal(12, 2)
+  totalAmount     Decimal?         @db.Decimal(12, 2)
+  currency        String?          @default("CLP")
+  issuedAt        DateTime?
+  status          TaxDocumentStatus @default(DRAFT)
+  pdfUrl          String?
+  xmlUrl          String?
+  rawResponse     Json?
+  notes           String?
+  // Links
+  posTransactionId String?
+  costId           String?
+  posTransaction   POSTransaction?  @relation(fields: [posTransactionId], references: [id])
+  cost             Cost?             @relation(fields: [costId], references: [id])
+  // Standard
+  tenantId        String?
+  createdBy       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  // Relations
+  items           TaxDocumentItem[]
+
+  @@index([type])
+  @@index([status])
+  @@index([issuedAt])
+  @@index([posTransactionId])
+  @@index([costId])
+  @@map("tax_documents")
+}
+
+model TaxDocumentItem {
+  id             String        @id @default(cuid())
+  taxDocumentId  String
+  description    String
+  quantity       Decimal       @db.Decimal(12, 3)
+  unitPrice      Decimal       @db.Decimal(12, 2)
+  net            Decimal       @db.Decimal(12, 2)
+  tax            Decimal       @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  taxExempt      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  taxDocument    TaxDocument   @relation(fields: [taxDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([taxDocumentId])
+  @@map("tax_document_items")
+}
+
+enum TaxDocumentType {
+  BOLETA
+  FACTURA
+  CREDIT_NOTE
+}
+
+enum TaxDocumentStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+  REJECTED
+  CANCELLED
 }

@@ -67,6 +67,9 @@ export class PrismaService implements OnModuleInit {
   get bankAccount() { return this.prisma.bankAccount; }
   get magicToken() { return this.prisma.magicToken; }
   get contact() { return this.prisma.contact; }
+  // Universal Relationship models
+  get entityRelationship() { return (this.prisma as any).entityRelationship; }
+  get relationshipType() { return (this.prisma as any).relationshipType; }
 
   // New product pipeline models
   get company() { return this.prisma.company; }
@@ -81,6 +84,15 @@ export class PrismaService implements OnModuleInit {
   get bOMItem() { return this.prisma.bOMItem; }
   get workOrder() { return this.prisma.workOrder; }
   get costTransactionLink() { return this.prisma.costTransactionLink; }
+
+  // POS models
+  get pOSConfiguration() { return this.prisma.pOSConfiguration; }
+  get pOSTransaction() { return this.prisma.pOSTransaction; }
+  get pOSTransactionItem() { return this.prisma.pOSTransactionItem; }
+  // Invoicing
+  get taxDocument() { return (this.prisma as any).taxDocument; }
+  get taxDocumentItem() { return (this.prisma as any).taxDocumentItem; }
+  get pOSSyncLog() { return this.prisma.pOSSyncLog; }
 
   // Added for Prisma v6 compatibility – some generated types expect this method
   $queryRawUnsafe<T = unknown>(query: string, ...params: any[]): any {

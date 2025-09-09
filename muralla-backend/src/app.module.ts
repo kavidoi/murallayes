@@ -46,7 +46,10 @@ import { SKUModule } from './sku/sku.module';
 import { SearchModule } from './search/search.module';
 import { ConfigModule } from '@nestjs/config';
 import { CalendarModule } from './calendar/calendar.module';
+import { PosModule } from './pos/pos.module';
+import { MercadoPagoModule } from './mercadopago/mercadopago.module';
 import { QueueService } from './queue/queue.service';
+import { InvoicingModule } from './invoicing/invoicing.module';
 
 @Injectable()
 class BootstrapService implements OnModuleInit {
@@ -143,6 +146,9 @@ class BootstrapService implements OnModuleInit {
     SKUModule,
     SearchModule,
     CalendarModule,
+    PosModule,
+    MercadoPagoModule,
+    InvoicingModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],

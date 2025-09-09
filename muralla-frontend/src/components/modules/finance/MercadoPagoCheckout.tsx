@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createMercadoPagoService } from '../../../services/mercadoPagoService';
-import { AuthService } from '../../../services/authService';
+import AuthService from '../../../services/authService';
 
 interface CheckoutProps {
   amount: number;
-  title: string;
+  title?: string;
   description?: string;
   customerEmail?: string;
   customerName?: string;
-  onSuccess?: (paymentResult: any) => void;
-  onError?: (error: any) => void;
-  onPending?: (paymentResult: any) => void;
   preferenceId?: string;
-  theme?: 'default' | 'dark' | 'bootstrap' | 'flat';
+  onSuccess?: (result: any) => void;
+  onError?: (error: any) => void;
+  onPending?: (result: any) => void;
+  theme?: 'default' | 'dark' | 'flat' | 'bootstrap';
 }
 
 const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
@@ -27,36 +27,204 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   theme = 'default'
 }) => {
   const paymentBrickRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [mpService, setMpService] = useState<any>(null);
-  const [brick, setBrick] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const prevAmountRef = useRef<number>(amount);
-  // Preference flow reserved for Wallet/Checkout; unused in Payment Brick
-  // const [prefId, setPrefId] = useState<string | undefined>(preferenceId);
+  const [error, setError] = useState<string | null>(null);
+  const brickControllerRef = useRef<any>(null);
+  const isMountedRef = useRef(false);
+  const initTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Get MercadoPago public key from environment
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
 
   useEffect(() => {
-    if (!publicKey) {
-      setError('MercadoPago public key not configured');
-      setIsLoading(false);
-      return;
-    }
-
-    initializeMercadoPago();
-
+    isMountedRef.current = true;
+    
     return () => {
-      try {
-        mpService?.destroyBrick('payment');
-      } catch {}
-      if (paymentBrickRef.current) {
-        paymentBrickRef.current.innerHTML = '';
+      isMountedRef.current = false;
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+      }
+      // Cleanup on unmount
+      if (brickControllerRef.current) {
+        brickControllerRef.current.unmount().catch(console.error);
+        brickControllerRef.current = null;
       }
     };
   }, []);
+
+  const initializeMercadoPago = async () => {
+    if (isInitializing || !isMountedRef.current || !paymentBrickRef.current) return;
+      
+      setIsInitializing(true);
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Clean up any existing brick first
+        if (brickControllerRef.current) {
+          await brickControllerRef.current.unmount().catch(console.error);
+          brickControllerRef.current = null;
+        }
+
+        // Clear the container
+        if (paymentBrickRef.current) {
+          paymentBrickRef.current.innerHTML = '';
+        }
+
+        // Check if component is still mounted
+        if (!isMountedRef.current) return;
+
+        // Initialize MercadoPago service
+        const service = createMercadoPagoService({
+          publicKey,
+          locale: 'es-CL',
+          theme
+        });
+
+        setMpService(service);
+
+        // Wait for SDK to load
+        await service.loadSDK();
+
+        // Destroy existing brick completely before creating a new one
+        if (brick) {
+          try {
+            await brick.unmount();
+          } catch (e) {
+            console.warn('Error unmounting brick:', e);
+          }
+        }
+        try {
+          // Always use the local service instance to destroy, state may lag
+          service.destroyBrick('payment');
+        } catch (e) {
+          console.warn('Error destroying previous brick:', e);
+        }
+        // Clear container DOM to avoid already_initialized errors
+        if (paymentBrickRef.current) {
+          paymentBrickRef.current.innerHTML = '';
+        }
+
+        // Capture and coerce amount at the start to avoid mid-render changes
+        const capturedAmount = Number(amount);
+        // For Payment Brick, do not use preferenceId to avoid SDK coupling issues
+        const effectivePreferenceId = undefined;
+
+        // Debug logs only in development
+        if (import.meta.env.DEV) {
+          console.log('Effective preference ID (unused for Payment Brick):', effectivePreferenceId);
+          console.log('Amount:', capturedAmount);
+        }
+
+        // Prepare payer information
+        const payer: any = {};
+        if (customerEmail) {
+          payer.email = customerEmail;
+        }
+        if (customerName) {
+          const nameParts = customerName.split(' ');
+          payer.firstName = nameParts[0] || '';
+          payer.lastName = nameParts.slice(1).join(' ') || '';
+        }
+
+        // Always provide amount to satisfy Brick validation
+        const initialization: any = {
+          amount: capturedAmount,
+          ...(Object.keys(payer).length ? { payer } : {})
+        };
+
+        if (import.meta.env.DEV) {
+          console.log('Final initialization object:', initialization);
+        }
+
+        // Validate initialization has required properties
+        if (!initialization.amount) {
+          throw new Error('Either preferenceId or amount must be provided');
+        }
+
+        const extraCustomization = import.meta.env.PROD
+          ? {} // let site/account settings decide allowed methods
+          : {
+              paymentMethods: {
+                creditCard: ['visa', 'master', 'amex'],
+                ticket: 'none' as const,
+                bankTransfer: 'none' as const,
+                atm: 'none' as const,
+              },
+            };
+
+        const createBrick = async () =>
+          service.createPaymentBrick(
+            'payment-brick-container',
+            initialization,
+            {
+              onReady: () => {
+                if (import.meta.env.DEV) {
+                  console.log('Payment brick ready');
+                }
+                setIsLoading(false);
+              },
+              onError: (error) => {
+                console.error('Payment brick error:', error);
+                setError(error?.message || 'Error loading payment form');
+                onError?.(error);
+              },
+              onSubmit: async (data) => {
+                if (import.meta.env.DEV) {
+                  console.log('Payment form submitted:', data);
+                }
+                const submission = (data && (data as any).formData) ? (data as any).formData : data;
+                // production flow expects MercadoPago redirect or OP
+                try {
+                  // Always process via backend route for Payment Brick
+                  const paymentResult = await processPayment(submission, capturedAmount);
+                  if (paymentResult?.status === 'approved') onSuccess?.(paymentResult);
+                  else if (paymentResult?.status === 'pending') onPending?.(paymentResult);
+                  else onError?.(paymentResult);
+                  return paymentResult;
+                } catch (err) {
+                  console.error('Payment processing error:', err);
+                  onError?.(err);
+                  throw err;
+                }
+              },
+            },
+            {
+              visual: {
+                style: {
+                  theme,
+                  customVariables: {
+                    textPrimaryColor: '#1f2937',
+                    textSecondaryColor: '#6b7280',
+                    inputBackgroundColor: '#ffffff',
+                  },
+                },
+              },
+              ...extraCustomization,
+            }
+          );
+
+        await createBrick();
+      } catch (e) {
+        console.error('Error initializing MercadoPago:', e);
+        setError('Error initializing payment form');
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    const timer = setTimeout(initializeMercadoPago, 100);
+
+    return () => {
+      clearTimeout(timer);
+      // Cleanup on unmount
+      if (brickControllerRef.current) {
+        brickControllerRef.current.unmount().catch(console.error);
+        brickControllerRef.current = null;
+      }
+    };
+  }, [publicKey, amount]);
 
   // Reinitialize the Payment Brick when the amount changes externally
   useEffect(() => {
@@ -190,7 +358,6 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
       }
 
       // Always provide amount to satisfy Brick validation
-      // Include preferenceId when available (prod), plus optional payer
       const initialization: any = {
         amount: capturedAmount,
         ...(Object.keys(payer).length ? { payer } : {})
@@ -307,12 +474,13 @@ const MercadoPagoCheckout: React.FC<CheckoutProps> = ({
   const processPayment = async (formData: any, useAmount?: number) => {
     try {
       // Send payment data to backend for processing
-      const response = await AuthService.apiCall('/finance/process-payment', {
+      const response = await AuthService.apiCall('/mercadopago/process-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           amount: Number(useAmount ?? amount),
+          transaction_amount: Number(useAmount ?? amount),
           title,
           description,
           customerEmail,

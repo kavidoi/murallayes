@@ -1,5 +1,11 @@
 # Muralla Frontend (React + Vite)
 
+> Important: start via repo scripts to avoid duplicate dev servers and coordinate with other agents (Claude/Codex). These wrappers use `.shared-state` locks.
+>
+> - From repo root: `pnpm dev:frontend` (recommended)
+> - Or directly: `bash scripts/dev-frontend.sh`
+> - Check locks: `bash scripts/server-lock.sh status`
+
 This SPA consumes the Muralla API and requires a JWT in `localStorage` under the key **`authToken`**.
 
 ## Quick start

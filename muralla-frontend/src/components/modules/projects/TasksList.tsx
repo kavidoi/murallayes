@@ -4,9 +4,10 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { tasksService } from '../../../services/tasksService'
+import { tasksService, type Task as APITask, type TaskAssignee } from '../../../services/tasksService'
 import { projectsService, type Project as APIProject } from '../../../services/projectsService'
 import { usersService } from '../../../services/usersService'
+import type { User as APIUser } from '../../../types'
 import { exportTasks, type ExportFormat } from '../../../utils/exportUtils'
 import DatePicker from '../../ui/DatePicker'
 import { formatDateDDMMYYYY, isoToDDMMYYYY, dateToISO, isOverdue, isToday, getRelativeTime } from '../../../utils/dateUtils'
@@ -151,14 +152,16 @@ const convertAPIUserToUser = (apiUser: APIUser, index: number): User => {
     ? `${firstName} ${lastName}`.trim()
     : apiUser.username || apiUser.email || 'Unknown User';
     
+  const initials = firstName && lastName 
+    ? getInitials(firstName, lastName)
+    : getInitials(displayName, '');
+    
   return {
     id: apiUser.id,
     name: displayName,
-    initials: firstName && lastName 
-      ? getInitials(firstName, lastName)
-      : getInitials(displayName, ''),
+    initials: initials,
     color: getColorForUser(index),
-    email: apiUser.email,
+    email: apiUser.email || ''
   };
 };
 
@@ -184,43 +187,28 @@ const convertStatusToAPIStatus = (status: Status): APIStatus => {
 
 // Convert API Task to local Task
 const convertAPITaskToTask = (apiTask: APITask, _users: User[], projects: APIProject[]): Task => {
-  // Convert ISO date to DD/MM/YYYY format
-  const taskAssigneeIds = (apiTask.assignees && apiTask.assignees.length > 0)
-    ? apiTask.assignees.map(a => a.userId)
-    : (apiTask.assigneeId ? [apiTask.assigneeId] : [])
-  const taskDue = isoToDDMMYYYY(apiTask.dueDate)
-  const project = projects.find(p => p.id === apiTask.projectId)
-  
-  const hasSubtasks = (apiTask.subtasks || []).length > 0
-  const expandedStates = getExpandedStates()
-  const isExpanded = hasSubtasks ? (expandedStates[apiTask.id] !== undefined ? expandedStates[apiTask.id] : true) : false
+  const project = projects.find(p => p.id === apiTask.projectId);
   
   return {
     id: apiTask.id,
     name: apiTask.title,
-    status: convertAPIStatusToStatus(apiTask.status, taskDue || undefined),
-    assigneeIds: taskAssigneeIds,
-    dueDate: taskDue,
-    expanded: isExpanded,
-    subtasks: (apiTask.subtasks || []).map((st, idx) => {
-      const subAssigneeIds = (st.assignees && st.assignees.length > 0)
-        ? st.assignees.map(a => a.userId)
-        : (st.assigneeId ? [st.assigneeId] : [])
-      const subDue = isoToDDMMYYYY(st.dueDate)
-      return {
-        id: st.id,
-        name: st.title,
-        status: convertAPIStatusToStatus(st.status, subDue || undefined),
-        inheritsAssignee: subAssigneeIds.length === 0,
-        inheritsDueDate: !subDue,
-        assigneeIds: subAssigneeIds,
-        dueDate: subDue,
-        order: st.orderIndex ?? idx,
-      }
-    }).sort((a, b) => a.order - b.order),
+    status: convertAPIStatusToStatus(apiTask.status),
+    assigneeIds: apiTask.assignees?.map((a: TaskAssignee) => a.userId) || [],
+    dueDate: isoToDDMMYYYY(apiTask.dueDate),
+    expanded: false,
+    subtasks: apiTask.subtasks?.map((subtask: APITask, index: number) => ({
+      id: subtask.id,
+      name: subtask.title,
+      status: convertAPIStatusToStatus(subtask.status),
+      inheritsAssignee: !subtask.assigneeId,
+      inheritsDueDate: !subtask.dueDate,
+      assigneeIds: subtask.assigneeId ? [subtask.assigneeId] : [],
+      dueDate: isoToDDMMYYYY(subtask.dueDate),
+      order: subtask.orderIndex ?? index
+    })) || [],
     order: apiTask.orderIndex ?? 0,
-    projectId: apiTask.projectId,
-    projectName: project?.name || 'Unknown Project',
+    projectId: apiTask.projectId || project?.id,
+    projectName: project?.name || 'Sin proyecto'
   }
 }
 
@@ -873,7 +861,7 @@ const SortableTaskRow: React.FC<{
 // Main TasksList component
 const TasksList: React.FC = () => {
   const { t } = useTranslation()
-  const { isUserEditing, getEditingUsers } = useWebSocket()
+  const { isUserEditing, getEditingUsers, onDataChange, broadcastDataChange } = useWebSocket()
   const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [projects, setProjects] = useState<APIProject[]>([])
@@ -914,6 +902,7 @@ const TasksList: React.FC = () => {
   const [assigneeFilter, setAssigneeFilter] = useState<string | 'All' | 'Unassigned'>('All')
   const [noDateFilter, setNoDateFilter] = useState(false)
   const [oneAssignedFilter, setOneAssignedFilter] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
   
   // Sorting
   const [sortConfig, setSortConfigState] = useState<SortConfig>(() => getSortConfig())
@@ -942,6 +931,9 @@ const TasksList: React.FC = () => {
       const mappedUsers = usersData.map(convertAPIUserToUser)
       const mappedTasks = tasksData.map(task => convertAPITaskToTask(task, mappedUsers, projectsData))
       
+      console.log('Loaded projects:', projectsData)
+      console.log('Mapped tasks with projects:', mappedTasks)
+      
       setUsers(mappedUsers)
       setTasks(mappedTasks)
       setProjects(projectsData)
@@ -952,7 +944,7 @@ const TasksList: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [tasks.length])
   
   useEffect(() => {
     loadData()
@@ -962,7 +954,27 @@ const TasksList: React.FC = () => {
       updateTimeouts.current.forEach(timeout => clearTimeout(timeout))
       updateTimeouts.current.clear()
     }
-  }, [loadData])
+  }, [])
+
+  // WebSocket integration for real-time updates
+  useEffect(() => {
+    if (!onDataChange) return
+
+    const handleDataChange = (changeEvent: any) => {
+      console.log('TasksList received data change:', changeEvent)
+      
+      // Refresh tasks if it's a task-related change
+      if (changeEvent.resource === 'tasks' || changeEvent.resource === 'task') {
+        console.log('Refreshing tasks due to WebSocket update')
+        loadData(true) // Force refresh
+      }
+    }
+
+    // Subscribe to data changes
+    const unsubscribe = onDataChange(handleDataChange)
+    
+    return unsubscribe
+  }, [onDataChange])
   
   // Helper functions for sorting
   const handleSortChange = useCallback((option: SortOption) => {
@@ -1054,6 +1066,11 @@ const TasksList: React.FC = () => {
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter(task => {
+      // Hide completed tasks by default
+      if (!showCompleted && task.status === 'Completed') {
+        return false
+      }
+      
       // Search filter
       if (searchTerm && !task.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false
@@ -1067,10 +1084,8 @@ const TasksList: React.FC = () => {
       // Assignee filter
       if (assigneeFilter === 'Unassigned' && task.assigneeIds.length > 0) {
         return false
-      } else if (assigneeFilter !== 'All' && assigneeFilter !== 'Unassigned') {
-        if (!task.assigneeIds.includes(assigneeFilter)) {
-          return false
-        }
+      } else if (assigneeFilter !== 'All' && assigneeFilter !== 'Unassigned' && !task.assigneeIds.includes(assigneeFilter)) {
+        return false
       }
       
       // No date filter
@@ -1087,7 +1102,7 @@ const TasksList: React.FC = () => {
     })
     
     return sortTasks(filtered)
-  }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter, sortTasks])
+  }, [tasks, searchTerm, statusFilter, assigneeFilter, noDateFilter, oneAssignedFilter, showCompleted, sortTasks])
   
   // Optimized task operations with debouncing for name updates
   const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
@@ -1171,6 +1186,11 @@ const TasksList: React.FC = () => {
             await tasksService.updateTask(taskId, apiUpdates)
             updateTimeouts.current.delete(taskId)
             
+            // Broadcast change via WebSocket to update other connected clients
+            if (broadcastDataChange) {
+              broadcastDataChange('task', taskId, { taskId, updates: apiUpdates })
+            }
+            
             // For project updates, just log success - optimistic update already handled UI
             if ('projectId' in updates) {
               console.log('Project update API success')
@@ -1209,7 +1229,7 @@ const TasksList: React.FC = () => {
       // Clear error after 3 seconds
       setTimeout(() => setError(null), 3000)
     }
-  }, [tasks, projects, loadData, setSavingItems])
+  }, [tasks, projects, loadData, setSavingItems, broadcastDataChange])
   
   const handleSubtaskUpdate = useCallback(async (parentTaskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     const originalTasks = tasks
@@ -1672,6 +1692,17 @@ const TasksList: React.FC = () => {
             
             {/* Filters Row */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Show Completed Toggle */}
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  showCompleted
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                }`}
+              >
+                {showCompleted ? '✓ Mostrando completadas' : '○ Ocultar completadas'}
+              </button>
               {/* Sort dropdown */}
               <select
                 value={sortConfig.option}

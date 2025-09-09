@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Hash, Settings, Eye, Save, RefreshCw, Copy, CheckCircle } from 'lucide-react';
-import { SKUTemplate, EntitySKU } from '../../types/relationship';
+import type { SKUTemplate, EntitySKU } from '../../types/relationship';
 
 interface SKUGeneratorProps {
   entityType: string;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createMercadoPagoService } from '../../../services/mercadoPagoService';
-import MercadoPagoCheckout from './MercadoPagoCheckout';
+import MercadoPagoCheckout from './MercadoPagoCheckoutFixed';
 import PageHeader from '../../ui/PageHeader';
 import { Tabs } from '../../ui/Tabs';
 
@@ -23,15 +23,16 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
   onPaymentComplete,
   onPaymentError
 }) => {
-  const [activeTab, setActiveTab] = useState<'process' | 'view' | 'settings'>('view');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [mpConfigured, setMpConfigured] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mpConfigured, setMpConfigured] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [activeTab, setActiveTab] = useState<'view' | 'process' | 'settings'>('process');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   // Sample payment for testing
   const [testPayment, setTestPayment] = useState({
-    amount: 5000,
+    amount: 1000,
     title: 'Test Payment',
     description: 'Testing MercadoPago integration compliance',
     customerEmail: 'test@murallacafe.cl'
@@ -341,36 +342,62 @@ const PaymentHandling: React.FC<PaymentHandlingProps> = ({
                         />
                       </div>
                     </div>
+                    
+                    {/* Pagar Button */}
+                    <div className="mt-6 flex justify-center">
+                      <button
+                        onClick={() => setShowPaymentForm(true)}
+                        disabled={!testPayment.amount || testPayment.amount < 1}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-lg transition-colors duration-200"
+                      >
+                        💳 Pagar {testPayment.amount ? `$${testPayment.amount.toLocaleString('es-CL')} CLP` : ''}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* MercadoPago Checkout */}
-                  <MercadoPagoCheckout
-                    amount={testPayment.amount}
-                    title={testPayment.title}
-                    description={testPayment.description}
-                    customerEmail={testPayment.customerEmail}
-                    onSuccess={(result) => {
-                      if (import.meta.env.DEV) {
-                        console.log('Payment successful:', result);
-                      }
-                      onPaymentComplete?.(result);
-                      // Refresh transactions
-                      loadTransactions();
-                      // Switch to view tab
-                      setActiveTab('view');
-                    }}
-                    onError={(error) => {
-                      console.error('Payment error:', error);
-                      onPaymentError?.(error);
-                    }}
-                    onPending={(result) => {
-                      if (import.meta.env.DEV) {
-                        console.log('Payment pending:', result);
-                      }
-                      // Refresh transactions
-                      loadTransactions();
-                    }}
-                  />
+                  {/* MercadoPago Checkout - Only show when button is clicked */}
+                  {showPaymentForm && (
+                    <div className="border-t pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium text-gray-900">Complete Payment</h3>
+                        <button
+                          onClick={() => setShowPaymentForm(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕ Cancel
+                        </button>
+                      </div>
+                      <MercadoPagoCheckout
+                        amount={testPayment.amount}
+                        title={testPayment.title}
+                        description={testPayment.description}
+                        customerEmail={testPayment.customerEmail}
+                        onSuccess={(result) => {
+                          if (import.meta.env.DEV) {
+                            console.log('Payment successful:', result);
+                          }
+                          onPaymentComplete?.(result);
+                          setShowPaymentForm(false);
+                          // Refresh transactions
+                          loadTransactions();
+                          // Switch to view tab
+                          setActiveTab('view');
+                        }}
+                        onError={(error) => {
+                          console.error('Payment error:', error);
+                          onPaymentError?.(error);
+                        }}
+                        onPending={(result) => {
+                          if (import.meta.env.DEV) {
+                            console.log('Payment pending:', result);
+                          }
+                          setShowPaymentForm(false);
+                          // Refresh transactions
+                          loadTransactions();
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12">

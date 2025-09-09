@@ -1,5 +1,11 @@
 # Muralla Backend (NestJS)
 
+> Important: start via repo scripts to avoid duplicate servers and coordinate with other agents (Claude/Codex). These wrappers use `.shared-state` locks.
+>
+> - From repo root: `pnpm dev:backend` (recommended)
+> - Or directly: `bash scripts/dev-backend.sh`
+> - Check locks: `bash scripts/server-lock.sh status`
+
 ## Run locally
 ```bash
 pnpm -C muralla-backend install

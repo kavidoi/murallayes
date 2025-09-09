@@ -5,12 +5,18 @@
   "description": "Muralla Org - Digital Command Center for Teams",
   "scripts": {
     "dev": "pnpm --filter muralla-backend dev",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "dev:all": "bash scripts/dev-all.sh",
+    "restart:all": "bash scripts/restart-dev.sh",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "start": "pnpm --filter muralla-backend start:prod",
     "bootstrap": "pnpm --filter muralla-backend bootstrap",
-    "reset-db": "pnpm --filter muralla-backend reset-db"
+    "reset-db": "pnpm --filter muralla-backend reset-db",
+    "cleanup:shared-state": "bash scripts/cleanup-shared-state.sh",
+    "heartbeat": "bash scripts/heartbeat.sh --agent codex-cli --interval 20"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

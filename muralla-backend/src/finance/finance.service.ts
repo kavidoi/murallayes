@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditService, AuditOperation } from '../common/audit.service';
+// import { AuditService, AuditOperation } from '../common/audit.service';
 import { Prisma, TransactionType, TransactionStatus, PaymentMethod } from '@prisma/client';
 import type {} from '../prisma-v6-compat';
 
@@ -8,7 +8,6 @@ import type {} from '../prisma-v6-compat';
 export class FinanceService {
   constructor(
     private prisma: PrismaService,
-    private auditService: AuditService,
   ) {}
 
   // Bank Account Management
@@ -17,16 +16,6 @@ export class FinanceService {
       data: { ...data, createdBy: userId },
       include: { transactions: true },
     });
-
-    if (userId) {
-      await this.auditService.logAuditTrail({
-        tableName: 'bank_accounts',
-        recordId: account.id,
-        operation: AuditOperation.CREATE,
-        afterData: account,
-        userId,
-      });
-    }
 
     return account;
   }
@@ -79,16 +68,6 @@ export class FinanceService {
 
     // Update account balance
     await this.updateAccountBalance(transaction.accountId, transaction.amount);
-
-    if (userId) {
-      await this.auditService.logAuditTrail({
-        tableName: 'transactions',
-        recordId: transaction.id,
-        operation: AuditOperation.CREATE,
-        afterData: transaction,
-        userId,
-      });
-    }
 
     return transaction;
   }
@@ -170,17 +149,6 @@ export class FinanceService {
       await this.updateAccountBalance(transaction.accountId, difference);
     }
 
-    if (userId) {
-      await this.auditService.logAuditTrail({
-        tableName: 'transactions',
-        recordId: transaction.id,
-        operation: AuditOperation.UPDATE,
-        beforeData: existing,
-        afterData: transaction,
-        userId,
-      });
-    }
-
     return transaction;
   }
 
@@ -199,16 +167,6 @@ export class FinanceService {
     // Reverse the balance change
     await this.updateAccountBalance(existing.accountId, -existing.amount);
 
-    if (userId) {
-      await this.auditService.logAuditTrail({
-        tableName: 'transactions',
-        recordId: transaction.id,
-        operation: AuditOperation.DELETE,
-        beforeData: existing,
-        userId,
-      });
-    }
-
     return transaction;
   }
 
@@ -218,16 +176,6 @@ export class FinanceService {
       data: { ...data, createdBy: userId },
       include: { _count: { select: { transactions: true } } },
     });
-
-    if (userId) {
-      await this.auditService.logAuditTrail({
-        tableName: 'transaction_categories',
-        recordId: category.id,
-        operation: AuditOperation.CREATE,
-        afterData: category,
-        userId,
-      });
-    }
 
     return category;
   }

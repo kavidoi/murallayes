@@ -47,7 +47,7 @@ export default defineConfig({
           if (id.includes('/modules/pipeline/PurchaseOrders')) {
             return 'feature-purchase-orders'
           }
-          if (id.includes('/modules/pos/CashierPOS')) {
+          if (id.includes('/modules/cashier/CashierPOS')) {
             return 'feature-cashier-pos'
           }
           if (id.includes('/modules/projects/TasksList')) {

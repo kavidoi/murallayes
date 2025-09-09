@@ -25,9 +25,11 @@ const KnowledgeOverview = lazy(() => import('./components/modules/knowledge/Know
 const BankAccount = lazy(() => import('./components/modules/finance/BankAccount'))
 const RevenueExpenses = lazy(() => import('./components/modules/finance/RevenueExpenses'))
 const BudgetManager = lazy(() => import('./components/modules/finance/BudgetManager'))
+const Invoicing = lazy(() => import('./components/modules/finance/Invoicing'))
 const Gastos = lazy(() => import('./components/modules/finance/Gastos'))
 const PTO = lazy(() => import('./components/modules/people/PTO'))
 const TasksList = lazy(() => import('./components/modules/projects/TasksList'))
+const TasksV2 = lazy(() => import('./components/modules/tasks-v2/TasksV2'))
 const ProjectsManager = lazy(() => import('./components/modules/projects/ProjectsManager'))
 const Settings = lazy(() => import('./components/modules/settings/Settings'))
 const ProductCatalog = lazy(() => import('./components/modules/pipeline/ProductCatalog'))
@@ -48,6 +50,11 @@ const KanbanBoard = lazy(() => import('./components/modules/projects/KanbanBoard
 const CalendarDashboard = lazy(() => import('./components/modules/schedule/CalendarDashboard'))
 const CashierPOS = lazy(() => import('./components/modules/cashier/CashierPOS'))
 const RecipeManager = lazy(() => import('./components/modules/recipes/RecipeManager'))
+const SalesOverview = lazy(() => import('./components/modules/sales/SalesOverview'))
+// Prefer the complete POS Sales experience from Finance module
+const POSSales = lazy(() => import('./components/modules/finance/POSSales'))
+const SystemSales = lazy(() => import('./components/modules/sales/SystemSales'))
+const MercadoPagoTransactions = lazy(() => import('./components/modules/finance/MercadoPagoTransactions'))
 
 // Loading fallback component with skeleton
 const LoadingFallback = () => (
@@ -218,6 +225,7 @@ function App() {
               <Route path="/projects" element={<Navigate to="/projects/overview" replace />} />
               <Route path="/projects/overview" element={<ProjectsManager />} />
               <Route path="/projects/tasks" element={<TasksList />} />
+              <Route path="/projects/tasks-v2" element={<TasksV2 />} />
               <Route path="/projects/kanban" element={<KanbanBoard />} />
               <Route path="/projects/timeline" element={<PlaceholderPage title={t('routes.timeline.title')} description={t('routes.timeline.description')} icon="📅" />} />
               {/* Redirect project calendar to unified schedule calendar */}
@@ -234,7 +242,9 @@ function App() {
               
               {/* Finance Routes */}
               <Route path="/finance" element={<FinanceDashboard />} />
+              <Route path="/finance/mercadopago" element={<MercadoPagoTransactions />} />
               <Route path="/finance/bank" element={<BankAccount />} />
+              <Route path="/finance/invoicing" element={<Invoicing />} />
               <Route path="/finance/payment/brick" element={<PaymentBrick />} />
               <Route path="/finance/payments" element={<PaymentHandling />} />
               <Route path="/finance/payment/success" element={<PaymentSuccess />} />
@@ -283,6 +293,11 @@ function App() {
               <Route path="/crm/segments" element={<PlaceholderPage title={t('routes.segments.title')} description={t('routes.segments.description')} icon="🎯" />} />
               <Route path="/crm/logs" element={<PlaceholderPage title={t('routes.activityLogs.title')} description={t('routes.activityLogs.description')} icon="📝" />} />
               <Route path="/crm/feedback" element={<PlaceholderPage title={t('routes.feedback.title')} description={t('routes.feedback.description')} icon="💬" />} />
+              
+              {/* Sales Routes */}
+              <Route path="/sales" element={<SalesOverview />} />
+              <Route path="/sales/pos" element={<POSSales />} />
+              <Route path="/sales/system" element={<SystemSales />} />
               
               {/* Scheduling (unified calendars) */}
               <Route path="/schedule" element={<Navigate to="/schedule/calendar" replace />} />

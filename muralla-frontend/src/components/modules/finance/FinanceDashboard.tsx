@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { AuthService } from '../../../services/authService';
+import POSSales from './POSSales';
 
 // Types for Finance API
 interface Transaction {
@@ -53,6 +54,7 @@ const FinanceDashboard: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'pos-sales' | 'system-sales' | 'matching'>('overview');
 
 
 
@@ -160,27 +162,56 @@ const FinanceDashboard: React.FC = () => {
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Finance & Analytics
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Monitor your financial performance and transactions
-          </p>
-        </div>
-        <button
-          onClick={fetchFinanceData}
-          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-        >
-          🔄 Refresh
-        </button>
-      </div>
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: '📊', description: 'Financial summary and recent transactions' },
+    { id: 'pos-sales', name: 'POS Sales', icon: '💳', description: 'Card machine transactions via Tuu API' },
+    { id: 'system-sales', name: 'System Sales', icon: '🏪', description: 'Sales registered in our system' },
+    { id: 'matching', name: 'Matching', icon: '🔗', description: 'Match POS and system sales (Coming Soon)' },
+  ];
 
-      {/* Financial Summary Cards */}
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'pos-sales':
+        return <POSSales className="mt-6" />;
+      case 'system-sales':
+        return (
+          <div className="mt-6 text-center py-12">
+            <div className="text-gray-400 dark:text-gray-500">
+              <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                System Sales - Coming Soon
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                This section will show sales registered directly in our system
+              </p>
+            </div>
+          </div>
+        );
+      case 'matching':
+        return (
+          <div className="mt-6 text-center py-12">
+            <div className="text-gray-400 dark:text-gray-500">
+              <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Sales Matching - Coming Soon
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Match POS transactions with system sales for reconciliation
+              </p>
+            </div>
+          </div>
+        );
+      default: // overview
+        return renderOverviewContent();
+    }
+  };
+
+  const renderOverviewContent = () => (
+    <div className="mt-6 space-y-6">{/* Financial Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
@@ -190,10 +221,13 @@ const FinanceDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-                {formatCurrency(summary.totalIncome)}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                  {formatCurrency(summary.totalIncome)}
+                </span>
+                <span className="text-3xl">💰</span>
               </div>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                 {summary.incomeTransactions} transactions
               </p>
             </CardContent>
@@ -206,10 +240,13 @@ const FinanceDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-700 dark:text-red-300">
-                {formatCurrency(summary.totalExpenses)}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                  {formatCurrency(summary.totalExpenses)}
+                </span>
+                <span className="text-3xl">💸</span>
               </div>
-              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                 {summary.expenseTransactions} transactions
               </p>
             </CardContent>
@@ -222,11 +259,16 @@ const FinanceDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                {formatCurrency(summary.netProfit)}
+              <div className="flex items-center justify-between">
+                <span className={`text-2xl font-bold ${
+                  summary.netProfit >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                }`}>
+                  {formatCurrency(summary.netProfit)}
+                </span>
+                <span className="text-3xl">{summary.netProfit >= 0 ? '📈' : '📉'}</span>
               </div>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                {summary.netProfit >= 0 ? 'Profit' : 'Loss'}
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                {summary.transactionCount} total transactions
               </p>
             </CardContent>
           </Card>
@@ -234,60 +276,67 @@ const FinanceDashboard: React.FC = () => {
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                Avg Transaction
+                Average Transaction
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                {formatCurrency(summary.averageTransaction)}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                  {formatCurrency(summary.averageTransaction)}
+                </span>
+                <span className="text-3xl">🎯</span>
               </div>
-              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                {summary.transactionCount} total
+              <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                per transaction
               </p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Transactions */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              📊 Recent Transactions
-            </CardTitle>
+            <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
             {transactions.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p>No transactions found</p>
-                <p className="text-sm mt-2">Start by adding your first transaction</p>
+                <div className="text-4xl mb-2">📋</div>
+                <p>No recent transactions found</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {transactions.map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-lg" style={{ backgroundColor: transaction.category?.color + '20' }}>
-                        {transaction.category?.icon || getTransactionIcon(transaction.type)}
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">
+                        {getTransactionIcon(transaction.type)}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">
                           {transaction.description}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {transaction.category?.name} • {formatDate(transaction.createdAt)}
-                        </p>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                          <span>{formatDate(transaction.createdAt)}</span>
+                          <Badge className={getStatusColor(transaction.status)}>
+                            {transaction.status}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <p className={`font-bold ${
+                        transaction.type === 'INCOME' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}>
                         {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
                       </p>
-                      <Badge className={getStatusColor(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
+                      {transaction.paymentMethod && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {transaction.paymentMethod}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -296,24 +345,23 @@ const FinanceDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Categories Overview */}
+        {/* Categories Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              🏷️ Categories
-            </CardTitle>
+            <CardTitle>Categories Overview</CardTitle>
           </CardHeader>
           <CardContent>
             {categories.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div className="text-4xl mb-2">📁</div>
                 <p>No categories found</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {categories.map((category) => (
                   <div key={category.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-lg" style={{ backgroundColor: category.color + '20' }}>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">
                         {category.icon}
                       </div>
                       <div>
@@ -369,6 +417,59 @@ const FinanceDashboard: React.FC = () => {
       </Card>
     </div>
   );
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Finance & Sales Management
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Monitor financial performance, POS sales, and transaction matching
+          </p>
+        </div>
+        <button
+          onClick={fetchFinanceData}
+          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">{tab.icon}</span>
+                <span>{tab.name}</span>
+                {(tab.id === 'system-sales' || tab.id === 'matching') && (
+                  <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs">
+                    Soon
+                  </Badge>
+                )}
+              </div>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {renderTabContent()}
+    </div>
+  );
 };
 
 export default FinanceDashboard;
+

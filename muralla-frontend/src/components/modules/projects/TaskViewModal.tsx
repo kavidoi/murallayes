@@ -8,6 +8,8 @@ import { RelationshipManager } from '../../relationships/RelationshipManager';
 import { MentionInput } from '../../common/MentionInput';
 import { CollaborativeTextEditor } from '../../common/CollaborativeTextEditor';
 import { AuthService } from '../../../services/authService';
+import tasksService from '../../../services/tasksService';
+import { useWebSocket } from '../../../contexts/WebSocketContext';
 
 interface User {
   id: string;
@@ -118,6 +120,7 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
   users,
   projects
 }) => {
+  const { broadcastDataChange } = useWebSocket();
   const [editingTaskName, setEditingTaskName] = useState(false);
   const [taskName, setTaskName] = useState(task.name);
   const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
@@ -250,11 +253,17 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     setEditingDueDate(false);
   };
 
-  const handleAssigneeSave = () => {
-    // In real app, this would call an API to update assignees
-    console.log('Updating assignees:', taskAssigneeIds);
-    setEditingAssignees(false);
-    setShowAssigneeDropdown(false);
+  const handleAssigneeSave = async () => {
+    try {
+      console.log('Updating assignees:', taskAssigneeIds);
+      await tasksService.updateTaskAssignees(task.id, taskAssigneeIds);
+      broadcastDataChange?.('task', task.id, { assigneeIds: taskAssigneeIds });
+    } catch (err) {
+      console.error('Failed to persist assignees:', err);
+    } finally {
+      setEditingAssignees(false);
+      setShowAssigneeDropdown(false);
+    }
   };
 
   const toggleAssignee = (userId: string) => {
@@ -265,11 +274,17 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     );
   };
 
-  const handleProjectSave = () => {
-    // In real app, this would call an API to update project
-    console.log('Updating project:', taskProjectId);
-    setEditingProject(false);
-    setShowProjectDropdown(false);
+  const handleProjectSave = async () => {
+    try {
+      console.log('Updating project:', taskProjectId);
+      await tasksService.updateTask(task.id, { projectId: taskProjectId });
+      broadcastDataChange?.('task', task.id, { projectId: taskProjectId });
+    } catch (err) {
+      console.error('Failed to update project:', err);
+    } finally {
+      setEditingProject(false);
+      setShowProjectDropdown(false);
+    }
   };
 
   const toggleSubtaskStatus = (subtaskId: string, currentStatus: Status) => {

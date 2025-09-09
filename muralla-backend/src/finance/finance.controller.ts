@@ -2,18 +2,21 @@ import {
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
-  Param,
+  Put,
   Delete,
-  UseGuards,
+  Body,
+  Param,
   Query,
+  UseGuards,
+  Inject,
+  forwardRef,
+  Patch,
   Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { FinanceService } from './finance.service';
-import { MercadoPagoService } from './mercado-pago.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -24,8 +27,7 @@ import type {} from '../prisma-v6-compat';
 @Controller('finance')
 export class FinanceController {
   constructor(
-    private readonly financeService: FinanceService,
-    private readonly mercadoPagoService: MercadoPagoService,
+    private financeService: FinanceService,
   ) {}
 
   // Bank Account Endpoints
@@ -150,98 +152,6 @@ export class FinanceController {
     return this.financeService.getDailyTotals(filters);
   }
 
-  // Mercado Pago Integration
-  @Public()
-  @Post('mercadopago/webhook')
-  @HttpCode(HttpStatus.OK)
-  async handleMercadoPagoWebhook(@Body() body: any) {
-    await this.mercadoPagoService.handleWebhook(body);
-    return { success: true };
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'manager')
-  @Post('mercadopago/preference')
-  createMercadoPagoPreference(@Body() data: {
-    title: string;
-    quantity: number;
-    unit_price: number;
-    currency_id?: string;
-    external_reference?: string;
-    // Enhanced fields for fraud prevention and approval rates
-    description?: string;
-    category_id?: string;
-    item_id?: string;
-    payer?: {
-      email?: string;
-      first_name?: string;
-      last_name?: string;
-    };
-    // Binary mode for instant approval
-    binary_mode?: boolean;
-  }) {
-    return this.mercadoPagoService.createPreference(data);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'manager', 'employee')
-  @Post('process-payment')
-  async processPayment(@Request() req: any, @Body() paymentData: {
-    token?: string;
-    payment_method_id?: string;
-    installments?: number;
-    amount: number;
-    title: string;
-    description?: string;
-    customerEmail?: string;
-    customerName?: string;
-    idempotencyKey?: string;
-    payer?: {
-      email?: string;
-      first_name?: string;
-      last_name?: string;
-      identification?: {
-        type: string;
-        number: string;
-      };
-    };
-  }) {
-    try {
-      const userId = req.user.sub;
-
-      // Build a per-request idempotency key (allow client-provided, fallback to server-generated)
-      const idempotencyKey = paymentData.idempotencyKey || `mp:${userId}:${paymentData.amount}:${Date.now()}`;
-
-      const payment = await this.mercadoPagoService.createPayment(paymentData, { idempotencyKey });
-
-      // Normalize minimal response for the frontend
-      return {
-        id: payment.id,
-        status: payment.status,
-        status_detail: payment.status_detail,
-        transaction_amount: payment.transaction_amount,
-        currency_id: payment.currency_id,
-        payment_method_id: payment.payment_method_id,
-        installments: payment.installments,
-        payer: payment.payer,
-        description: payment.description,
-        date_created: payment.date_created,
-        date_approved: payment.date_approved,
-      };
-
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      // Surface MercadoPago error information when possible
-      throw error;
-    }
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'manager')
-  @Get('mercadopago/payment/:id')
-  getMercadoPagoPayment(@Param('id') paymentId: string) {
-    return this.mercadoPagoService.getPayment(paymentId);
-  }
 
   // Seed Data
   @UseGuards(JwtAuthGuard, RolesGuard)

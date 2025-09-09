@@ -1,23 +1,17 @@
 import { Module } from '@nestjs/common';
-import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
-import { BankController } from '../modules/finance/controllers/bank.controller';
-import { PayrollController } from '../modules/finance/controllers/payroll.controller';
-import { StaffFinanceController } from '../modules/finance/controllers/staff-finance.controller';
-import { MyFinanceController } from '../modules/finance/controllers/my-finance.controller';
-import { RevenueExpenseController } from '../modules/finance/controllers/revenue-expense.controller';
-import { MercadoPagoService } from './mercado-pago.service';
+import { FinanceService } from './finance.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditService } from '../common/audit.service';
+import { MercadoPagoModule } from '../mercadopago/mercadopago.module';
+import { BankController } from '../modules/finance/controllers/bank.controller';
 
 @Module({
-  controllers: [FinanceController, BankController, PayrollController, StaffFinanceController, MyFinanceController, RevenueExpenseController],
+  imports: [MercadoPagoModule],
+  controllers: [FinanceController, BankController],
   providers: [
     FinanceService,
-    MercadoPagoService,
     PrismaService,
-    AuditService,
   ],
-  exports: [FinanceService, MercadoPagoService],
+  exports: [FinanceService],
 })
 export class FinanceModule {}

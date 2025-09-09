@@ -27,6 +27,13 @@ const resources = {
         update: 'Actualizar',
         edit: 'Editar',
         delete: 'Eliminar',
+        create: 'Crear',
+        creating: 'Creando...',
+        save: 'Guardar',
+        refresh: 'Actualizar',
+        selectAll: 'Seleccionar todo',
+        deselectAll: 'Deseleccionar todo',
+        error: 'Error',
         active: 'Activo',
         inactive: 'Inactivo',
         retry: 'Reintentar',
@@ -97,6 +104,7 @@ const resources = {
         projects: 'Proyectos y Tareas',
         projectsOverview: 'Proyectos',
         tasksList: 'Lista de tareas',
+        tasksV2: 'Lista de Tareas 2',
         kanban: 'Tablero Kanban',
         timeline: 'Cronograma',
         calendar: 'Calendario',
@@ -180,6 +188,7 @@ const resources = {
         recurring: 'Recurrente',
         inventory: 'Inventario',
         operations: 'Operaciones',
+        sales: 'Ventas',
         pipeline: 'Pipeline',
         products: 'Productos',
         purchaseOrders: 'Órdenes de Compra',
@@ -190,7 +199,6 @@ const resources = {
         analytics: 'Analítica',
         scheduling: 'Agenda',
         reports: 'Reportes',
-        sales: 'Ventas',
         stock: 'Stock',
         crm: 'CRM y Comunidad',
         contacts: 'Contactos',
@@ -758,6 +766,70 @@ const resources = {
         saving: 'Guardando...',
         saveChanges: 'Guardar Cambios',
         conflictDetected: 'Conflicto detectado, resuelve antes de guardar'
+      },
+      tasksV2: {
+        title: 'Lista de Tareas 2',
+        subtitle: 'Gestión moderna y simplificada de tareas',
+        empty: {
+          title: 'No hay tareas',
+          description: 'Crea tu primera tarea para comenzar a organizar tu trabajo'
+        },
+        search: {
+          placeholder: 'Buscar tareas...'
+        },
+        filters: {
+          status: {
+            all: 'Todos los estados',
+            todo: 'Por hacer',
+            inProgress: 'En progreso',
+            review: 'En revisión',
+            done: 'Completadas'
+          },
+          assignee: {
+            all: 'Todos los asignados',
+            unassigned: 'Sin asignar'
+          },
+          project: {
+            all: 'Todos los proyectos'
+          },
+          priority: {
+            all: 'Todas las prioridades',
+            urgent: 'Urgente',
+            high: 'Alta',
+            medium: 'Media',
+            low: 'Baja'
+          },
+          overdue: 'Solo vencidas',
+          clearAll: 'Limpiar filtros'
+        },
+        quickCreate: {
+          placeholder: '+ Crear tarea rápida',
+          titlePlaceholder: 'Título de la tarea...',
+          project: 'Proyecto',
+          assignees: 'Responsables'
+        },
+        assignee: {
+          label: 'Responsables',
+          placeholder: 'Seleccionar responsables',
+          selectPlaceholder: 'Asignar responsables',
+          searchPlaceholder: 'Buscar usuarios...',
+          unassigned: 'Sin asignar',
+          clickToAssign: 'Hacer clic para asignar responsables',
+          clickToEdit: 'Hacer clic para editar responsables',
+          noResults: 'No se encontraron usuarios',
+          allAssigned: 'Todos los usuarios ya están asignados',
+          selectedCount: '{{count}}/{{max}} asignados',
+          maxReached: 'Máximo {{max}} responsables permitidos'
+        },
+        selectedCount: '{{count}} tareas seleccionadas',
+        taskCount: 'Mostrando {{count}} de {{total}} tareas',
+        bulkActions: {
+          markInProgress: 'Marcar en progreso',
+          markDone: 'Marcar completadas',
+          delete: 'Eliminar seleccionadas'
+        },
+        confirmDelete: '¿Estás seguro de que deseas eliminar esta tarea?',
+        confirmBulkDelete: '¿Estás seguro de que deseas eliminar {{count}} tareas?'
       }
     }
   },
@@ -817,6 +889,7 @@ const resources = {
         projects: 'Projects & Tasks',
         projectsOverview: 'Projects',
         tasksList: 'Tasks List',
+        tasksV2: 'Tasks List 2',
         kanban: 'Kanban Board',
         timeline: 'Timeline View',
         calendar: 'Calendar View',

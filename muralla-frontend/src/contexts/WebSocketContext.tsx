@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import { websocketService } from '../services/websocket.service';
 import type { User } from '../types';
 
@@ -41,6 +41,9 @@ export interface WebSocketContextType {
   markNotificationAsRead: (notificationId: string) => void;
   clearConflicts: () => void;
   
+  // Event subscription for data changes
+  onDataChange: (callback: (changeEvent: any) => void) => () => void;
+  
   // Utilities
   isUserEditing: (resource: string, resourceId: string, excludeCurrentUser?: boolean) => boolean;
   getEditingUsers: (resource: string, resourceId: string, excludeCurrentUser?: boolean) => User[];
@@ -73,6 +76,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   const [editingStatuses, setEditingStatuses] = useState<Map<string, EditingStatus[]>>(new Map());
   const [notifications, setNotifications] = useState<any[]>([]);
   const [conflictEvents, setConflictEvents] = useState<ConflictEvent[]>([]);
+  const dataChangeCallbacksRef = useRef<Set<(changeEvent: any) => void>>(new Set());
 
   useEffect(() => {
     if (user && token) {
@@ -121,6 +125,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
       const dataChangeHandler = (changeEvent: any) => {
         console.log('Data change received:', changeEvent);
+        // Use ref to avoid re-render issues
+        dataChangeCallbacksRef.current.forEach(callback => {
+          try {
+            callback(changeEvent);
+          } catch (error) {
+            console.error('Error in data change callback:', error);
+          }
+        });
       };
 
       // Register all listeners via service so they survive reconnects
@@ -150,7 +162,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     return () => {
       websocketService.disconnect();
     };
-  }, [user, token]);
+  }, [user, token]); // Removed dataChangeCallbacks from dependencies to prevent infinite re-renders
 
   const joinRoom = (room: string) => {
     websocketService.joinRoom(room);
@@ -235,6 +247,15 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       .map(presence => presence.user);
   };
 
+  const onDataChange = (callback: (changeEvent: any) => void): () => void => {
+    dataChangeCallbacksRef.current.add(callback);
+    
+    // Return unsubscribe function
+    return () => {
+      dataChangeCallbacksRef.current.delete(callback);
+    };
+  };
+
   const contextValue: WebSocketContextType = {
     isConnected,
     userPresences,
@@ -248,6 +269,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     clearNotifications,
     markNotificationAsRead,
     clearConflicts,
+    onDataChange,
     isUserEditing,
     getEditingUsers,
     getOnlineUsers,
