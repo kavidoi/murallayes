@@ -24,8 +24,8 @@ RUN pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
 # Copy source code
 COPY . .
 
-# Build common package first
-RUN pnpm --filter @muralla/common build
+# Build common package first if it exists
+RUN pnpm --filter @muralla/common build || echo "No common package to build, continuing..."
 
 # Generate Prisma client (now sources exist)
 RUN pnpm -C muralla-backend exec prisma generate
