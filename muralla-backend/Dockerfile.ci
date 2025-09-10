@@ -9,31 +9,34 @@ RUN apk add --no-cache python3 make g++
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-# Copy root manifest and workspace layout (include lockfile for deterministic installs)
+# Copy only essential package files first for better layer caching
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-# Ensure backend manifest and vendor tarballs are present for install
-COPY muralla-backend/package.json muralla-backend/
+COPY muralla-backend/package.json muralla-backend/package.json
 COPY muralla-backend/vendor muralla-backend/vendor
-# Include workspace packages manifests (some deps resolve workspaces)
-COPY packages ./packages
 
-# Install dependencies (skip postinstall scripts until sources are copied)
+# Copy packages directory but exclude node_modules
+COPY packages/common/package.json packages/common/package.json
+COPY packages/common/tsconfig.json packages/common/tsconfig.json
+COPY packages/common/src packages/common/src
+
+# Install all dependencies first (including workspace dependencies)
 RUN pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
 
-# Copy source code
-COPY . .
+# Copy remaining source code
+COPY muralla-backend/src muralla-backend/src
+COPY muralla-backend/prisma muralla-backend/prisma
+COPY muralla-backend/tsconfig.json muralla-backend/tsconfig.json
 
-# Build common package first if it exists
-RUN pnpm --filter @muralla/common build || echo "No common package to build, continuing..."
+# Build common package first (required by backend)
+RUN pnpm --filter @muralla/common build || echo "Common package build failed, continuing..."
 
-# Generate Prisma client (now sources exist)
+# Generate Prisma client
 RUN pnpm -C muralla-backend exec prisma generate
 
-# Re-run install to run any postinstall scripts safely after sources copied
+# Run postinstall scripts after all sources are available
 RUN pnpm install --frozen-lockfile --prefer-offline
 
-# Build the application
+# Build the backend application
 RUN pnpm -C muralla-backend run build
 
 # Copy GraphQL schema assets into dist so NestJS can load SDL files at runtime
