@@ -2095,4 +2095,5 @@ enum TaxDocumentStatus {
   ACCEPTED
   REJECTED
   CANCELLED
+  ERROR
 }

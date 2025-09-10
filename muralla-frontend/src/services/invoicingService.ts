@@ -43,11 +43,10 @@ class InvoicingService {
     return res.data;
   }
 
-  async issueBoletaFromPos(posTransactionId: string, payload: { receiverRUT?: string; receiverName?: string; sendEmail?: boolean } = {}) {
+  async issueBoletaFromPos(posTransactionId: string, payload: { receiverRUT?: string; receiverName?: string; sendEmail?: boolean; emitNow?: boolean } = {}) {
     const res = await this.api.post(`/boletas/from-pos/${posTransactionId}`, payload);
     return res.data;
   }
 }
 
 export const invoicingService = new InvoicingService();
-

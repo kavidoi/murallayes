@@ -490,8 +490,8 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
                           onClick={async () => {
                             try {
                               const { invoicingService } = await import('../../../services/invoicingService');
-                              const res = await invoicingService.issueBoletaFromPos(tx.id);
-                              alert('Boleta draft created. Check Finance → Invoicing.');
+                              const res = await invoicingService.issueBoletaFromPos(tx.id, { emitNow: true });
+                              alert('Boleta created. Check Finance → Invoicing.');
                             } catch (e: any) {
                               alert(`Issue Boleta failed: ${e?.response?.data?.message || e?.message || 'Unknown error'}`);
                             }

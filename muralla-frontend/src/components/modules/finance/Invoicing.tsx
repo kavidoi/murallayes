@@ -8,13 +8,15 @@ const Invoicing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [docs, setDocs] = useState<TaxDocument[]>([]);
   const [filters, setFilters] = useState({ type: '', status: '', startDate: '', endDate: '', search: '' });
+  const [selected, setSelected] = useState<TaxDocument | null>(null);
 
   useEffect(() => { fetchAll(); }, []);
 
-  const fetchAll = async () => {
+  const fetchAll = async (useFilters = false) => {
     try {
       setLoading(true); setError(null);
-      const list = await invoicingService.list();
+      const params = useFilters ? filters : {} as any;
+      const list = await invoicingService.list(params);
       setDocs(list);
     } catch (e: any) {
       setError(e?.message || 'Error loading invoicing data');
@@ -137,6 +139,10 @@ const Invoicing: React.FC = () => {
               <input type="text" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})} className="input" placeholder="e.g., 12345 or 11.111.111-1"/>
             </div>
           </div>
+          <div className="mt-4 flex gap-3">
+            <button onClick={() => fetchAll(true)} className="btn-primary px-4 py-2">Apply Filters</button>
+            <button onClick={() => { setFilters({ type: '', status: '', startDate: '', endDate: '', search: '' }); fetchAll(false); }} className="btn-secondary px-4 py-2">Reset</button>
+          </div>
         </CardContent>
       </Card>
 
@@ -162,7 +168,7 @@ const Invoicing: React.FC = () => {
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {docs.map((d) => (
-                    <tr key={d.id}>
+                    <tr key={d.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" onClick={() => setSelected(d)}>
                       <td className="px-4 py-2 whitespace-nowrap">{d.type}</td>
                       <td className="px-4 py-2 whitespace-nowrap">{d.folio || '—'}</td>
                       <td className="px-4 py-2 whitespace-nowrap">{d.receiverName || d.receiverRUT || '—'}</td>
@@ -180,9 +186,54 @@ const Invoicing: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Drawer */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/30 flex justify-end z-50" onClick={() => setSelected(null)}>
+          <div className="w-full max-w-lg h-full bg-white dark:bg-gray-900 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <div>
+                <div className="text-sm text-gray-500">{selected.type}</div>
+                <div className="text-xl font-semibold">{selected.folio || '—'}</div>
+              </div>
+              <Badge className={getStatusColor(selected.status)}>{selected.status}</Badge>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-gray-500">Receiver</div>
+                  <div className="text-sm">{selected.receiverName || selected.receiverRUT || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Date</div>
+                  <div className="text-sm">{formatDate(selected.issuedAt || selected.createdAt)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Net</div>
+                  <div className="text-sm">{formatCurrency(selected.netAmount)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">IVA</div>
+                  <div className="text-sm">{formatCurrency(selected.taxAmount)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Total</div>
+                  <div className="text-sm font-semibold">{formatCurrency(selected.totalAmount)}</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                {selected.pdfUrl && (
+                  <a className="btn-secondary px-4 py-2" href={selected.pdfUrl} target="_blank" rel="noreferrer">📄 PDF</a>
+                )}
+                <button className="btn-secondary px-4 py-2" onClick={() => setSelected(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Invoicing;
-
