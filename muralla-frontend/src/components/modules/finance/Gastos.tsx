@@ -11,6 +11,7 @@ import { useWebSocket } from '../../../contexts/WebSocketContext';
 import MentionInput, { type EntityMention } from '../../universal/MentionInput';
 import RelationshipManager, { type EntityRelationship } from '../../universal/RelationshipManager';
 import { AuthService } from '../../../services/authService';
+import { invoicingService } from '../../../services/invoicingService';
 
 interface ExpenseCategory {
   id: string;
@@ -872,6 +873,25 @@ const Gastos: React.FC = () => {
                               <span className="sr-only">{t('common.edit')}</span>
                             </button>
                           )}
+                          {/* Issue Factura action */}
+                          <button
+                            onClick={async () => {
+                              try {
+                                const receiverRUT = window.prompt('RUT del receptor (ej: 11.111.111-1):')?.trim();
+                                if (!receiverRUT) return;
+                                const receiverName = window.prompt('Nombre del receptor (opcional):')?.trim() || undefined;
+                                const result = await invoicingService.issueFacturaFromCost(expense.id, { receiverRUT, receiverName, emitNow: true });
+                                alert('Factura creada. Revisa Finanzas → Invoicing para ver el documento.');
+                              } catch (e: any) {
+                                alert(`Error emitiendo Factura: ${e?.response?.data?.error || e?.message || 'Desconocido'}`);
+                              }
+                            }}
+                            className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                            title="Emitir Factura"
+                          >
+                            🧾
+                            <span className="sr-only">Emitir Factura</span>
+                          </button>
                         </div>
                       </td>
                     </tr>

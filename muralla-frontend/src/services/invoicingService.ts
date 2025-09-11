@@ -47,6 +47,11 @@ class InvoicingService {
     const res = await this.api.post(`/boletas/from-pos/${posTransactionId}`, payload);
     return res.data;
   }
+
+  async issueFacturaFromCost(costId: string, payload: { receiverRUT: string; receiverName?: string; receiverEmail?: string; emitNow?: boolean } ) {
+    const res = await this.api.post(`/facturas/from-cost/${costId}`, payload);
+    return res.data;
+  }
 }
 
 export const invoicingService = new InvoicingService();
