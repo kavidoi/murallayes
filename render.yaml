@@ -1,9 +1,4 @@
-# Render Blueprint for Muralla 4.0
-# Creates:
-# - Managed Postgres database
-# - Backend (NestJS) as a Docker-based Web Service
-# - Frontend (Vite) as a Static Site
-
+# Render Blueprint for Muralla 4.0 - Node.js Environment
 version: "1"
 
 databases:
@@ -15,11 +10,13 @@ databases:
 services:
   - type: web
     name: muralla-backend
-    env: docker
-    dockerfilePath: muralla-backend/Dockerfile.ci
+    env: node
     plan: starter
     autoDeploy: true
-    region: ohio
+    region: oregon
+    rootDir: muralla-backend
+    buildCommand: pnpm install && pnpm exec prisma generate && pnpm run build
+    startCommand: pnpm run start:prod
     healthCheckPath: /health/healthz
     envVars:
       - key: NODE_ENV
@@ -28,13 +25,13 @@ services:
         fromDatabase:
           name: muralla-postgres
           property: connectionString
-      # Required app secrets — set real values via API after apply
+      # Required app secrets
       - key: JWT_SECRET
         value: "REPLACE_ME"
       - key: BACKEND_URL
-        value: "https://api.murallacafe.cl" # production backend URL
+        value: "https://api.murallacafe.cl"
       - key: FRONTEND_URL
-        value: "https://admin.murallacafe.cl" # production frontend URL
+        value: "https://admin.murallacafe.cl"
       # Optional: MercadoPago
       - key: MP_ACCESS_TOKEN
         value: ""
@@ -47,23 +44,17 @@ services:
 
 staticSites:
   - name: muralla-frontend
-    rootDir: .
-    buildCommand: |
-      corepack enable && corepack prepare pnpm@8.15.0 --activate && \
-      pnpm install --frozen-lockfile --prefer-offline && \
-      pnpm --filter @muralla/common build && \
-      pnpm --filter muralla-frontend build
-    publishPath: muralla-frontend/dist
+    rootDir: muralla-frontend
+    buildCommand: pnpm install && pnpm run build
+    publishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: "https://api.murallacafe.cl" # production backend URL for the frontend
+        value: "https://api.murallacafe.cl"
       - key: VITE_ENABLE_DEMO
         value: "false"
       - key: VITE_MP_PUBLIC_KEY
         value: ""
-    headers: []
     redirects:
-      # SPA fallback: send all non-asset routes to index.html
       - source: "/**"
         destination: "/index.html"
         status: 200
