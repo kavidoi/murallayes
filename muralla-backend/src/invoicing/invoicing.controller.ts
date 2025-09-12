@@ -27,6 +27,23 @@ export class InvoicingController {
     return this.service.getDocument(id);
   }
 
+  // Lightweight link checker for costs: GET /invoicing/links/cost?ids=a,b,c
+  @Get('links/cost')
+  async costLinks(@Query('ids') ids?: string) {
+    const list = (ids || '').split(',').map(s => s.trim()).filter(Boolean);
+    const links = await this.service.getCostLinks(list);
+    // Normalize to an object keyed by costId with last status/folio
+    const map: Record<string, { count: number; status: string; folio?: string }> = {};
+    for (const d of links) {
+      map[d.costId] = {
+        count: (map[d.costId]?.count || 0) + 1,
+        status: d.status,
+        folio: d.folio,
+      };
+    }
+    return map;
+  }
+
   // Phase 2: Real OpenFactura Boleta emission from POS
   @Post('boletas/from-pos/:posTransactionId')
   async boletaFromPos(
@@ -138,4 +155,3 @@ export class InvoicingController {
     }
   }
 }
-

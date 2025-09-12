@@ -59,6 +59,16 @@ export class InvoicingService {
     return prismaAny.taxDocument.findUnique({ where: { id }, include: { items: true } });
   }
 
+  async getCostLinks(costIds: string[]) {
+    if (!Array.isArray(costIds) || costIds.length === 0) return [];
+    const prismaAny = this.prisma as any;
+    const docs = await prismaAny.taxDocument.findMany({
+      where: { costId: { in: costIds } },
+      select: { id: true, costId: true, type: true, folio: true, status: true }
+    });
+    return docs;
+  }
+
   // Phase 2: Real OpenFactura emission for Boletas (39)
   async issueBoletaFromPos(posTransactionId: string, opts: { receiverRUT?: string; receiverName?: string; sendEmail?: boolean; emitNow?: boolean } = {}) {
     const prismaAny = this.prisma as any;
@@ -389,4 +399,3 @@ export class InvoicingService {
     }
   }
 }
-

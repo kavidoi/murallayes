@@ -233,6 +233,22 @@ const Gastos: React.FC = () => {
     checkAuth();
   }, []);
 
+  // Load cost links (Factura linked) for current expenses in view
+  useEffect(() => {
+    const fetchLinks = async () => {
+      try {
+        const ids = expenses.map(e => e.id);
+        if (ids.length) {
+          const links = await invoicingService.getCostLinks(ids);
+          setCostLinks(links || {});
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    if (expenses.length) fetchLinks();
+  }, [expenses]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -257,6 +273,9 @@ const Gastos: React.FC = () => {
 
   const [selectedExpense, setSelectedExpense] = useState<CompanyExpense | DirectExpense | null>(null);
   const [showExpenseDetails, setShowExpenseDetails] = useState(false);
+  const [showFacturaModalFor, setShowFacturaModalFor] = useState<string | null>(null);
+  const [facturaForm, setFacturaForm] = useState<{ rut: string; name: string }>({ rut: '', name: '' });
+  const [costLinks, setCostLinks] = useState<Record<string, { count: number; status: string; folio?: string }>>({});
 
   const handleViewDetails = (expense: CompanyExpense) => {
     // Check if this is a direct expense or a purchase order
@@ -873,25 +892,24 @@ const Gastos: React.FC = () => {
                               <span className="sr-only">{t('common.edit')}</span>
                             </button>
                           )}
-                          {/* Issue Factura action */}
-                          <button
-                            onClick={async () => {
-                              try {
-                                const receiverRUT = window.prompt('RUT del receptor (ej: 11.111.111-1):')?.trim();
-                                if (!receiverRUT) return;
-                                const receiverName = window.prompt('Nombre del receptor (opcional):')?.trim() || undefined;
-                                const result = await invoicingService.issueFacturaFromCost(expense.id, { receiverRUT, receiverName, emitNow: true });
-                                alert('Factura creada. Revisa Finanzas → Invoicing para ver el documento.');
-                              } catch (e: any) {
-                                alert(`Error emitiendo Factura: ${e?.response?.data?.error || e?.message || 'Desconocido'}`);
-                              }
-                            }}
-                            className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                            title="Emitir Factura"
-                          >
-                            🧾
-                            <span className="sr-only">Emitir Factura</span>
-                          </button>
+                          {/* Factura linked badge or action */}
+                          {costLinks[expense.id] ? (
+                            <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" title={`Folio ${costLinks[expense.id].folio || ''}`}>
+                              🧾 Factura
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setShowFacturaModalFor(expense.id);
+                                setFacturaForm({ rut: '', name: expense.proveedor || '' });
+                              }}
+                              className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                              title="Emitir Factura"
+                            >
+                              🧾
+                              <span className="sr-only">Emitir Factura</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -902,6 +920,61 @@ const Gastos: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Expense Creation Modal */}
+      {/* Issue Factura Modal */}
+      {showFacturaModalFor && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-60 dark:bg-gray-900 dark:bg-opacity-80 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-11/12 md:w-1/2 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Emitir Factura</h3>
+              <button onClick={() => setShowFacturaModalFor(null)} className="text-gray-500 hover:text-gray-700">✖</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RUT Receptor</label>
+                <input
+                  type="text"
+                  value={facturaForm.rut}
+                  onChange={(e) => setFacturaForm(prev => ({ ...prev, rut: e.target.value }))}
+                  placeholder="11.111.111-1"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Receptor</label>
+                <input
+                  type="text"
+                  value={facturaForm.name}
+                  onChange={(e) => setFacturaForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Razón Social"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShowFacturaModalFor(null)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm">Cancelar</button>
+              <button
+                onClick={async () => {
+                  const id = showFacturaModalFor;
+                  if (!id) return;
+                  if (!facturaForm.rut) { alert('Ingrese RUT del receptor'); return; }
+                  try {
+                    await invoicingService.issueFacturaFromCost(id, { receiverRUT: facturaForm.rut, receiverName: facturaForm.name || undefined, emitNow: true });
+                    setShowFacturaModalFor(null);
+                    alert('Factura creada. Revisa Finanzas → Invoicing.');
+                  } catch (e: any) {
+                    alert(`Error emitiendo: ${e?.response?.data?.error || e?.message || 'Desconocido'}`);
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
+              >
+                Emitir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Expense Creation Modal */}
       {showExpenseForm && (

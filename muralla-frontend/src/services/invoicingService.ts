@@ -52,6 +52,13 @@ class InvoicingService {
     const res = await this.api.post(`/facturas/from-cost/${costId}`, payload);
     return res.data;
   }
+
+  async getCostLinks(costIds: string[]) {
+    const params = new URLSearchParams();
+    if (costIds && costIds.length) params.set('ids', costIds.join(','));
+    const res = await this.api.get(`/links/cost?${params.toString()}`);
+    return res.data as Record<string, { count: number; status: string; folio?: string }>;
+  }
 }
 
 export const invoicingService = new InvoicingService();
