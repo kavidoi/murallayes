@@ -35,9 +35,6 @@ importers:
       '@graphql-tools/schema':
         specifier: ^10.0.25
         version: 10.0.25(graphql@16.11.0)
-      '@muralla/common':
-        specifier: file:vendor/muralla-common-1.0.2.tgz
-        version: file:muralla-backend/vendor/muralla-common-1.0.2.tgz(@nestjs/common@11.1.6)
       '@nestjs/apollo':
         specifier: ^13.1.0
         version: 13.1.0(@apollo/server@4.12.2)(@nestjs/common@11.1.6)(@nestjs/core@11.1.6)(@nestjs/graphql@13.1.0)(graphql@16.11.0)
@@ -10776,16 +10773,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-  file:muralla-backend/vendor/muralla-common-1.0.2.tgz(@nestjs/common@11.1.6):
-    resolution: {integrity: sha512-mMASpDVGr2jGrrZKoAsphB5LIfkSOW/DbpzmuGT38Hnt0wOcPflY9urbzpe9VAUVJPAbSwXZJ3JJ/U+VjvGFsA==, tarball: file:muralla-backend/vendor/muralla-common-1.0.2.tgz}
-    id: file:muralla-backend/vendor/muralla-common-1.0.2.tgz
-    name: '@muralla/common'
-    version: 1.0.2
-    peerDependencies:
-      '@nestjs/common': ^10.0.0
-    dependencies:
-      '@nestjs/common': 11.1.6(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      class-transformer: 0.5.1
-      class-validator: 0.14.2
-    dev: false

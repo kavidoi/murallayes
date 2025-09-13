@@ -15,7 +15,7 @@ services:
     autoDeploy: true
     region: oregon
     rootDir: muralla-backend
-    buildCommand: pnpm install && pnpm exec prisma generate && pnpm run build
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm exec prisma generate && pnpm run build
     startCommand: pnpm run start:prod
     healthCheckPath: /health/healthz
     envVars:
