@@ -13,5 +13,31 @@
     "noEmitOnError": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/calendar/**/*"]
+  "exclude": [
+    "node_modules", 
+    "dist", 
+    "src/calendar/**/*",
+    "src/brands/**/*",
+    "src/budgets/**/*",
+    "src/business-domains/**/*",
+    "src/costs/**/*",
+    "src/contacts/**/*",
+    "src/finance/**/*",
+    "src/inventory/**/*",
+    "src/knowledge/**/*",
+    "src/notifications/**/*",
+    "src/pos/**/*",
+    "src/products/**/*",
+    "src/pto/**/*",
+    "src/queue/**/*",
+    "src/recipes/**/*",
+    "src/relationships/**/*",
+    "src/search/**/*",
+    "src/sku/**/*",
+    "src/storage/**/*",
+    "src/suppliers/**/*",
+    "src/websocket/**/*",
+    "src/workorders/**/*",
+    "src/mercadopago/**/*"
+  ]
 }

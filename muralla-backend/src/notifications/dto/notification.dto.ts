@@ -85,11 +85,19 @@ export class UpdateNotificationRuleDto {
   @IsOptional()
   @IsString()
   templateId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class SendNotificationDto {
   @IsArray()
   recipients: string[];
+
+  @IsOptional()
+  @IsArray()
+  recipientIds?: string[];
 
   @IsString()
   templateId: string;
@@ -101,6 +109,10 @@ export class SendNotificationDto {
   @IsOptional()
   @IsEnum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
   priority?: string;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }
 
 export class NotificationQueryDto {
@@ -115,4 +127,20 @@ export class NotificationQueryDto {
   @IsOptional()
   @IsEnum(['PENDING', 'SENT', 'DELIVERED', 'FAILED', 'READ'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  contextType?: string;
+
+  @IsOptional()
+  @IsString()
+  contextId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  first?: number;
+
+  @IsOptional()
+  @IsString()
+  after?: string;
 }
