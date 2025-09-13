@@ -22,7 +22,7 @@ import {
   UpdateNotificationRuleDto,
   SendNotificationDto,
   NotificationQueryDto,
-} from '@muralla/common';
+} from './dto/notification.dto';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -22,7 +22,7 @@ import {
   CreateDocumentDto,
   UpdateDocumentDto,
   DocumentQueryDto,
-} from '@muralla/common';
+} from './dto/knowledge.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('knowledge')

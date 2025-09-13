@@ -10,7 +10,7 @@ import {
   UpdateNotificationRuleDto,
   SendNotificationDto,
   NotificationQueryDto,
-} from '@muralla/common';
+} from './dto/notification.dto';
 import { NotificationType, NotificationStatus, RuleTrigger } from '@prisma/client';
 
 interface RuleCondition {
