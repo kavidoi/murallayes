@@ -2,8 +2,8 @@
 version: "1"
 
 databases:
-  - name: muralla-postgres
-    databaseName: muralla
+  - name: muralla-database-v2
+    databaseName: muralla_db
     plan: starter
     region: oregon
 
@@ -23,7 +23,7 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: muralla-postgres
+          name: muralla-database-v2
           property: connectionString
       # Required app secrets
       - key: JWT_SECRET
