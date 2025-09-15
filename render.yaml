@@ -43,8 +43,8 @@ services:
       - key: MP_CURRENCY
         value: "CLP"
 
-staticSites:
-  - name: muralla-frontend
+  - type: static
+    name: muralla-frontend
     rootDir: muralla-frontend
     buildCommand: pnpm install && pnpm run build
     publishPath: dist
@@ -55,7 +55,7 @@ staticSites:
         value: "false"
       - key: VITE_MP_PUBLIC_KEY
         value: ""
-    redirects:
-      - source: "/**"
+    routes:
+      - type: rewrite
+        source: "/**"
         destination: "/index.html"
-        status: 200
