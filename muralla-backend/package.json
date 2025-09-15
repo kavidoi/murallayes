@@ -4,9 +4,10 @@
   "main": "index.js",
   "scripts": {
     "start:dev": "ts-node --transpile-only src/main.ts",
-    "build": "tsc -p . --skipLibCheck --noEmitOnError false || true",
+    "build": "tsc -p . --skipLibCheck --noEmit",
+    "build:js": "tsc -p . --skipLibCheck",
     "start": "node dist/main.js",
-    "start:prod": "pnpm run migrate && pnpm run start",
+    "start:prod": "pnpm run start",
     "seed": "ts-node prisma/seed.ts",
     "cli": "ts-node src/cli/seed.ts",
     "bootstrap": "pnpm run cli bootstrap",
