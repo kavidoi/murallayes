@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray, IsObject, IsBoolean, IsNumber } from 'class-validator';
 
 export class CreateNotificationTemplateDto {
   @IsString()
@@ -10,12 +10,23 @@ export class CreateNotificationTemplateDto {
   @IsString()
   body: string;
 
+  @IsString()
+  content: string;
+
   @IsEnum(['EMAIL', 'SMS', 'PUSH', 'IN_APP'])
   type: string;
 
   @IsOptional()
   @IsObject()
   variables?: Record<string, any>;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }
 
 export class UpdateNotificationTemplateDto {
@@ -32,12 +43,24 @@ export class UpdateNotificationTemplateDto {
   body?: string;
 
   @IsOptional()
+  @IsString()
+  content?: string;
+
+  @IsOptional()
   @IsEnum(['EMAIL', 'SMS', 'PUSH', 'IN_APP'])
   type?: string;
 
   @IsOptional()
   @IsObject()
   variables?: Record<string, any>;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }
 
 export class CreateNotificationRuleDto {
@@ -59,6 +82,18 @@ export class CreateNotificationRuleDto {
   @IsOptional()
   @IsString()
   templateId?: string;
+
+  @IsOptional()
+  @IsArray()
+  recipients?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }
 
 export class UpdateNotificationRuleDto {
@@ -89,6 +124,10 @@ export class UpdateNotificationRuleDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  recipients?: string[];
 }
 
 export class SendNotificationDto {
@@ -113,6 +152,10 @@ export class SendNotificationDto {
   @IsOptional()
   @IsString()
   tenantId?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
 
 export class NotificationQueryDto {
@@ -143,4 +186,8 @@ export class NotificationQueryDto {
   @IsOptional()
   @IsString()
   after?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
