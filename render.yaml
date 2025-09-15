@@ -28,7 +28,7 @@ services:
           property: connectionString
       # Required app secrets
       - key: JWT_SECRET
-        value: "REPLACE_ME"
+        value: "WDKZqFHF3VKHGbVOUH059pmbQNurEApQSECyOg5pfP8="
       - key: BACKEND_URL
         value: "https://api.murallacafe.cl"
       - key: FRONTEND_URL
