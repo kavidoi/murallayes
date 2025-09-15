@@ -42,6 +42,21 @@ services:
         value: ""
       - key: MP_CURRENCY
         value: "CLP"
+      # Storage Services
+      - key: CLOUDINARY_CLOUD_NAME
+        value: "daqkotj1t"
+      - key: CLOUDINARY_API_KEY
+        value: "839819221611429"
+      - key: CLOUDINARY_API_SECRET
+        value: "Lbrmb6nc2CHccJYsjJqTc-hjE3I"
+      - key: AWS_REGION
+        value: "us-east-1"
+      - key: AWS_ACCESS_KEY_ID
+        value: "REPLACE_WITH_ACTUAL_KEY"
+      - key: AWS_SECRET_ACCESS_KEY
+        value: "REPLACE_WITH_ACTUAL_SECRET"
+      - key: AWS_S3_BUCKET_NAME
+        value: "muralla-files"
 
   - type: web
     name: muralla-frontend
