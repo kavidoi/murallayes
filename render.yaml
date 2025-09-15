@@ -43,11 +43,12 @@ services:
       - key: MP_CURRENCY
         value: "CLP"
 
-  - type: static
+  - type: web
     name: muralla-frontend
+    runtime: static
     rootDir: muralla-frontend
     buildCommand: pnpm install && pnpm run build
-    publishPath: dist
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
         value: "https://api.murallacafe.cl"
