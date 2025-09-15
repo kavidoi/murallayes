@@ -33,6 +33,25 @@ services:
         value: "https://api.murallacafe.cl"
       - key: FRONTEND_URL
         value: "https://admin.murallacafe.cl"
+      # Admin user creation on startup
+      - key: ADMIN_USER
+        value: "Admin"
+      - key: ADMIN_EMAIL
+        value: "contacto@murallacafe.cl"
+      - key: ADMIN_PASSWORD
+        value: "Muralla2025"
+      - key: SECONDARY_ADMIN_USER
+        value: "Kaví Doi"
+      - key: SECONDARY_ADMIN_EMAIL
+        value: "kavi@murallacafe.cl"
+      - key: SECONDARY_ADMIN_PASSWORD
+        value: "Muralla2025"
+      - key: TERTIARY_ADMIN_USER
+        value: "Darwin Bruna"
+      - key: TERTIARY_ADMIN_EMAIL
+        value: "darwin@murallacafe.cl"
+      - key: TERTIARY_ADMIN_PASSWORD
+        value: "Muralla2025"
       # Optional: MercadoPago
       - key: MP_ACCESS_TOKEN
         value: ""
