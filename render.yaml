@@ -4,7 +4,7 @@ version: "1"
 databases:
   - name: muralla-database-v2
     databaseName: muralla_db
-    plan: starter
+    plan: free
     region: oregon
 
 services:
