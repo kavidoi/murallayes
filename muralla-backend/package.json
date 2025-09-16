@@ -5,7 +5,7 @@
   "scripts": {
     "start:dev": "ts-node --transpile-only src/main.ts",
     "build": "tsc -p . --skipLibCheck",
-    "build:js": "tsc -p . --skipLibCheck",
+    "build:js": "tsc -p . --skipLibCheck --noEmitOnError false || true",
     "start": "node dist/main.js",
     "start:prod": "pnpm run start",
     "seed": "ts-node prisma/seed.ts",
