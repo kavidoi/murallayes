@@ -82,7 +82,7 @@ services:
     runtime: static
     plan: free
     rootDir: muralla-frontend
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm run build:prod
+    buildCommand: npm install && npm run build:prod
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
