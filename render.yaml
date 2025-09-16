@@ -15,9 +15,9 @@ services:
     autoDeploy: true
     region: oregon
     rootDir: muralla-backend
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm exec prisma generate
+    buildCommand: pnpm install --no-frozen-lockfile --ignore-scripts && npx prisma generate
     startCommand: pnpm run start:dev
-    preDeployCommand: pnpm exec prisma migrate deploy
+    preDeployCommand: npx prisma migrate deploy
     healthCheckPath: /health/healthz
     envVars:
       - key: NODE_ENV
@@ -81,7 +81,7 @@ services:
     name: muralla-frontend
     runtime: static
     rootDir: muralla-frontend
-    buildCommand: pnpm install && pnpm run build
+    buildCommand: pnpm install --no-frozen-lockfile --ignore-scripts && pnpm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
