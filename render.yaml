@@ -80,6 +80,7 @@ services:
   - type: web
     name: muralla-frontend
     runtime: static
+    plan: free
     rootDir: muralla-frontend
     buildCommand: pnpm install --no-frozen-lockfile && pnpm run build:prod
     staticPublishPath: ./dist
