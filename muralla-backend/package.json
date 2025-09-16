@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start:dev": "ts-node --transpile-only src/main.ts",
-    "build": "tsc -p . --skipLibCheck --noEmit",
-    "build:js": "tsc -p . --skipLibCheck --noEmitOnError false || true",
+    "build": "tsc -p . --skipLibCheck",
+    "build:js": "tsc -p . --skipLibCheck",
     "start": "node dist/main.js",
     "start:prod": "pnpm run start",
     "seed": "ts-node prisma/seed.ts",
@@ -63,10 +63,10 @@
     "prisma": "^6.13.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "ts-node": "^10.9.2",
     "@aws-sdk/client-s3": "^3.876.0",
     "@aws-sdk/s3-request-presigner": "^3.876.0",
     "@casl/ability": "^6.7.3",

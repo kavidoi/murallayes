@@ -71,6 +71,35 @@ export class PrismaService implements OnModuleInit {
   get entityRelationship() { return (this.prisma as any).entityRelationship; }
   get relationshipType() { return (this.prisma as any).relationshipType; }
 
+  // Recipe and ingredients models
+  get recipe() { return this.prisma.recipe; }
+  get recipeIngredient() { return this.prisma.recipeIngredient; }
+  get productVariant() { return this.prisma.productVariant; }
+  get ingredientUsage() { return this.prisma.ingredientUsage; }
+  get variantSale() { return this.prisma.variantSale; }
+
+  // Calendar models
+  get calendarEvent() { return this.prisma.calendarEvent; }
+  get staffShift() { return this.prisma.staffShift; }
+  get cafeSchedule() { return this.prisma.cafeSchedule; }
+
+  // Brand and supplier models
+  get brand() { return this.prisma.brand; }
+  get brandContact() { return this.prisma.brandContact; }
+  get purchaseOrder() { return this.prisma.purchaseOrder; }
+  get purchaseOrderLine() { return this.prisma.purchaseOrderLine; }
+  get purchaseOrderSubSupplier() { return this.prisma.purchaseOrderSubSupplier; }
+
+  // SKU system models
+  get entitySKU() { return this.prisma.entitySKU; }
+  get sKUTemplate() { return this.prisma.sKUTemplate; }
+
+  // Payroll models
+  get payroll() { return this.prisma.payroll; }
+  get payrollEntry() { return this.prisma.payrollEntry; }
+  get salaryAdjustment() { return this.prisma.salaryAdjustment; }
+  get employeeExpense() { return this.prisma.employeeExpense; }
+
   // New product pipeline models
   get company() { return this.prisma.company; }
   get vendor() { return this.prisma.vendor; }
@@ -80,9 +109,9 @@ export class PrismaService implements OnModuleInit {
   get attachment() { return this.prisma.attachment; }
   get location() { return this.prisma.location; }
   get inventoryMove() { return this.prisma.inventoryMove; }
-  get bOM() { return this.prisma.bOM; }
-  get bOMItem() { return this.prisma.bOMItem; }
+  get bOMComponent() { return this.prisma.bOMComponent; }
   get workOrder() { return this.prisma.workOrder; }
+  get workOrderComponent() { return this.prisma.workOrderComponent; }
   get costTransactionLink() { return this.prisma.costTransactionLink; }
 
   // POS models
