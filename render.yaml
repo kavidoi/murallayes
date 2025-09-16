@@ -15,8 +15,8 @@ services:
     autoDeploy: true
     region: oregon
     rootDir: muralla-backend
-    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && npx prisma generate
-    startCommand: pnpm run start:dev
+    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && npx prisma generate && pnpm run build:js
+    startCommand: pnpm run start
     preDeployCommand: npx prisma migrate deploy
     healthCheckPath: /health/healthz
     envVars:
@@ -81,7 +81,7 @@ services:
     name: muralla-frontend
     runtime: static
     rootDir: muralla-frontend
-    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && pnpm run build
+    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && pnpm run build:prod
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
