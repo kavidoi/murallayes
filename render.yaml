@@ -61,6 +61,9 @@ services:
         value: ""
       - key: MP_CURRENCY
         value: "CLP"
+      # TUU POS Integration
+      - key: TUU_API_KEY
+        value: "SxVE4TUUj3gDAQQniBWw5yxe5JM3UtSLOqbKQz9Hlb7gBwHGqkRqyyNmQCbbJ4CaWczA1zTmdlaA4frKfYxCaBeVg1hL75xdUo8h4UCgD9UQCdCqo03EW4NSM87Pb8"
       # Storage Services
       - key: CLOUDINARY_CLOUD_NAME
         value: "daqkotj1t"
