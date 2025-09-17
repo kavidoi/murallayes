@@ -54,8 +54,6 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
     syncIntervalHours: 24,
     maxDaysToSync: 60,
     retentionDays: 365,
-    apiKey: '',
-    baseUrl: '',
   });
 
   // Load initial data
@@ -83,14 +81,12 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
       setHealth(healthData);
       setConfiguration(configData);
       
-      // Update config form with current values (API key is never returned by backend)
+      // Update config form with current values
       setConfigForm({
         autoSyncEnabled: configData.autoSyncEnabled,
         syncIntervalHours: configData.syncIntervalHours,
         maxDaysToSync: configData.maxDaysToSync,
         retentionDays: configData.retentionDays,
-        apiKey: '',
-        baseUrl: configData.baseUrl || '',
       });
       
       // Load transactions
@@ -208,14 +204,12 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
   const updateConfiguration = async () => {
     try {
       setConfigLoading(true);
-      const payload: any = {
+      const payload = {
         autoSyncEnabled: configForm.autoSyncEnabled,
         syncIntervalHours: configForm.syncIntervalHours,
         maxDaysToSync: configForm.maxDaysToSync,
         retentionDays: configForm.retentionDays,
       };
-      if (configForm.baseUrl) payload.baseUrl = configForm.baseUrl;
-      if (configForm.apiKey) payload.apiKey = configForm.apiKey;
 
       const updated = await posService.updateConfiguration(payload);
       setConfiguration(updated);
@@ -713,21 +707,6 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tuu API Base URL
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://integrations.payment.haulmer.com"
-                  value={configForm.baseUrl}
-                  onChange={(e) => setConfigForm(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  className="input"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Default: https://integrations.payment.haulmer.com
-                </p>
-              </div>
             </div>
             
             <div className="space-y-4">
@@ -765,21 +744,6 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tuu API Key
-                </label>
-                <input
-                  type="password"
-                  placeholder="Paste your Tuu API Key"
-                  value={configForm.apiKey}
-                  onChange={(e) => setConfigForm(prev => ({ ...prev, apiKey: e.target.value }))}
-                  className="input"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  This is stored on the server and not exposed to the client.
-                </p>
-              </div>
             </div>
           </div>
           
@@ -796,9 +760,6 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
                       <Badge className={configuration.autoSyncEnabled ? posService.getStatusColor('success') : posService.getStatusColor('failed')}>
                         {configuration.autoSyncEnabled ? 'Auto Sync Enabled' : 'Auto Sync Disabled'}
                       </Badge>
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Base URL: {configuration.baseUrl || 'Not configured'}
                     </div>
                   </div>
                 )}
@@ -825,10 +786,10 @@ const POSSales: React.FC<POSSalesProps> = ({ className = '' }) => {
               </h4>
               <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
                 <li>• The system will automatically sync daily at 2 AM Chile time when enabled</li>
-                <li>• 60-day sync window ensures complete data backup and synchronization</li>
+                <li>• Max Days to Sync determines how far back to look for new transactions</li>
                 <li>• Data older than retention period will be automatically archived</li>
                 <li>• Manual sync operations can be performed anytime regardless of automatic settings</li>
-                <li>• API key is required for both manual and automatic sync operations</li>
+                <li>• API key configuration is managed by system administrators</li>
               </ul>
             </div>
           </div>
