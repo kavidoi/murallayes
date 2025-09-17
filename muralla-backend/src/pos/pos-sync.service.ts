@@ -108,7 +108,12 @@ export class PosSyncService implements OnModuleInit {
 
   async onModuleInit() {
     // Initialize after all modules are loaded and dependencies are injected
-    await this.initializeApi();
+    try {
+      await this.initializeApi();
+    } catch (error) {
+      this.logger.error('Failed to initialize POS service:', error);
+      // Don't throw - allow the service to start without POS functionality
+    }
   }
 
   private async initializeApi() {
@@ -196,6 +201,8 @@ export class PosSyncService implements OnModuleInit {
       this.logger.log('Created default POS configuration');
     } catch (error) {
       this.logger.error('Failed to create default POS configuration:', error);
+      this.logger.warn('POS configuration table may not exist. Check if migrations were applied.');
+      // Don't throw - allow the service to continue without configuration
     }
   }
 
