@@ -12,11 +12,30 @@ export interface POSTransaction {
   locationId?: string;
   address?: string;
   merchant?: string;
-  status: 'SUCCESSFUL' | 'FAILED' | 'PENDING' | 'UNKNOWN';
+  status: 'COMPLETED' | 'FAILED' | 'PENDING' | 'CANCELLED' | 'REFUNDED';
   transactionDateTime: string;
   transactionType: string;
+  documentType?: number;
+  // Payment details
+  cardBrand?: string;
+  cardBin?: string;
+  cardOrigin?: string;
+  cardIssuer?: string;
+  // Amounts
   saleAmount: number;
+  tipAmount?: number;
+  cashbackAmount?: number;
   totalAmount: number;
+  currencyCode?: string;
+  // Installment info
+  installmentType?: string;
+  installmentCount?: number;
+  acquirerId?: string;
+  instance?: number;
+  syncedAt?: string;
+  syncSource?: string;
+  lastUpdatedAt?: string;
+  tenantId?: string;
   items?: POSTransactionItem[];
   createdAt: string;
   updatedAt: string;
@@ -222,7 +241,9 @@ class POSService {
 
   // Format date for display
   formatDate(date: string | Date): string {
+    if (!date) return '-';
     const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
     return d.toLocaleDateString('es-CL', {
       year: 'numeric',
       month: '2-digit',
@@ -232,7 +253,9 @@ class POSService {
 
   // Format time for display
   formatTime(date: string | Date): string {
+    if (!date) return '-';
     const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
     return d.toLocaleTimeString('es-CL', {
       hour: '2-digit',
       minute: '2-digit'
@@ -241,7 +264,10 @@ class POSService {
 
   // Format date and time for display
   formatDateTime(dateString: string): string {
-    return new Date(dateString).toLocaleString('es-CL', {
+    if (!dateString) return '-';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleString('es-CL', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -270,7 +296,9 @@ class POSService {
 
   // Format currency
   formatCurrency(amount: number | string): string {
+    if (amount === null || amount === undefined) return '$0';
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0';
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
       currency: 'CLP',
