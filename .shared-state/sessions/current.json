@@ -1,0 +1,23 @@
+{
+  "session_id": "claude-terminal-001",
+  "ide": "claude-code",
+  "started_at": "2025-09-05T22:40:00.000Z",
+  "last_activity": "2025-09-05T22:40:00.000Z",
+  "status": "active",
+  "user": "kavi",
+  "project_context": {
+    "name": "Muralla 4.0",
+    "type": "fullstack",
+    "technologies": ["NestJS", "React", "TypeScript", "Prisma", "PostgreSQL"],
+    "current_focus": "POS Sales System & Shared State Implementation"
+  },
+  "capabilities": {
+    "file_operations": true,
+    "terminal_access": true,
+    "code_execution": true,
+    "database_access": true,
+    "web_requests": true
+  },
+  "connection_quality": "excellent",
+  "synchronized_with": []
+}

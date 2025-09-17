@@ -1,0 +1,16 @@
+{
+  "id": "windsurf-MacBook-Pro-de-Kavi.local-34410-1757105231248-1757105231259-gmrmf8wmt",
+  "type": "change-logged",
+  "sessionId": "windsurf-MacBook-Pro-de-Kavi.local-34410-1757105231248",
+  "timestamp": "2025-09-05T20:47:11.259Z",
+  "data": {
+    "sessionId": "windsurf-MacBook-Pro-de-Kavi.local-34410-1757105231248",
+    "timestamp": "2025-09-05T20:47:11.258Z",
+    "type": "windsurf-session-start",
+    "description": "Started Windsurf development session",
+    "files": [],
+    "cwd": "",
+    "environment": "windsurf",
+    "projectRoot": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state"
+  }
+}

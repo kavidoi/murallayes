@@ -1,0 +1,14 @@
+Shared-State Retention Update
+
+Purpose: Keep just-enough context for collaboration across terminals; avoid data hoarding.
+
+Effective immediately:
+- Logs: retain 14 days.
+- Events: retain 7 days.
+- A soft cap of ~500 MB is enforced. Oldest archives/logs/events will be pruned (skipping today) if over cap.
+- Older events may be archived per-day to reduce file count and disk usage.
+
+Action for agents:
+- Do not rely on historical logs beyond the above windows.
+- Prefer concise event records over verbose logs.
+- If you see duplicate servers, check sessions and recent logs; cleanup runs regularly.

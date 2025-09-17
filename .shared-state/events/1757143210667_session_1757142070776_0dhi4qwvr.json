@@ -1,0 +1,24 @@
+{
+  "batch_id": "90955bf8224620fa",
+  "timestamp": "2025-09-06T07:20:10.667Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "a63597d47e88e284",
+      "type": "project_change",
+      "timestamp": "2025-09-06T07:20:10.577Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/muralla-demo/package-lock.json",
+      "change_type": "modification",
+      "classification": "other"
+    },
+    {
+      "id": "5f882fe4614b5e49",
+      "type": "state_change",
+      "timestamp": "2025-09-06T07:20:10.577Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}

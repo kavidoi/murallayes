@@ -81,8 +81,7 @@ services:
     name: muralla-frontend
     runtime: static
     plan: free
-    rootDir: muralla-frontend
-    buildCommand: rm -rf ../pnpm-lock.yaml ../pnpm-workspace.yaml node_modules && npm install && npm run build:prod
+    buildCommand: npm install && npm run build:prod
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL

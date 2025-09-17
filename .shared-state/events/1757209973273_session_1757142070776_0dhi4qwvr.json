@@ -1,0 +1,23 @@
+{
+  "batch_id": "438d590ad5d39097",
+  "timestamp": "2025-09-07T01:52:53.273Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "99e5e8b9507fec6a",
+      "type": "state_change",
+      "timestamp": "2025-09-07T01:52:53.171Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    },
+    {
+      "id": "9751d9bfbd6bae93",
+      "type": "state_change",
+      "timestamp": "2025-09-07T01:52:53.273Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "batch_id": "a220a2660a2a7e92",
+  "timestamp": "2025-09-06T08:56:26.257Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "dc1a05f1681236d4",
+      "type": "state_change",
+      "timestamp": "2025-09-06T08:56:26.209Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}
