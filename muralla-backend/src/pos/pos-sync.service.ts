@@ -120,8 +120,7 @@ export class PosSyncService implements OnModuleInit {
       }
 
       // Get POS configuration from database
-      const prismaAny = this.prisma as any;
-      const config = await prismaAny.pOSConfiguration.findFirst();
+      const config = await this.getPosConfiguration();
 
       if (config) {
         this.apiKey = config.apiKey || process.env.TUU_API_KEY;
@@ -129,7 +128,11 @@ export class PosSyncService implements OnModuleInit {
         this.isEnabled = config.autoSyncEnabled && !!this.apiKey;
       } else {
         // Create default configuration
-        await this.createDefaultConfiguration();
+        try {
+          await this.createDefaultConfiguration();
+        } catch (error) {
+          this.logger.error('Failed to create default configuration:', error);
+        }
       }
 
       if (this.apiKey) {
@@ -1068,8 +1071,12 @@ export class PosSyncService implements OnModuleInit {
 
   // Utility methods for managing sync
   async getPosConfiguration() {
-    const prismaAny6 = this.prisma as any;
-    return prismaAny6.pOSConfiguration.findFirst();
+    try {
+      return await this.prisma.pOSConfiguration.findFirst();
+    } catch (error) {
+      this.logger.error('Failed to get POS configuration:', error);
+      return null;
+    }
   }
 
   async updatePosConfiguration(data: {
@@ -1111,18 +1118,15 @@ export class PosSyncService implements OnModuleInit {
   }
 
   async getSyncHistory(limit: number = 20) {
-    const prismaAny10 = this.prisma as any;
-    return prismaAny10.pOSSyncLog.findMany({
-      orderBy: { startDate: 'desc' },
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
-    });
+    try {
+      return await this.prisma.pOSSyncLog.findMany({
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+      });
+    } catch (error) {
+      this.logger.error('Failed to get sync history:', error);
+      return [];
+    }
   }
 
   async getPosTransactions(filters: {
