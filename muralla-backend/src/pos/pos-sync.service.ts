@@ -121,7 +121,7 @@ export class PosSyncService implements OnModuleInit {
 
       // Get POS configuration from database
       const prismaAny = this.prisma as any;
-      const config = await prismaAny.POSConfiguration.findFirst();
+      const config = await prismaAny.pOSConfiguration.findFirst();
 
       if (config) {
         this.apiKey = config.apiKey || process.env.TUU_API_KEY;
@@ -235,7 +235,7 @@ export class PosSyncService implements OnModuleInit {
 
       // Create sync log entry
       const prismaAny = this.prisma as any;
-      const syncLog = await prismaAny.POSSyncLog.create({
+      const syncLog = await prismaAny.pOSSyncLog.create({
         data: {
           syncType: 'MANUAL',
           status: 'RUNNING',
@@ -490,7 +490,7 @@ export class PosSyncService implements OnModuleInit {
 
         // Update sync log with success
         const prismaAny3 = this.prisma as any;
-        await prismaAny3.POSSyncLog.update({
+        await prismaAny3.pOSSyncLog.update({
           where: { id: syncLog.id },
           data: {
             status: 'COMPLETED',
@@ -711,7 +711,7 @@ export class PosSyncService implements OnModuleInit {
 
       // Create sync log entry
       const prismaAny = this.prisma as any;
-      const syncLog = await prismaAny.POSSyncLog.create({
+      const syncLog = await prismaAny.pOSSyncLog.create({
         data: {
           syncType: 'MANUAL',
           status: 'RUNNING',
@@ -799,13 +799,13 @@ export class PosSyncService implements OnModuleInit {
                   }
                   
                   // Check if transaction already exists
-                  const existingTransaction = await prismaAny.POSTransaction.findUnique({
+                  const existingTransaction = await prismaAny.pOSTransaction.findUnique({
                     where: { tuuSaleId: sale.id }
                   });
 
                   if (!existingTransaction) {
                     // Create new transaction with items
-                    await prismaAny.POSTransaction.create({
+                    await prismaAny.pOSTransaction.create({
                       data: {
                         tuuSaleId: sale.id,
                         sequenceNumber: sale.sequenceNumber,
@@ -896,7 +896,7 @@ export class PosSyncService implements OnModuleInit {
       } catch (error) {
         // Update sync log with failure
         const prismaAny4 = this.prisma as any;
-        await prismaAny4.POSSyncLog.update({
+        await prismaAny4.pOSSyncLog.update({
           where: { id: syncLog.id },
           data: {
             status: 'FAILED',
@@ -1069,7 +1069,7 @@ export class PosSyncService implements OnModuleInit {
   // Utility methods for managing sync
   async getPosConfiguration() {
     const prismaAny6 = this.prisma as any;
-    return prismaAny6.POSConfiguration.findFirst();
+    return prismaAny6.pOSConfiguration.findFirst();
   }
 
   async updatePosConfiguration(data: {
@@ -1101,7 +1101,7 @@ export class PosSyncService implements OnModuleInit {
       return updated;
     } else {
       const prismaAny9 = this.prisma as any;
-      return prismaAny9.POSConfiguration.create({
+      return prismaAny9.pOSConfiguration.create({
         data: {
           ...data,
           tenantId: null,
@@ -1112,7 +1112,7 @@ export class PosSyncService implements OnModuleInit {
 
   async getSyncHistory(limit: number = 20) {
     const prismaAny10 = this.prisma as any;
-    return prismaAny10.POSSyncLog.findMany({
+    return prismaAny10.pOSSyncLog.findMany({
       orderBy: { startDate: 'desc' },
       take: limit,
       include: {
@@ -1158,7 +1158,7 @@ export class PosSyncService implements OnModuleInit {
 
     const prismaAny11 = this.prisma as any;
     const [transactions, total] = await Promise.all([
-      prismaAny11.POSTransaction.findMany({
+      prismaAny11.pOSTransaction.findMany({
         where,
         include: {
           items: true,
@@ -1167,7 +1167,7 @@ export class PosSyncService implements OnModuleInit {
         take: limit,
         skip: offset,
       }),
-      prismaAny11.POSTransaction.count({ where })
+      prismaAny11.pOSTransaction.count({ where })
     ]);
 
     return {
@@ -1233,7 +1233,7 @@ export class PosSyncService implements OnModuleInit {
 
     const prismaAny12 = this.prisma as any;
     const [transactions, total, locationStats, deviceStats] = await Promise.all([
-      prismaAny12.POSTransaction.findMany({
+      prismaAny12.pOSTransaction.findMany({
         where,
         include: {
           items: true,
@@ -1242,9 +1242,9 @@ export class PosSyncService implements OnModuleInit {
         take: limit,
         skip: offset,
       }),
-      prismaAny12.POSTransaction.count({ where }),
+      prismaAny12.pOSTransaction.count({ where }),
       // Get location breakdown
-      prismaAny12.POSTransaction.groupBy({
+      prismaAny12.pOSTransaction.groupBy({
         by: ['locationId', 'address'],
         where,
         _count: { id: true },
@@ -1253,7 +1253,7 @@ export class PosSyncService implements OnModuleInit {
         take: 10,
       }),
       // Get device breakdown
-      prismaAny12.POSTransaction.groupBy({
+      prismaAny12.pOSTransaction.groupBy({
         by: ['serialNumber'],
         where,
         _count: { id: true },
