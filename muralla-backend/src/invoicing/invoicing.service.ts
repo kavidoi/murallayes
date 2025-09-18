@@ -21,12 +21,14 @@ export class InvoicingService {
     });
   }
 
-  async healthCheck(rut: string = '76795561-8') {
-    const res = await this.api.get(`/v2/dte/taxpayer/${encodeURIComponent(rut)}`);
+  async healthCheck(rut?: string) {
+    const companyRut = rut || process.env.COMPANY_RUT || '78188363-8';
+    const res = await this.api.get(`/v2/dte/taxpayer/${encodeURIComponent(companyRut)}`);
     return res.data;
   }
 
-  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string } = {}) {
+  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string; includeOpenFactura?: boolean } = {}) {
+    // Get local documents first
     const where: any = {};
     if (params.type) where.type = params.type;
     if (params.status) where.status = params.status;
@@ -45,13 +47,96 @@ export class InvoicingService {
     }
 
     const prismaAny = this.prisma as any;
-    const docs = await prismaAny.taxDocument.findMany({
+    const localDocs = await prismaAny.taxDocument.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: { items: true },
       take: 100,
     });
-    return docs;
+
+    // Try to fetch from OpenFactura if enabled
+    let openFacturaDocs = [];
+    if (params.includeOpenFactura !== false) {
+      try {
+        openFacturaDocs = await this.fetchDocumentsFromOpenFactura(params);
+      } catch (error) {
+        this.logger.warn('Failed to fetch from OpenFactura:', error.message);
+      }
+    }
+
+    // Combine and deduplicate results
+    const allDocs = [...localDocs, ...openFacturaDocs];
+    const uniqueDocs = allDocs.filter((doc, index, self) =>
+      index === self.findIndex(d => d.folio === doc.folio && d.type === doc.type)
+    );
+
+    return uniqueDocs.sort((a, b) =>
+      new Date(b.createdAt || b.issuedAt).getTime() - new Date(a.createdAt || a.issuedAt).getTime()
+    );
+  }
+
+  async fetchDocumentsFromOpenFactura(params: any = {}) {
+    const companyRut = process.env.COMPANY_RUT || '78188363-8';
+
+    // Try common OpenFactura endpoints for document listing
+    const endpoints = [
+      `/v2/dte/document?rut=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/documents?rut=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents`,
+      `/v2/dte/list?rut=${encodeURIComponent(companyRut)}`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        this.logger.log(`Trying OpenFactura endpoint: ${endpoint}`);
+        const response = await this.api.get(endpoint);
+
+        if (response.data && Array.isArray(response.data)) {
+          this.logger.log(`Found ${response.data.length} documents from OpenFactura`);
+          return this.normalizeOpenFacturaDocuments(response.data);
+        } else if (response.data && response.data.documents) {
+          this.logger.log(`Found ${response.data.documents.length} documents from OpenFactura`);
+          return this.normalizeOpenFacturaDocuments(response.data.documents);
+        }
+      } catch (error) {
+        this.logger.debug(`Endpoint ${endpoint} failed:`, error.message);
+        continue;
+      }
+    }
+
+    this.logger.warn('No working OpenFactura document endpoint found');
+    return [];
+  }
+
+  private normalizeOpenFacturaDocuments(docs: any[]): any[] {
+    return docs.map(doc => ({
+      id: doc.id || doc.folio,
+      type: this.mapDocumentType(doc.codigoTipoDocumento || doc.documentType),
+      folio: doc.folio,
+      status: doc.estado || doc.status || 'UNKNOWN',
+      receiverName: doc.nombreReceptor || doc.receiverName,
+      receiverRUT: doc.rutReceptor || doc.receiverRUT,
+      netAmount: doc.montoNeto || doc.netAmount || 0,
+      taxAmount: doc.montoIva || doc.taxAmount || 0,
+      totalAmount: doc.montoTotal || doc.totalAmount || 0,
+      issuedAt: doc.fechaEmision ? new Date(doc.fechaEmision) : new Date(),
+      createdAt: doc.fechaEmision ? new Date(doc.fechaEmision) : new Date(),
+      pdfUrl: doc.urlPdf || doc.pdfUrl,
+      xmlUrl: doc.urlXml || doc.xmlUrl,
+      source: 'OPENFACTURA',
+      rawData: doc,
+    }));
+  }
+
+  private mapDocumentType(code: number | string): string {
+    const codeNum = typeof code === 'string' ? parseInt(code) : code;
+    switch (codeNum) {
+      case 33: return 'FACTURA';
+      case 39: return 'BOLETA';
+      case 56: return 'NOTA_DEBITO';
+      case 61: return 'NOTA_CREDITO';
+      default: return 'OTHER';
+    }
   }
 
   async getDocument(id: string) {
@@ -182,7 +267,7 @@ export class InvoicingService {
     return {
       // Document identification
       codigoTipoDocumento: 39, // Boleta Electrónica
-      rutEmisor: "76795561-8", // From environment or config
+      rutEmisor: process.env.COMPANY_RUT || "78188363-8", // Company RUT
       rutReceptor: document.receiverRUT || "66666666-6", // Default RUT for anonymous
       
       // Document details
@@ -336,7 +421,7 @@ export class InvoicingService {
     return {
       // Document identification
       codigoTipoDocumento: 33, // Factura Electrónica
-      rutEmisor: "76795561-8", // From environment or config
+      rutEmisor: process.env.COMPANY_RUT || "78188363-8", // Company RUT
       rutReceptor: document.receiverRUT,
       
       // Document details

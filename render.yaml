@@ -69,6 +69,8 @@ services:
       # OpenFactura Integration
       - key: OPENFACTURA_BASE_URL
         value: "https://api.haulmer.com"
+      - key: COMPANY_RUT
+        value: "78188363-8"
       # Storage Services
       - key: CLOUDINARY_CLOUD_NAME
         value: "daqkotj1t"
