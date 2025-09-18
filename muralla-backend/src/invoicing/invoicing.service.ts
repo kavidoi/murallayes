@@ -79,10 +79,16 @@ export class InvoicingService {
     const companyRut = process.env.COMPANY_RUT || '78188363-8';
 
     // Try common OpenFactura endpoints for document listing
+    // Based on Chilean DTE standards, most systems use rutEmisor parameter
     const endpoints = [
+      `/v2/dte/emitidos?rutEmisor=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/document?rutEmisor=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/documents?rutEmisor=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/issued?rutEmisor=${encodeURIComponent(companyRut)}`,
+      `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents`,
+      `/v2/dte/list?rutEmisor=${encodeURIComponent(companyRut)}`,
       `/v2/dte/document?rut=${encodeURIComponent(companyRut)}`,
       `/v2/dte/documents?rut=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents`,
       `/v2/dte/list?rut=${encodeURIComponent(companyRut)}`,
     ];
 
@@ -91,12 +97,25 @@ export class InvoicingService {
         this.logger.log(`Trying OpenFactura endpoint: ${endpoint}`);
         const response = await this.api.get(endpoint);
 
-        if (response.data && Array.isArray(response.data)) {
-          this.logger.log(`Found ${response.data.length} documents from OpenFactura`);
-          return this.normalizeOpenFacturaDocuments(response.data);
-        } else if (response.data && response.data.documents) {
-          this.logger.log(`Found ${response.data.documents.length} documents from OpenFactura`);
-          return this.normalizeOpenFacturaDocuments(response.data.documents);
+        if (response.data) {
+          let documents = [];
+
+          if (Array.isArray(response.data)) {
+            documents = response.data;
+          } else if (response.data.documents && Array.isArray(response.data.documents)) {
+            documents = response.data.documents;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            documents = response.data.data;
+          } else if (response.data.dte && Array.isArray(response.data.dte)) {
+            documents = response.data.dte;
+          }
+
+          if (documents.length > 0) {
+            this.logger.log(`✅ Found ${documents.length} documents from OpenFactura via ${endpoint}`);
+            return this.normalizeOpenFacturaDocuments(documents);
+          } else {
+            this.logger.debug(`Endpoint ${endpoint} returned empty array`);
+          }
         }
       } catch (error) {
         this.logger.debug(`Endpoint ${endpoint} failed:`, error.message);
