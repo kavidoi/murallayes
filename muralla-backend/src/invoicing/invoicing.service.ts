@@ -618,13 +618,190 @@ export class InvoicingService {
     };
   }
 
+  // Fetch received documents from OpenFactura (/v2/dte/document/received)
+  async fetchReceivedDocuments(params: { startDate?: string; endDate?: string; page?: number } = {}) {
+    const companyRut = process.env.COMPANY_RUT || '78188363-8';
+    const rutWithoutDv = companyRut.split('-')[0];
+
+    const requestBody: any = {
+      Page: params.page || 1,
+    };
+
+    // Add date filters if provided
+    if (params.startDate) {
+      requestBody.FchRecepOF = { gte: params.startDate };
+    }
+    if (params.endDate) {
+      if (requestBody.FchRecepOF) {
+        requestBody.FchRecepOF.lte = params.endDate;
+      } else {
+        requestBody.FchRecepOF = { lte: params.endDate };
+      }
+    }
+
+    try {
+      this.logger.log(`Fetching received documents from OpenFactura for RUT: ${companyRut}`);
+      const response = await this.api.post('/v2/dte/document/received', requestBody);
+
+      const data = response.data;
+      this.logger.log(`Received documents response:`, JSON.stringify(data, null, 2));
+
+      if (data && data.data && Array.isArray(data.data)) {
+        const normalizedDocs = data.data.map(doc => ({
+          rutEmisor: doc.RUTEmisor,
+          dvEmisor: doc.DV,
+          nombreEmisor: doc.RznSoc,
+          tipoDocumento: doc.TipoDTE,
+          folio: doc.Folio,
+          fechaEmision: doc.FchEmis,
+          fechaRecepcionSII: doc.FchRecepSII,
+          fechaRecepcionOF: doc.FchRecepOF,
+          montoExento: doc.MntExe || 0,
+          montoNeto: doc.MntNeto || 0,
+          iva: doc.IVA || 0,
+          montoTotal: doc.MntTotal || 0,
+          acuses: doc.Acuses || [],
+          formaPago: doc.FmaPago,
+          tipoTransaccionCompra: doc.TpoTranCompra,
+          rawData: doc,
+        }));
+
+        return {
+          currentPage: data.current_page,
+          lastPage: data.last_page,
+          total: data.total,
+          documents: normalizedDocs,
+        };
+      }
+
+      return {
+        currentPage: 1,
+        lastPage: 1,
+        total: 0,
+        documents: [],
+      };
+    } catch (error) {
+      this.logger.error('Failed to fetch received documents from OpenFactura:', error.response?.data || error.message);
+      throw new Error(`OpenFactura received documents fetch failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Import received documents into local database
+  async importReceivedDocuments(params: { startDate?: string; endDate?: string; dryRun?: boolean } = {}) {
+    this.logger.log('Starting import of received documents from OpenFactura...');
+
+    const results = {
+      totalFetched: 0,
+      totalImported: 0,
+      totalSkipped: 0,
+      errors: [],
+      imported: [],
+    };
+
+    try {
+      // Fetch received documents
+      const fetchParams: any = {};
+      if (params.startDate) fetchParams.startDate = params.startDate;
+      if (params.endDate) fetchParams.endDate = params.endDate;
+
+      let page = 1;
+      let hasMorePages = true;
+
+      while (hasMorePages) {
+        const receivedDocs = await this.fetchReceivedDocuments({ ...fetchParams, page });
+        results.totalFetched += receivedDocs.documents.length;
+
+        for (const doc of receivedDocs.documents) {
+          try {
+            const existingDoc = await (this.prisma as any).taxDocument.findFirst({
+              where: {
+                folio: doc.folio.toString(),
+                type: this.mapDocumentType(doc.tipoDocumento),
+                emitterRUT: `${doc.rutEmisor}-${doc.dvEmisor}`,
+              },
+            });
+
+            if (existingDoc) {
+              results.totalSkipped++;
+              continue;
+            }
+
+            if (params.dryRun) {
+              this.logger.log(`[DRY RUN] Would import: ${doc.nombreEmisor} - ${this.mapDocumentType(doc.tipoDocumento)} #${doc.folio}`);
+              results.totalImported++;
+              continue;
+            }
+
+            // Import into database
+            const importedDoc = await (this.prisma as any).taxDocument.create({
+              data: {
+                type: this.mapDocumentType(doc.tipoDocumento),
+                documentCode: doc.tipoDocumento,
+                folio: doc.folio.toString(),
+                status: 'ACCEPTED', // Received documents are typically accepted
+
+                // Supplier info (emitter)
+                emitterRUT: `${doc.rutEmisor}-${doc.dvEmisor}`,
+                emitterName: doc.nombreEmisor,
+
+                // We are the receiver
+                receiverRUT: process.env.COMPANY_RUT || '78188363-8',
+                receiverName: 'MURALLA SPA',
+
+                // Amounts
+                netAmount: doc.montoNeto,
+                taxAmount: doc.iva,
+                totalAmount: doc.montoTotal,
+
+                // Dates
+                issuedAt: new Date(doc.fechaEmision),
+
+                // Additional info stored in rawResponse and notes
+                rawResponse: doc.rawData,
+                notes: `Imported from OpenFactura - Supplier: ${doc.nombreEmisor} - Payment: ${doc.formaPago} - Purchase Type: ${doc.tipoTransaccionCompra}`,
+              },
+            });
+
+            results.totalImported++;
+            results.imported.push({
+              id: importedDoc.id,
+              folio: doc.folio,
+              supplier: doc.nombreEmisor,
+              type: this.mapDocumentType(doc.tipoDocumento),
+              amount: doc.montoTotal,
+            });
+
+            this.logger.log(`Imported: ${doc.nombreEmisor} - ${this.mapDocumentType(doc.tipoDocumento)} #${doc.folio} - $${doc.montoTotal}`);
+          } catch (error) {
+            results.errors.push({
+              folio: doc.folio,
+              supplier: doc.nombreEmisor,
+              error: error.message,
+            });
+            this.logger.error(`Failed to import document ${doc.folio}:`, error);
+          }
+        }
+
+        // Check if there are more pages
+        hasMorePages = page < receivedDocs.lastPage;
+        page++;
+      }
+
+      this.logger.log(`Import completed: ${results.totalImported} imported, ${results.totalSkipped} skipped, ${results.errors.length} errors`);
+      return results;
+    } catch (error) {
+      this.logger.error('Import failed:', error);
+      throw error;
+    }
+  }
+
   // Get document PDF
   async getDocumentPDF(id: string) {
     const document = await this.getDocument(id);
     if (!document) {
       throw new Error('Document not found');
     }
-    
+
     if (!document.pdfUrl) {
       throw new Error('PDF not available for this document');
     }

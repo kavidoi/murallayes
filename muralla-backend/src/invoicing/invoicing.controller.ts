@@ -180,17 +180,40 @@ export class InvoicingController {
     }
   }
 
+  // Fetch received documents from OpenFactura (supplier invoices)
+  @Public()
+  @Get('received-documents')
+  async fetchReceivedDocuments(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+  ) {
+    return this.service.fetchReceivedDocuments({
+      startDate,
+      endDate,
+      page: page ? parseInt(page) : 1,
+    });
+  }
+
+  // Import received documents from OpenFactura into local database
+  @Post('received-documents/import')
+  async importReceivedDocuments(
+    @Body() body: { startDate?: string; endDate?: string; dryRun?: boolean } = {}
+  ) {
+    return this.service.importReceivedDocuments(body);
+  }
+
   // Get document PDF
   @Get('documents/:id/pdf')
   async getDocumentPDF(@Param('id') id: string, @Res() res: Response) {
     try {
       const pdfData = await this.service.getDocumentPDF(id);
-      
+
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="document-${id}.pdf"`,
       });
-      
+
       res.send(pdfData.data);
     } catch (error) {
       res.status(404).json({
