@@ -176,6 +176,55 @@ export class InvoicingService {
     }
   }
 
+  private getDocumentTypeName(code: number): string {
+    switch (code) {
+      case 33: return 'Factura Electrónica';
+      case 39: return 'Boleta Electrónica';
+      case 56: return 'Nota de Débito Electrónica';
+      case 61: return 'Nota de Crédito Electrónica';
+      case 52: return 'Guía de Despacho Electrónica';
+      case 110: return 'Factura de Exportación Electrónica';
+      case 111: return 'Nota de Débito de Exportación Electrónica';
+      case 112: return 'Nota de Crédito de Exportación Electrónica';
+      default: return `Documento Tipo ${code}`;
+    }
+  }
+
+  private getPaymentMethodDescription(code: number | string): string {
+    const codeNum = typeof code === 'string' ? parseInt(code) : code;
+    switch (codeNum) {
+      case 1: return 'Contado';
+      case 2: return 'Crédito';
+      case 3: return 'Sin costo (entrega gratuita)';
+      default: return code ? `Forma de pago ${code}` : 'No especificado';
+    }
+  }
+
+  private getPurchaseTypeDescription(code: number | string): string {
+    const codeNum = typeof code === 'string' ? parseInt(code) : code;
+    switch (codeNum) {
+      case 1: return 'Compras del giro';
+      case 2: return 'Compras en Supermercados o similares';
+      case 3: return 'Adquisición Bien Raíz';
+      case 4: return 'Compra Activo Fijo';
+      case 5: return 'Compra con IVA Uso Común';
+      case 6: return 'Compra sin derecho a crédito';
+      case 7: return 'Compra que no corresponde incluir';
+      default: return code ? `Tipo compra ${code}` : 'No especificado';
+    }
+  }
+
+  private getAcknowledgmentDescription(code: string): string {
+    switch (code) {
+      case 'ACD': return 'Acepta Contenido del Documento';
+      case 'RCD': return 'Reclamo al Contenido del Documento';
+      case 'ERM': return 'Otorga Recibo de Mercaderías o Servicios';
+      case 'RFP': return 'Reclamo por Falta Parcial de Mercaderías';
+      case 'RFT': return 'Reclamo por Falta Total de Mercaderías';
+      default: return code || 'Acuse desconocido';
+    }
+  }
+
   async discoverWorkingEndpoints() {
     const companyRut = process.env.COMPANY_RUT || '78188363-8';
 
@@ -630,7 +679,14 @@ export class InvoicingService {
   }
 
   // Fetch received documents from OpenFactura (/v2/dte/document/received)
-  async fetchReceivedDocuments(params: { startDate?: string; endDate?: string; page?: number } = {}) {
+  async fetchReceivedDocuments(params: {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    tipoDocumento?: number; // 33=Factura, 39=Boleta, 56=Nota Débito, 61=Nota Crédito
+    rutEmisor?: string;
+    dateField?: 'FchEmis' | 'FchRecepOF' | 'FchRecepSII';
+  } = {}) {
     const companyRut = process.env.COMPANY_RUT || '78188363-8';
     const rutWithoutDv = companyRut.split('-')[0];
 
@@ -638,15 +694,27 @@ export class InvoicingService {
       Page: params.page || 1,
     };
 
-    // Add date filters if provided
+    // Add document type filter
+    if (params.tipoDocumento) {
+      requestBody.TipoDTE = { eq: params.tipoDocumento.toString() };
+    }
+
+    // Add RUT emisor filter
+    if (params.rutEmisor) {
+      const rutNumber = params.rutEmisor.replace(/[^0-9]/g, '');
+      requestBody.RUTEmisor = { eq: rutNumber };
+    }
+
+    // Add date filters - use specified field or default to reception date
+    const dateField = params.dateField || 'FchRecepOF';
     if (params.startDate) {
-      requestBody.FchRecepOF = { gte: params.startDate };
+      requestBody[dateField] = { gte: params.startDate };
     }
     if (params.endDate) {
-      if (requestBody.FchRecepOF) {
-        requestBody.FchRecepOF.lte = params.endDate;
+      if (requestBody[dateField]) {
+        requestBody[dateField].lte = params.endDate;
       } else {
-        requestBody.FchRecepOF = { lte: params.endDate };
+        requestBody[dateField] = { lte: params.endDate };
       }
     }
 
@@ -659,21 +727,52 @@ export class InvoicingService {
 
       if (data && data.data && Array.isArray(data.data)) {
         const normalizedDocs = data.data.map(doc => ({
+          // Emisor information
           rutEmisor: doc.RUTEmisor,
           dvEmisor: doc.DV,
           nombreEmisor: doc.RznSoc,
+          rutEmisorCompleto: `${doc.RUTEmisor}-${doc.DV}`,
+
+          // Document identification
           tipoDocumento: doc.TipoDTE,
+          tipoDocumentoNombre: this.getDocumentTypeName(doc.TipoDTE),
           folio: doc.Folio,
+
+          // Dates with proper handling
           fechaEmision: doc.FchEmis,
-          fechaRecepcionSII: doc.FchRecepSII,
+          fechaRecepcionSII: doc.FchRecepSII || null,
           fechaRecepcionOF: doc.FchRecepOF,
-          montoExento: doc.MntExe || 0,
-          montoNeto: doc.MntNeto || 0,
-          iva: doc.IVA || 0,
-          montoTotal: doc.MntTotal || 0,
-          acuses: doc.Acuses || [],
+
+          // Financial amounts
+          montoExento: Number(doc.MntExe) || 0,
+          montoNeto: Number(doc.MntNeto) || 0,
+          iva: Number(doc.IVA) || 0,
+          montoTotal: Number(doc.MntTotal) || 0,
+
+          // Payment and transaction info
           formaPago: doc.FmaPago,
+          formaPagoDescripcion: this.getPaymentMethodDescription(doc.FmaPago),
           tipoTransaccionCompra: doc.TpoTranCompra,
+          tipoTransaccionCompraDescripcion: this.getPurchaseTypeDescription(doc.TpoTranCompra),
+
+          // Acknowledgments with enhanced processing
+          acuses: (doc.Acuses || []).map(acuse => ({
+            codigoEvento: acuse.codEvento,
+            fechaEvento: acuse.fechaEvento,
+            estado: acuse.estado,
+            descripcion: this.getAcknowledgmentDescription(acuse.codEvento),
+          })),
+
+          // Status indicators
+          tieneSiiRecepcion: !!doc.FchRecepSII,
+          tieneAcuses: Array.isArray(doc.Acuses) && doc.Acuses.length > 0,
+
+          // Enhanced metadata
+          diasEmisionRecepcion: doc.FchEmis && doc.FchRecepOF
+            ? Math.ceil((new Date(doc.FchRecepOF).getTime() - new Date(doc.FchEmis).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+
+          // Full raw data for debugging/future use
           rawData: doc,
         }));
 
@@ -791,8 +890,29 @@ export class InvoicingService {
                 issuedAt: new Date(doc.fechaEmision),
 
                 // Additional info stored in rawResponse and notes
-                rawResponse: doc.rawData,
-                notes: `Imported from OpenFactura - Supplier: ${doc.nombreEmisor} - Payment: ${doc.formaPago} - Purchase Type: ${doc.tipoTransaccionCompra}`,
+                rawResponse: {
+                  ...doc.rawData,
+                  // Enhanced metadata
+                  formaPagoDescripcion: this.getPaymentMethodDescription(doc.formaPago),
+                  tipoTransaccionCompraDescripcion: this.getPurchaseTypeDescription(doc.tipoTransaccionCompra),
+                  acusesDetalle: (doc.rawData.Acuses || []).map(acuse => ({
+                    ...acuse,
+                    descripcion: this.getAcknowledgmentDescription(acuse.codEvento),
+                  })),
+                  diasEmisionRecepcion: doc.fechaEmision && doc.fechaRecepcionOF
+                    ? Math.ceil((new Date(doc.fechaRecepcionOF).getTime() - new Date(doc.fechaEmision).getTime()) / (1000 * 60 * 60 * 24))
+                    : null,
+                },
+                notes: [
+                  `Imported from OpenFactura`,
+                  `Supplier: ${doc.nombreEmisor}`,
+                  `Payment: ${this.getPaymentMethodDescription(doc.formaPago)}`,
+                  `Purchase Type: ${this.getPurchaseTypeDescription(doc.tipoTransaccionCompra)}`,
+                  doc.rawData.Acuses && doc.rawData.Acuses.length > 0
+                    ? `Acknowledgments: ${doc.rawData.Acuses.length}`
+                    : null,
+                  doc.fechaRecepcionSII ? 'SII Reception Confirmed' : 'SII Reception Pending',
+                ].filter(Boolean).join(' | '),
               },
             });
 
@@ -826,6 +946,77 @@ export class InvoicingService {
     } catch (error) {
       this.logger.error('Import failed:', error);
       throw error;
+    }
+  }
+
+  // Send acknowledgment for received document using /v2/dte/document/received/accuse
+  async acknowledgeReceivedDocument(
+    folio: string,
+    params: {
+      rutEmisor: string;
+      tipoDocumento: number;
+      tipoAcuse: 'ACD' | 'RCD' | 'ERM' | 'RFP' | 'RFT';
+    }
+  ) {
+    const payload = {
+      rut: params.rutEmisor,
+      dte: params.tipoDocumento,
+      folio: parseInt(folio),
+      acuse: params.tipoAcuse,
+    };
+
+    try {
+      this.logger.log(`Sending acknowledgment for document ${folio}:`, payload);
+      const response = await this.api.post('/v2/dte/document/received/accuse', payload);
+
+      const result = response.data;
+      this.logger.log(`Acknowledgment response:`, result);
+
+      // Update local document if it exists
+      try {
+        const existingDoc = await (this.prisma as any).taxDocument.findFirst({
+          where: {
+            folio: folio,
+            type: this.mapDocumentType(params.tipoDocumento),
+            emitterRUT: params.rutEmisor,
+          },
+        });
+
+        if (existingDoc) {
+          await (this.prisma as any).taxDocument.update({
+            where: { id: existingDoc.id },
+            data: {
+              notes: `${existingDoc.notes || ''} | Acknowledgment sent: ${params.tipoAcuse} - ${this.getAcknowledgmentDescription(params.tipoAcuse)}`,
+              rawResponse: {
+                ...existingDoc.rawResponse,
+                lastAcknowledgment: {
+                  type: params.tipoAcuse,
+                  description: this.getAcknowledgmentDescription(params.tipoAcuse),
+                  sentAt: new Date().toISOString(),
+                  response: result,
+                },
+              },
+            },
+          });
+        }
+      } catch (updateError) {
+        this.logger.warn('Failed to update local document with acknowledgment:', updateError.message);
+      }
+
+      return {
+        success: true,
+        acknowledgment: {
+          folio: parseInt(folio),
+          rutEmisor: params.rutEmisor,
+          tipoDocumento: params.tipoDocumento,
+          tipoAcuse: params.tipoAcuse,
+          descripcion: this.getAcknowledgmentDescription(params.tipoAcuse),
+        },
+        openFacturaResponse: result,
+      };
+    } catch (error) {
+      this.logger.error('Failed to send acknowledgment:', error.response?.data || error.message);
+      throw new Error(`Acknowledgment failed: ${error.response?.data?.message || error.message}`);
     }
   }
 

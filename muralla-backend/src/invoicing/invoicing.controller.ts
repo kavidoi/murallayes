@@ -189,11 +189,17 @@ export class InvoicingController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: string,
+    @Query('tipoDocumento') tipoDocumento?: string, // 33=Factura, 39=Boleta
+    @Query('rutEmisor') rutEmisor?: string,
+    @Query('dateField') dateField?: string, // FchEmis, FchRecepOF, FchRecepSII
   ) {
     return this.service.fetchReceivedDocuments({
       startDate,
       endDate,
       page: page ? parseInt(page) : 1,
+      tipoDocumento: tipoDocumento ? parseInt(tipoDocumento) : undefined,
+      rutEmisor,
+      dateField: dateField as 'FchEmis' | 'FchRecepOF' | 'FchRecepSII',
     });
   }
 
@@ -203,6 +209,19 @@ export class InvoicingController {
     @Body() body: { startDate?: string; endDate?: string; dryRun?: boolean } = {}
   ) {
     return this.service.importReceivedDocuments(body);
+  }
+
+  // Send acknowledgment for received document
+  @Post('received-documents/:folio/acknowledge')
+  async acknowledgeReceivedDocument(
+    @Param('folio') folio: string,
+    @Body() body: {
+      rutEmisor: string;
+      tipoDocumento: number;
+      tipoAcuse: 'ACD' | 'RCD' | 'ERM' | 'RFP' | 'RFT';
+    }
+  ) {
+    return this.service.acknowledgeReceivedDocument(folio, body);
   }
 
   // Get document PDF
