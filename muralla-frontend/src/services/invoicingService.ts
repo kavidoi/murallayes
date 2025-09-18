@@ -8,15 +8,33 @@ export interface TaxDocument {
   type: 'BOLETA' | 'FACTURA' | 'CREDIT_NOTE';
   folio?: string;
   documentCode?: number;
+
+  // Receiver info (when we emit documents)
   receiverRUT?: string;
   receiverName?: string;
+
+  // Emitter info (for received documents - supplier info)
+  emitterRUT?: string;
+  emitterName?: string;
+
+  // Financial amounts
   netAmount?: number;
   taxAmount?: number;
   totalAmount?: number;
-  status: 'DRAFT' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+
+  // Status and dates
+  status: 'DRAFT' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'ERROR';
   issuedAt?: string;
-  pdfUrl?: string;
   createdAt: string;
+
+  // Document access
+  pdfUrl?: string;
+  xmlUrl?: string;
+
+  // Enhanced metadata (from OpenFactura)
+  notes?: string;
+  rawResponse?: any;
+  source?: string;
 }
 
 class InvoicingService {
@@ -58,6 +76,58 @@ class InvoicingService {
     if (costIds && costIds.length) params.set('ids', costIds.join(','));
     const res = await this.api.get(`/links/cost?${params.toString()}`);
     return res.data as Record<string, { count: number; status: string; folio?: string }>;
+  }
+
+  // Enhanced document viewing
+  async getDocumentPreview(id: string) {
+    const res = await this.api.get(`/documents/${id}/preview`);
+    return res.data;
+  }
+
+  // Get document PDF URL for inline viewing
+  getDocumentPDFUrl(id: string, display: 'inline' | 'download' = 'inline') {
+    const token = AuthService.getToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}&display=${display}` : `?display=${display}`;
+    return `${API_BASE_URL}/invoicing/documents/${id}/pdf${tokenParam}`;
+  }
+
+  // Get document XML URL
+  getDocumentXMLUrl(id: string, display: 'inline' | 'download' = 'inline') {
+    const token = AuthService.getToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}&display=${display}` : `?display=${display}`;
+    return `${API_BASE_URL}/invoicing/documents/${id}/xml${tokenParam}`;
+  }
+
+  // Fetch received documents from OpenFactura
+  async fetchReceivedDocuments(params: {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    tipoDocumento?: number;
+    rutEmisor?: string;
+  } = {}) {
+    const res = await this.api.get('/received-documents', { params });
+    return res.data;
+  }
+
+  // Import received documents into database
+  async importReceivedDocuments(params: {
+    startDate?: string;
+    endDate?: string;
+    dryRun?: boolean;
+  } = {}) {
+    const res = await this.api.post('/received-documents/import', params);
+    return res.data;
+  }
+
+  // Send acknowledgment for received document
+  async acknowledgeDocument(folio: string, params: {
+    rutEmisor: string;
+    tipoDocumento: number;
+    tipoAcuse: 'ACD' | 'RCD' | 'ERM' | 'RFP' | 'RFT';
+  }) {
+    const res = await this.api.post(`/received-documents/${folio}/acknowledge`, params);
+    return res.data;
   }
 }
 
