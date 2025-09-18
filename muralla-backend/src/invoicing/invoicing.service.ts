@@ -139,6 +139,141 @@ export class InvoicingService {
     }
   }
 
+  async discoverWorkingEndpoints() {
+    const companyRut = process.env.COMPANY_RUT || '78188363-8';
+
+    const getDateString = (daysAgo: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + daysAgo);
+      return date.toISOString().split('T')[0];
+    };
+
+    // Comprehensive list of potential endpoints
+    const endpointsToTest = [
+      // Direct document endpoints
+      `/v2/dte/document?rut=${companyRut}`,
+      `/v2/dte/documents?rut=${companyRut}`,
+      `/v2/dte/document?rutEmisor=${companyRut}`,
+      `/v2/dte/document?rutReceptor=${companyRut}`,
+
+      // Taxpayer-specific endpoints
+      `/v2/dte/taxpayer/${companyRut}/documents`,
+      `/v2/dte/taxpayer/${companyRut}/document`,
+      `/v2/dte/taxpayer/${companyRut}/dte`,
+
+      // List endpoints
+      `/v2/dte/list?rut=${companyRut}`,
+      `/v2/dte/list?rutEmisor=${companyRut}`,
+      `/v2/dte/list?rutReceptor=${companyRut}`,
+
+      // Search endpoints
+      `/v2/dte/search?rut=${companyRut}`,
+      `/v2/dte/search?rutEmisor=${companyRut}`,
+      `/v2/dte/search?rutReceptor=${companyRut}`,
+
+      // Generic endpoints
+      `/v2/dte`,
+      `/v2/dte/document`,
+      `/v2/documents`,
+      `/v2/document`,
+
+      // With date filters (last 30 days)
+      `/v2/dte/document?rut=${companyRut}&fechaDesde=${getDateString(-30)}`,
+      `/v2/dte/documents?rut=${companyRut}&fechaDesde=${getDateString(-30)}`,
+
+      // Issued vs Received
+      `/v2/dte/emitidos?rut=${companyRut}`,
+      `/v2/dte/recibidos?rut=${companyRut}`,
+      `/v2/dte/issued?rut=${companyRut}`,
+      `/v2/dte/received?rut=${companyRut}`,
+
+      // Alternative paths
+      `/v1/dte/document?rut=${companyRut}`,
+      `/api/v2/dte/document?rut=${companyRut}`,
+      `/api/dte/document?rut=${companyRut}`,
+    ];
+
+    const results = [];
+
+    for (const endpoint of endpointsToTest) {
+      try {
+        this.logger.log(`Testing endpoint: ${endpoint}`);
+        const response = await this.api.get(endpoint);
+        const data = response.data;
+
+        let documentCount = 0;
+        let sampleDoc = null;
+
+        if (Array.isArray(data)) {
+          documentCount = data.length;
+          sampleDoc = data[0];
+        } else if (data && typeof data === 'object') {
+          if (data.documents && Array.isArray(data.documents)) {
+            documentCount = data.documents.length;
+            sampleDoc = data.documents[0];
+          } else if (data.data && Array.isArray(data.data)) {
+            documentCount = data.data.length;
+            sampleDoc = data.data[0];
+          } else {
+            documentCount = Object.keys(data).length > 0 ? 1 : 0;
+            sampleDoc = data;
+          }
+        }
+
+        results.push({
+          endpoint,
+          success: true,
+          status: response.status,
+          documentCount,
+          sampleDoc: documentCount > 0 ? sampleDoc : null,
+          responseKeys: data && typeof data === 'object' ? Object.keys(data) : []
+        });
+
+        if (documentCount > 0) {
+          this.logger.log(`✅ SUCCESS: ${endpoint} returned ${documentCount} documents`);
+        } else {
+          this.logger.log(`⚠️ Empty response from ${endpoint}`);
+        }
+
+      } catch (error) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+
+        results.push({
+          endpoint,
+          success: false,
+          status,
+          error: message,
+          documentCount: 0
+        });
+
+        this.logger.debug(`❌ ${endpoint} failed: ${status} - ${message}`);
+      }
+    }
+
+    const successful = results.filter(r => r.success && r.documentCount > 0);
+    const workingEndpoint = successful.length > 0 ? successful[0] : null;
+
+    return {
+      companyRut,
+      totalEndpointsTested: endpointsToTest.length,
+      successfulEndpoints: successful.length,
+      workingEndpoint: workingEndpoint?.endpoint,
+      documentCount: workingEndpoint?.documentCount || 0,
+      sampleDocument: workingEndpoint?.sampleDoc || null,
+      allResults: results.map(r => ({
+        endpoint: r.endpoint,
+        success: r.success,
+        status: r.status,
+        documentCount: r.documentCount,
+        error: r.error
+      })),
+      recommendation: workingEndpoint
+        ? `Use endpoint: ${workingEndpoint.endpoint}`
+        : 'No working document endpoints found. Check API permissions or document availability.'
+    };
+  }
+
   async getDocument(id: string) {
     const prismaAny = this.prisma as any;
     return prismaAny.taxDocument.findUnique({ where: { id }, include: { items: true } });

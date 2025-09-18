@@ -27,6 +27,13 @@ export class InvoicingController {
     return this.service.getDocument(id);
   }
 
+  // API Discovery endpoint for debugging
+  @Public()
+  @Get('discover-endpoints')
+  async discoverEndpoints() {
+    return this.service.discoverWorkingEndpoints();
+  }
+
   // Lightweight link checker for costs: GET /invoicing/links/cost?ids=a,b,c
   @Get('links/cost')
   async costLinks(@Query('ids') ids?: string) {
