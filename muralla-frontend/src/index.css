@@ -1,0 +1,13 @@
+/* MAIN STYLESHEET - Import separated stylesheets to prevent mobile/desktop conflicts */
+
+/* Base styles (shared across all devices) */
+@import './styles/base.css';
+
+/* Desktop-specific styles (>= 769px) */
+@import './styles/desktop.css';
+
+/* Mobile-specific styles (<= 768px) */
+@import './styles/mobile.css';
+
+/* Accessibility styles */
+@import './styles/accessibility.css';

@@ -1,0 +1,250 @@
+/* MOBILE-ONLY STYLES */
+/* Applied on screens <= 768px */
+
+@media (max-width: 768px) {
+  /* Mobile Kanban Board */
+  .kanban-board {
+    @apply gap-4;
+  }
+  
+  .kanban-column {
+    min-width: 280px;
+  }
+  
+  /* Mobile Task Cards */
+  .task-card {
+    @apply p-3;
+  }
+  
+  /* Disable hover effects on mobile */
+  .task-card:hover {
+    @apply transform-none shadow-sm;
+  }
+  
+  /* Mobile Button Interactions */
+  .btn-electric:hover,
+  .btn-outline:hover {
+    @apply transform-none;
+  }
+  
+  /* Touch-friendly tap targets */
+  .task-card,
+  .btn-electric,
+  .btn-outline,
+  .quick-action-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile Progress Ring */
+  .progress-ring {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  /* Mobile Activity Sidebar */
+  .activity-sidebar {
+    width: 100% !important;
+  }
+  
+  /* Mobile Metrics Grid */
+  .metrics-grid {
+    @apply grid-cols-2 gap-3;
+  }
+  
+  /* Mobile Bulk Actions */
+  .bulk-actions-dropdown {
+    @apply left-0 right-0 mx-4;
+    min-width: auto;
+  }
+  
+  /* Mobile Quick Actions - Always visible */
+  .quick-actions {
+    @apply opacity-100;
+  }
+  
+  /* Mobile Navigation */
+  .mobile-nav {
+    @apply flex flex-col gap-2;
+  }
+  
+  /* Mobile Forms */
+  .mobile-form {
+    @apply w-full;
+  }
+  
+  .mobile-form-grid {
+    @apply grid-cols-1 gap-4;
+  }
+  
+  /* Mobile Modal */
+  .mobile-modal {
+    @apply w-full h-full m-0 rounded-none;
+  }
+  
+  /* Mobile Tables */
+  .mobile-table {
+    @apply text-xs;
+  }
+  
+  .mobile-table th,
+  .mobile-table td {
+    @apply px-2 py-2;
+  }
+  
+  /* Mobile Dropdowns */
+  .mobile-dropdown {
+    @apply w-full;
+  }
+  
+  /* Mobile Search */
+  .mobile-search {
+    @apply w-full;
+  }
+  
+  /* Mobile Pagination */
+  .mobile-pagination {
+    @apply flex flex-col gap-2;
+  }
+  
+  /* Mobile Tooltips */
+  .mobile-tooltip {
+    @apply text-xs px-3 py-2;
+  }
+  
+  /* Mobile Header */
+  .mobile-header {
+    @apply px-4 py-2;
+  }
+  
+  /* Mobile Content */
+  .mobile-content {
+    @apply px-4;
+  }
+  
+  /* Mobile Card */
+  .mobile-card {
+    @apply rounded-lg p-4 mx-4;
+  }
+  
+  /* Mobile Input */
+  .mobile-input {
+    @apply text-base; /* Prevent zoom on iOS */
+  }
+  
+  /* Mobile Select */
+  .mobile-select {
+    @apply text-base appearance-none;
+  }
+}
+
+/* Small Mobile (< 480px) */
+@media (max-width: 479px) {
+  .kanban-column {
+    min-width: 260px;
+  }
+  
+  .task-card {
+    @apply p-2;
+    font-size: 0.875rem;
+  }
+  
+  .progress-ring {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
+  .metrics-grid {
+    @apply grid-cols-1 gap-2;
+  }
+  
+  .mobile-card {
+    @apply mx-2 p-3;
+  }
+  
+  .mobile-header {
+    @apply px-2;
+  }
+  
+  .mobile-content {
+    @apply px-2;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .task-card:hover {
+    @apply transform-none shadow-none;
+  }
+  
+  .btn-electric:hover,
+  .btn-outline:hover {
+    @apply transform-none;
+  }
+  
+  .quick-actions {
+    @apply opacity-100; /* Always show on touch devices */
+  }
+  
+  /* Larger touch targets */
+  button,
+  .touchable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Disable text selection on interactive elements */
+  .task-card,
+  button,
+  .touchable {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* High contrast mode for mobile */
+@media (max-width: 768px) and (prefers-contrast: high) {
+  .task-card {
+    @apply border-2 border-gray-800 dark:border-gray-200;
+  }
+  
+  .progress-ring circle {
+    stroke-width: 4;
+  }
+}
+
+/* Reduced motion on mobile */
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-in,
+  .animate-scale-in,
+  .animate-bounce-soft,
+  .animate-pulse-ring,
+  .task-card,
+  .btn-electric,
+  .btn-outline,
+  .progress-ring circle {
+    @apply transition-none;
+    animation: none;
+  }
+}
+
+/* Mobile-specific print styles */
+@media (max-width: 768px) and print {
+  .activity-sidebar,
+  .bulk-actions-dropdown,
+  .quick-actions,
+  .mobile-nav {
+    @apply hidden;
+  }
+  
+  .kanban-board {
+    @apply overflow-visible;
+  }
+  
+  .task-card {
+    @apply break-inside-avoid;
+  }
+}

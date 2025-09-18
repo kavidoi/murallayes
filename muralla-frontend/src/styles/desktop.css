@@ -1,0 +1,174 @@
+/* DESKTOP-ONLY STYLES */
+/* Applied on screens >= 769px */
+
+@media (min-width: 769px) {
+  /* Desktop Kanban Board */
+  .kanban-board {
+    @apply gap-6;
+  }
+  
+  .kanban-column {
+    min-width: 320px;
+  }
+  
+  /* Desktop Task Cards */
+  .task-card {
+    @apply p-4;
+  }
+  
+  .task-card:hover {
+    @apply transform -translate-y-1 shadow-lg;
+  }
+  
+  /* Desktop Button Interactions */
+  .btn-electric:hover {
+    @apply transform -translate-y-0.5 shadow-lg;
+  }
+  
+  .btn-outline:hover {
+    @apply transform -translate-y-0.5;
+  }
+  
+  /* Desktop Column Drag States */
+  .column-drag-over {
+    @apply transform scale-105 shadow-xl ring-2 ring-electric-blue ring-opacity-50;
+  }
+  
+  .task-card-dragging {
+    @apply transform scale-95 opacity-50 rotate-2;
+  }
+  
+  /* Desktop Progress Ring */
+  .progress-ring {
+    width: 32px;
+    height: 32px;
+  }
+  
+  /* Desktop Activity Sidebar */
+  .activity-sidebar {
+    width: 320px;
+  }
+  
+  .activity-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .activity-sidebar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  .activity-sidebar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+  
+  /* Desktop Metrics Grid */
+  .metrics-grid {
+    @apply grid-cols-4 gap-6;
+  }
+  
+  /* Desktop Bulk Actions */
+  .bulk-actions-dropdown {
+    min-width: 240px;
+  }
+  
+  /* Desktop Quick Actions - Hidden by default, shown on hover */
+  .quick-actions {
+    @apply opacity-0 group-hover:opacity-100;
+    transition: opacity 0.2s ease-in-out;
+  }
+  
+  /* Desktop Navigation */
+  .desktop-nav {
+    @apply flex items-center gap-4;
+  }
+  
+  /* Desktop Forms */
+  .desktop-form {
+    @apply max-w-2xl;
+  }
+  
+  .desktop-form-grid {
+    @apply grid-cols-2 gap-6;
+  }
+  
+  /* Desktop Modal */
+  .desktop-modal {
+    @apply max-w-4xl;
+  }
+  
+  /* Desktop Tables */
+  .desktop-table {
+    @apply text-sm;
+  }
+  
+  .desktop-table th,
+  .desktop-table td {
+    @apply px-6 py-4;
+  }
+  
+  /* Desktop Dropdowns */
+  .desktop-dropdown {
+    min-width: 200px;
+  }
+  
+  /* Desktop Search */
+  .desktop-search {
+    min-width: 300px;
+  }
+  
+  /* Desktop Pagination */
+  .desktop-pagination {
+    @apply flex items-center gap-2;
+  }
+  
+  /* Desktop Tooltips */
+  .desktop-tooltip {
+    @apply text-xs px-2 py-1;
+  }
+}
+
+/* Extra Large Desktop (>= 1280px) */
+@media (min-width: 1280px) {
+  .kanban-board {
+    @apply gap-8;
+  }
+  
+  .kanban-column {
+    min-width: 360px;
+  }
+  
+  .metrics-grid {
+    @apply grid-cols-5 gap-8;
+  }
+  
+  .activity-sidebar {
+    width: 380px;
+  }
+  
+  .desktop-modal {
+    @apply max-w-5xl;
+  }
+  
+  .desktop-search {
+    min-width: 400px;
+  }
+}
+
+/* Ultra Wide Desktop (>= 1536px) */
+@media (min-width: 1536px) {
+  .kanban-board {
+    @apply gap-10;
+  }
+  
+  .kanban-column {
+    min-width: 400px;
+  }
+  
+  .metrics-grid {
+    @apply grid-cols-6 gap-10;
+  }
+  
+  .desktop-modal {
+    @apply max-w-6xl;
+  }
+}
