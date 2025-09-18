@@ -10,13 +10,37 @@ export interface TaxDocument {
   documentCode?: number;
   receiverRUT?: string;
   receiverName?: string;
+  emitterRUT?: string;
+  emitterName?: string;
+  emitterAddress?: string;
+  emitterActivity?: string;
   netAmount?: number;
   taxAmount?: number;
   totalAmount?: number;
+  montoNeto?: number;
+  montoIVA?: number;
+  montoTotal?: number;
+  otherTaxes?: number;
   status: 'DRAFT' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+  estadoRecepcion?: string;
+  tipoDocumento?: number;
+  fechaEmision?: string;
+  fechaRecepcion?: string;
+  paymentMethod?: string;
+  purchaseType?: string;
   issuedAt?: string;
   pdfUrl?: string;
   createdAt: string;
+  notes?: string;
+  rawResponse?: any;
+  source?: string;
+  items?: Array<{
+    description?: string;
+    name?: string;
+    quantity?: number;
+    unitPrice?: number;
+    totalPrice?: number;
+  }>;
 }
 
 class InvoicingService {
