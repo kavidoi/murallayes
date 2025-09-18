@@ -1,0 +1,26 @@
+{
+  "name": "muralla-backend",
+  "version": "1.0.0",
+  "description": "Muralla Backend API",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "node dist/main.js",
+    "start:dev": "tsx src/main.ts",
+    "build": "tsc",
+    "dev": "tsx --watch src/main.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@prisma/client": "^6.15.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "helmet": "^8.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.8.3",
+    "@types/node": "^22.8.7"
+  }
+}
