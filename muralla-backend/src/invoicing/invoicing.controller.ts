@@ -18,8 +18,24 @@ export class InvoicingController {
 
   // List stored documents (Phase 1: local DB)
   @Get('documents')
-  async list(@Query('type') type?: string, @Query('status') status?: string, @Query('startDate') startDate?: string, @Query('endDate') endDate?: string, @Query('search') search?: string) {
-    return this.service.listDocuments({ type, status, startDate, endDate, search });
+  async list(
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('search') search?: string,
+    @Query('includeOpenFactura') includeOpenFactura?: string,
+    @Query('openFacturaOnly') openFacturaOnly?: string,
+  ) {
+    return this.service.listDocuments({
+      type,
+      status,
+      startDate,
+      endDate,
+      search,
+      includeOpenFactura: includeOpenFactura === undefined ? undefined : includeOpenFactura === 'true',
+      openFacturaOnly: openFacturaOnly === 'true',
+    });
   }
 
   @Get('documents/:id')
@@ -32,6 +48,28 @@ export class InvoicingController {
   @Get('discover-endpoints')
   async discoverEndpoints() {
     return this.service.discoverWorkingEndpoints();
+  }
+
+  // Public helper to pull recent DTE directly from OpenFactura (read-only)
+  // Example: GET /invoicing/openfactura/documents?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+  @Public()
+  @Get('openfactura/documents')
+  async listOpenFactura(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.listDocuments({
+      type,
+      status,
+      startDate,
+      endDate,
+      search,
+      includeOpenFactura: true,
+      openFacturaOnly: true,
+    });
   }
 
   // Lightweight link checker for costs: GET /invoicing/links/cost?ids=a,b,c

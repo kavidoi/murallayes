@@ -1,0 +1,154 @@
+{
+  "timestamp": "2025-09-18T19:40:40.067Z",
+  "config": {
+    "BASE_URL": "https://api.haulmer.com",
+    "COMPANY_RUT": "78188363-8"
+  },
+  "results": [
+    {
+      "test": "Health Check",
+      "status": 200,
+      "data": {
+        "rut": "78188363-8",
+        "razonSocial": "MURALLA SPA",
+        "email": "contacto@mureallacafe.cl",
+        "telefono": "",
+        "direccion": "DIAGONAL PARAGUAY 276 LC 6",
+        "comuna": "Santiago",
+        "actividades": [
+          {
+            "giro": "LIBRERIA,BAZAR, CIBERCAFE Y EXPENDIO DE ALIMENTOS Y BEBIDAS AUTORIZADA",
+            "actividadEconomica": "CENTROS DE LLAMADOS Y CENTROS DE ACCESO A INTERNET",
+            "codigoActividadEconomica": "619010",
+            "actividadPrincipal": true
+          },
+          {
+            "giro": "LIBRERIA,BAZAR, CIBERCAFE Y EXPENDIO DE ALIMENTOS Y BEBIDAS AUTORIZADA",
+            "actividadEconomica": "VENTA AL POR MENOR EN COMERCIOS ESPECIALIZADOS DE PRODUCTOS DE PANADER",
+            "codigoActividadEconomica": "472105",
+            "actividadPrincipal": false
+          },
+          {
+            "giro": "LIBRERIA,BAZAR, CIBERCAFE Y EXPENDIO DE ALIMENTOS Y BEBIDAS AUTORIZADA",
+            "actividadEconomica": "ACTIVIDADES DE RESTAURANTES Y DE SERVICIO MOVIL DE COMIDAS",
+            "codigoActividadEconomica": "561000",
+            "actividadPrincipal": false
+          },
+          {
+            "giro": "LIBRERIA,BAZAR, CIBERCAFE Y EXPENDIO DE ALIMENTOS Y BEBIDAS AUTORIZADA",
+            "actividadEconomica": "VENTA AL POR MENOR DE ALIMENTOS EN COMERCIOS ESPECIALIZADOS (ALMACENES",
+            "codigoActividadEconomica": "472101",
+            "actividadPrincipal": false
+          },
+          {
+            "giro": "LIBRERIA,BAZAR, CIBERCAFE Y EXPENDIO DE ALIMENTOS Y BEBIDAS AUTORIZADA",
+            "actividadEconomica": "VENTA AL POR MENOR EN COMERCIOS ESPECIALIZADOS DE HUEVOS, CONFITES Y P",
+            "codigoActividadEconomica": "472109",
+            "actividadPrincipal": false
+          }
+        ],
+        "sucursales": [
+          {
+            "cdgSIISucur": "91892683",
+            "comuna": "Santiago",
+            "direccion": "DIAGONAL PARAGUAY 276 LC 6",
+            "ciudad": "",
+            "telefono": null
+          }
+        ]
+      },
+      "success": true
+    },
+    {
+      "test": "/v2/dte/document?rutEmisor=78188363-8",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/documents?rutEmisor=78188363-8",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/document?rutReceptor=78188363-8",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/documents?rutReceptor=78188363-8",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/document?rutEmisor=78188363-8&fechaDesde=2025-08-19&fechaHasta=2025-09-18",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/documents?rutEmisor=78188363-8&fechaDesde=2025-08-19&fechaHasta=2025-09-18",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/document?rutEmisor=78188363-8&codigoTipoDocumento=39",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/document?rutEmisor=78188363-8&codigoTipoDocumento=33",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/emitidos?rutEmisor=78188363-8",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/recibidos?rutReceptor=78188363-8",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/taxpayer/78188363-8/documents",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/taxpayer/78188363-8/emitidos",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/taxpayer/78188363-8/recibidos",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/list?rutEmisor=78188363-8",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/list?rutReceptor=78188363-8",
+      "success": false,
+      "status": 429
+    },
+    {
+      "test": "/v2/dte/search?rutEmisor=78188363-8",
+      "success": false,
+      "status": 404,
+      "error": "Invalid JSON response"
+    },
+    {
+      "test": "/v2/dte/search?rutReceptor=78188363-8",
+      "success": false,
+      "status": 429
+    }
+  ]
+}

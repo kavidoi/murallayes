@@ -27,7 +27,7 @@ export class InvoicingService {
     return res.data;
   }
 
-  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string; includeOpenFactura?: boolean } = {}) {
+  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string; includeOpenFactura?: boolean; openFacturaOnly?: boolean } = {}) {
     // Get local documents first
     const where: any = {};
     if (params.type) where.type = params.type;
@@ -47,7 +47,7 @@ export class InvoicingService {
     }
 
     const prismaAny = this.prisma as any;
-    const localDocs = await prismaAny.taxDocument.findMany({
+    const localDocs = params.openFacturaOnly ? [] : await prismaAny.taxDocument.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: { items: true },
@@ -65,7 +65,7 @@ export class InvoicingService {
     }
 
     // Combine and deduplicate results
-    const allDocs = [...localDocs, ...openFacturaDocs];
+    const allDocs = params.openFacturaOnly ? openFacturaDocs : [...localDocs, ...openFacturaDocs];
     const uniqueDocs = allDocs.filter((doc, index, self) =>
       index === self.findIndex(d => d.folio === doc.folio && d.type === doc.type)
     );
@@ -80,16 +80,23 @@ export class InvoicingService {
 
     // Try common OpenFactura endpoints for document listing
     // Based on Chilean DTE standards, most systems use rutEmisor parameter
+    const qs = new URLSearchParams();
+    if (params.startDate) qs.set('fechaDesde', params.startDate);
+    if (params.endDate) qs.set('fechaHasta', params.endDate);
+    const q = qs.toString();
+
+    const withQ = (base: string) => q ? `${base}&${q}` : base;
     const endpoints = [
-      `/v2/dte/emitidos?rutEmisor=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/document?rutEmisor=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/documents?rutEmisor=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/issued?rutEmisor=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents`,
-      `/v2/dte/list?rutEmisor=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/document?rut=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/documents?rut=${encodeURIComponent(companyRut)}`,
-      `/v2/dte/list?rut=${encodeURIComponent(companyRut)}`,
+      withQ(`/v2/dte/emitidos?rutEmisor=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/document?rutEmisor=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/documents?rutEmisor=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/issued?rutEmisor=${encodeURIComponent(companyRut)}`),
+      // taxpayer documents may not accept fechaDesde/Hasta, but adding won't hurt if ignored
+      q ? `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents?${q}` : `/v2/dte/taxpayer/${encodeURIComponent(companyRut)}/documents`,
+      withQ(`/v2/dte/list?rutEmisor=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/document?rut=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/documents?rut=${encodeURIComponent(companyRut)}`),
+      withQ(`/v2/dte/list?rut=${encodeURIComponent(companyRut)}`),
     ];
 
     for (const endpoint of endpoints) {
