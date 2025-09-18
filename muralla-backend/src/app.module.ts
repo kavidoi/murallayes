@@ -23,6 +23,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UsersService } from './users/users.service';
 import { HttpsRedirectMiddleware } from './common/https-redirect.middleware';
 import { ConfigModule } from '@nestjs/config';
+import { InvoicingModule } from './invoicing/invoicing.module';
 
 @Injectable()
 export class AppBootstrapService implements OnModuleInit {
@@ -60,6 +61,7 @@ export class AppBootstrapService implements OnModuleInit {
     ProjectsModule,
     TasksModule,
     HealthModule,
+    InvoicingModule,
   ],
   controllers: [AppController, MetricsController],
   providers: [
