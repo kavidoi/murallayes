@@ -1020,30 +1020,160 @@ export class InvoicingService {
     }
   }
 
-  // Get document PDF
+  // Get document PDF - enhanced to fetch from OpenFactura if needed
   async getDocumentPDF(id: string) {
     const document = await this.getDocument(id);
     if (!document) {
       throw new Error('Document not found');
     }
 
-    if (!document.pdfUrl) {
-      throw new Error('PDF not available for this document');
+    // Try stored PDF URL first
+    if (document.pdfUrl) {
+      try {
+        const response = await this.api.get(document.pdfUrl, {
+          responseType: 'arraybuffer'
+        });
+        return {
+          data: response.data,
+          headers: response.headers,
+          contentType: 'application/pdf'
+        };
+      } catch (error) {
+        this.logger.warn('Stored PDF URL failed, trying OpenFactura API:', error.message);
+      }
     }
 
-    // Proxy the PDF from OpenFactura or return signed URL
-    try {
-      const response = await this.api.get(document.pdfUrl, {
-        responseType: 'arraybuffer'
-      });
-      return {
-        data: response.data,
-        headers: response.headers,
-        contentType: 'application/pdf'
-      };
-    } catch (error) {
-      this.logger.error('Failed to fetch PDF:', error);
-      throw new Error('PDF could not be retrieved');
+    // Try to fetch PDF from OpenFactura using document identifiers
+    if (document.emitterRUT && document.folio && document.documentCode) {
+      try {
+        return await this.fetchPDFFromOpenFactura({
+          rutEmisor: document.emitterRUT,
+          folio: document.folio,
+          tipoDocumento: document.documentCode,
+          isReceived: !!document.emitterRUT, // If we have emitterRUT, it's a received document
+        });
+      } catch (error) {
+        this.logger.warn('OpenFactura PDF fetch failed:', error.message);
+      }
     }
+
+    throw new Error('PDF not available for this document');
+  }
+
+  // Fetch PDF directly from OpenFactura using document identifiers
+  async fetchPDFFromOpenFactura(params: {
+    rutEmisor: string;
+    folio: string;
+    tipoDocumento: number;
+    isReceived?: boolean;
+  }) {
+    // For received documents, try common PDF endpoints
+    const endpoints = [
+      `/v2/dte/document/pdf?rutEmisor=${params.rutEmisor}&folio=${params.folio}&tipoDte=${params.tipoDocumento}`,
+      `/v2/dte/document/${params.rutEmisor}/${params.tipoDocumento}/${params.folio}/pdf`,
+      `/v2/dte/received/pdf?rutEmisor=${params.rutEmisor}&folio=${params.folio}&tipoDte=${params.tipoDocumento}`,
+      `/v2/pdf/${params.rutEmisor}/${params.tipoDocumento}/${params.folio}`,
+      `/v2/dte/document/received/pdf?rutEmisor=${params.rutEmisor}&folio=${params.folio}&tipoDte=${params.tipoDocumento}`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        this.logger.log(`Trying PDF endpoint: ${endpoint}`);
+        const response = await this.api.get(endpoint, {
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        });
+
+        if (response.data && response.data.byteLength > 1000) { // Ensure it's actually a PDF
+          this.logger.log(`✅ PDF found via ${endpoint}`);
+          return {
+            data: response.data,
+            headers: response.headers,
+            contentType: 'application/pdf',
+            source: endpoint,
+          };
+        }
+      } catch (error) {
+        this.logger.debug(`PDF endpoint ${endpoint} failed:`, error.response?.status || error.message);
+        continue;
+      }
+    }
+
+    throw new Error('PDF not available from OpenFactura');
+  }
+
+  // Get document in different formats
+  async getDocumentInFormat(id: string, format: 'pdf' | 'xml' | 'json') {
+    const document = await this.getDocument(id);
+    if (!document) {
+      throw new Error('Document not found');
+    }
+
+    switch (format) {
+      case 'pdf':
+        return await this.getDocumentPDF(id);
+
+      case 'xml':
+        return await this.getDocumentXML(id);
+
+      case 'json':
+        return {
+          data: JSON.stringify(document, null, 2),
+          contentType: 'application/json',
+          headers: {},
+        };
+
+      default:
+        throw new Error('Unsupported format');
+    }
+  }
+
+  // Get document XML
+  async getDocumentXML(id: string) {
+    const document = await this.getDocument(id);
+    if (!document) {
+      throw new Error('Document not found');
+    }
+
+    // Try stored XML URL first
+    if (document.xmlUrl) {
+      try {
+        const response = await this.api.get(document.xmlUrl);
+        return {
+          data: response.data,
+          headers: response.headers,
+          contentType: 'application/xml',
+        };
+      } catch (error) {
+        this.logger.warn('Stored XML URL failed, trying OpenFactura API:', error.message);
+      }
+    }
+
+    // Try to fetch XML from OpenFactura
+    if (document.emitterRUT && document.folio && document.documentCode) {
+      const endpoints = [
+        `/v2/dte/document/xml?rutEmisor=${document.emitterRUT}&folio=${document.folio}&tipoDte=${document.documentCode}`,
+        `/v2/dte/document/${document.emitterRUT}/${document.documentCode}/${document.folio}/xml`,
+        `/v2/xml/${document.emitterRUT}/${document.documentCode}/${document.folio}`,
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.api.get(endpoint);
+          if (response.data) {
+            return {
+              data: response.data,
+              headers: response.headers,
+              contentType: 'application/xml',
+              source: endpoint,
+            };
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+
+    throw new Error('XML not available for this document');
   }
 }

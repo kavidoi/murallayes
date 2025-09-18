@@ -224,23 +224,135 @@ export class InvoicingController {
     return this.service.acknowledgeReceivedDocument(folio, body);
   }
 
-  // Get document PDF
-  @Get('documents/:id/pdf')
-  async getDocumentPDF(@Param('id') id: string, @Res() res: Response) {
+  // Get document in various formats (PDF, XML, JSON)
+  @Get('documents/:id/:format')
+  async getDocumentInFormat(
+    @Param('id') id: string,
+    @Param('format') format: string,
+    @Query('display') display?: string, // 'inline' or 'download'
+    @Res() res: Response
+  ) {
     try {
-      const pdfData = await this.service.getDocumentPDF(id);
+      const validFormats = ['pdf', 'xml', 'json'];
+      if (!validFormats.includes(format)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid format. Supported formats: ${validFormats.join(', ')}`
+        });
+      }
 
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="document-${id}.pdf"`,
-      });
+      const documentData = await this.service.getDocumentInFormat(id, format as 'pdf' | 'xml' | 'json');
+      const displayMode = display === 'download' ? 'attachment' : 'inline';
 
-      res.send(pdfData.data);
+      // Set appropriate headers based on format
+      const headers: any = {
+        'Content-Type': documentData.contentType,
+      };
+
+      // Set filename based on format
+      let filename: string;
+      switch (format) {
+        case 'pdf':
+          filename = `document-${id}.pdf`;
+          break;
+        case 'xml':
+          filename = `document-${id}.xml`;
+          break;
+        case 'json':
+          filename = `document-${id}.json`;
+          break;
+        default:
+          filename = `document-${id}.${format}`;
+      }
+
+      headers['Content-Disposition'] = `${displayMode}; filename="${filename}"`;
+
+      // For PDF viewing in browser
+      if (format === 'pdf' && displayMode === 'inline') {
+        headers['X-Frame-Options'] = 'SAMEORIGIN';
+        headers['Content-Security-Policy'] = "frame-ancestors 'self'";
+      }
+
+      res.set(headers);
+      res.send(documentData.data);
     } catch (error) {
       res.status(404).json({
         success: false,
         error: error.message
       });
     }
+  }
+
+  // Legacy PDF endpoint (redirects to new format)
+  @Get('documents/:id/pdf')
+  async getDocumentPDF(
+    @Param('id') id: string,
+    @Query('display') display?: string,
+    @Res() res: Response
+  ) {
+    return this.getDocumentInFormat(id, 'pdf', display, res);
+  }
+
+  // Get document preview info (without downloading the full document)
+  @Get('documents/:id/preview')
+  async getDocumentPreview(@Param('id') id: string) {
+    const document = await this.service.getDocument(id);
+    if (!document) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    const availableFormats = [];
+
+    // Check if PDF is available
+    try {
+      await this.service.getDocumentPDF(id);
+      availableFormats.push({
+        format: 'pdf',
+        url: `/invoicing/documents/${id}/pdf`,
+        displayUrl: `/invoicing/documents/${id}/pdf?display=inline`,
+        downloadUrl: `/invoicing/documents/${id}/pdf?display=download`,
+        description: 'PDF Document'
+      });
+    } catch (error) {
+      // PDF not available
+    }
+
+    // Check if XML is available
+    try {
+      await this.service.getDocumentXML(id);
+      availableFormats.push({
+        format: 'xml',
+        url: `/invoicing/documents/${id}/xml`,
+        displayUrl: `/invoicing/documents/${id}/xml?display=inline`,
+        downloadUrl: `/invoicing/documents/${id}/xml?display=download`,
+        description: 'XML Document'
+      });
+    } catch (error) {
+      // XML not available
+    }
+
+    // JSON is always available
+    availableFormats.push({
+      format: 'json',
+      url: `/invoicing/documents/${id}/json`,
+      displayUrl: `/invoicing/documents/${id}/json?display=inline`,
+      downloadUrl: `/invoicing/documents/${id}/json?display=download`,
+      description: 'JSON Data'
+    });
+
+    return {
+      success: true,
+      document: {
+        id: document.id,
+        type: document.type,
+        folio: document.folio,
+        emitterName: document.emitterName || 'Unknown',
+        totalAmount: document.totalAmount,
+      },
+      availableFormats,
+      viewerRecommendation: availableFormats.find(f => f.format === 'pdf')
+        ? 'PDF viewing recommended for best experience'
+        : 'XML or JSON viewing available'
+    };
   }
 }
