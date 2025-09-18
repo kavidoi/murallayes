@@ -1,4 +1,8 @@
 # Force redeploy Sat Sep 13 11:59:07 -03 2025
+<<<<<<< HEAD
 # Trigger deployment: Tue Sep 16 23:41:58 -03 2025
 # Update API URL: Tue Sep 16 23:52:00 -03 2025
 # Fix WebSocket URL with VITE_WS_URL: Tue Sep 17 04:07:00 -03 2025
+=======
+# Trigger redeploy to fix POS migrations: Tue Sep 17 00:44:00 -03 2025
+>>>>>>> main
