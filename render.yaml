@@ -53,12 +53,14 @@ services:
       - key: TERTIARY_ADMIN_PASSWORD
         value: "Muralla2025"
       # Optional: MercadoPago
+      - key: MP_PUBLIC_KEY
+        value: "APP_USR-3ec5c4d9-f346-41e5-b21c-ea71cad09749"
       - key: MP_ACCESS_TOKEN
-        value: ""
+        value: "APP_USR-8752454738170984-072709-c5d9569883a60f008b6e8e5160bb13e9-2502506501"
       - key: MP_CLIENT_ID
-        value: ""
+        value: "8752454738170984"
       - key: MP_CLIENT_SECRET
-        value: ""
+        value: "mnhFwqGUQtUw8dlwxHDo52ZXs7NpCbya"
       - key: MP_CURRENCY
         value: "CLP"
       # POS/TUU Integration
@@ -95,7 +97,7 @@ services:
       - key: VITE_ENABLE_DEMO
         value: "false"
       - key: VITE_MP_PUBLIC_KEY
-        value: ""
+        value: "APP_USR-3ec5c4d9-f346-41e5-b21c-ea71cad09749"
     routes:
       - type: rewrite
         source: "/**"
