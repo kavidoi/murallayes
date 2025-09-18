@@ -198,7 +198,6 @@ export class InvoicingController {
   }
 
   // Import received documents from OpenFactura into local database
-  @Public() // Temporarily public for initial import
   @Post('received-documents/import')
   async importReceivedDocuments(
     @Body() body: { startDate?: string; endDate?: string; dryRun?: boolean } = {}
