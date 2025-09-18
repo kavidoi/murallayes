@@ -7,10 +7,11 @@ This reference consolidates all environment variables used across the Muralla 4.
 - Deployment scripts: `scripts/`
 
 Notes
-- Render is the source of truth for environment variables. Manage per-service variables directly in Render dashboard.
+- **Render is the source of truth** for production environment variables. Manage per-service variables directly in Render dashboard.
 - Run locally using local .env files for development.
 - Vite only exposes variables prefixed with `VITE_` to the browser.
 - Render provides built-ins like `PORT` automatically.
+- **Use MP_ prefix** for all MercadoPago environment variables.
 
 ## Backend (muralla-backend)
 
@@ -24,9 +25,9 @@ Common/Feature-Dependent
 
 Optional
 - JWT_EXPIRES_IN — JWT expiry. Defaults: App modules use '60m' or '1d' where noted.
-- NODE_ENV — Set to 'production' in Railway; enables HTTPS redirect middleware.
-- PORT — Server port. Set by Railway. Defaults to 3000 locally.
-- RAILWAY_PUBLIC_DOMAIN — Set by Railway; used for logs and allowed origins.
+- NODE_ENV — Set to 'production' in Render; enables HTTPS redirect middleware.
+- PORT — Server port. Set by Render. Defaults to 3000 locally.
+- RENDER_PUBLIC_DOMAIN — Set by Render; used for logs and allowed origins.
 - LOG_LEVEL — Pino log level. Default 'info'.
 - Admin bootstrap
   - ADMIN_EMAIL — If set with ADMIN_PASSWORD, ensures an admin user on boot.
@@ -48,16 +49,20 @@ Email (SMTP)
 - SMTP_FROM — From address. Default 'noreply@muralla.org'.
 
 Mercado Pago
-- MP_ACCESS_TOKEN — Required to enable Mercado Pago operations.
+- MP_PUBLIC_KEY — Required for frontend SDK initialization.
+- MP_ACCESS_TOKEN — Required to enable Mercado Pago backend operations.
+- MP_CLIENT_ID — Optional client ID for advanced features.
+- MP_CLIENT_SECRET — Optional client secret for advanced features.
 - MP_STATEMENT_DESCRIPTOR — Descriptor shown on card statements. Default 'MURALLA'.
 - MP_CURRENCY — Currency code for preferences. Default 'CLP'.
+- MERCADOPAGO_ACCESS_TOKEN — Backward compatibility fallback for MP_ACCESS_TOKEN.
 
-Builder/Runtime pins (for Railway/Nixpacks)
+Builder/Runtime pins (for Render)
 - NIXPACKS_NODE_VERSION — Node version pin for Nixpacks build image (e.g. 20.19.0).
 - NODE_VERSION — Node version pin for tools/scripts (e.g. 20.19.0).
 
 Code references
-- `src/main.ts` uses FRONTEND_URL, RAILWAY_PUBLIC_DOMAIN, NODE_ENV, PORT.
+- `src/main.ts` uses FRONTEND_URL, RENDER_PUBLIC_DOMAIN, NODE_ENV, PORT.
 - `src/auth/*.ts` uses JWT_SECRET, JWT_EXPIRES_IN.
 - `src/queue/queue.module.ts` uses DISABLE_QUEUES, REDIS_URL or REDIS_HOST/PORT/PASSWORD.
 - `src/notifications/processors/notification.processor.ts` uses SMTP_* and FRONTEND_URL.
@@ -78,58 +83,9 @@ Code references
 - `.env.example` defines VITE_API_BASE_URL, VITE_ENABLE_DEMO, VITE_MP_PUBLIC_KEY.
 - Various components under `src/components/modules/finance/*` and utilities under `src/utils/https.ts` read `import.meta.env.*`.
 
-## Railway helper scripts (scripts/)
-
-set_railway_vars.sh
-- RAILWAY_PROJECT_NAME — Project name in Railway (e.g., murallayes). Required.
-- RAILWAY_ENVIRONMENT — Environment name (e.g., production). Required.
-- JWT_SECRET — Required (sets Backend).
-- JWT_EXPIRES_IN — Optional. Default 60m.
-- FRONTEND_URL — Set via reference: `https://${{ Frontend.RAILWAY_PUBLIC_DOMAIN }}`.
-- BACKEND_URL — Set via reference: `https://${{ Backend.RAILWAY_PUBLIC_DOMAIN }}`.
-- NIXPACKS_NODE_VERSION — Optional. Default 20.19.0.
-- NODE_VERSION — Optional. Default 20.19.0.
-- DATABASE_URL — Optional direct value.
-- DB_SERVICE_NAME — Optional. If set, script sets `DATABASE_URL=${{ <DB_SERVICE_NAME>.DATABASE_URL }}`.
-- REDIS_URL — Optional direct value.
-- REDIS_SERVICE_NAME — Optional. If set, script sets `REDIS_URL=${{ <REDIS_SERVICE_NAME>.REDIS_URL }}`.
-- Mercado Pago (optional)
-  - MP_ACCESS_TOKEN
-  - MP_CLIENT_ID
-  - MP_CLIENT_SECRET
-  - VITE_MP_PUBLIC_KEY — Frontend public key. If not provided, script falls back to MP_PUBLIC_KEY when present.
-- Frontend variables
-  - VITE_API_BASE_URL — `https://${{ Backend.RAILWAY_PUBLIC_DOMAIN }}`
-  - VITE_ENABLE_DEMO — default false
-
-deploy_via_api.sh
-- RAILWAY_API_TOKEN — Account/Team token used as `Authorization: Bearer`. Strongly recommended for Public GraphQL API deploys.
-- RAILWAY_TOKEN — Project-Access-Token used as `Project-Access-Token` header. May not be sufficient alone to trigger Public API deploy mutations.
-- RAILWAY_PROJECT_NAME — Default 'murallayes'.
-- RAILWAY_ENVIRONMENT — Default 'production'.
-- SERVICES — Space-separated list (e.g., "Backend Frontend"). Default both.
-- BACKEND_SERVICE_ID / FRONTEND_SERVICE_ID — Optional overrides.
-
-deploy_frontend_api.sh
-- RAILWAY_TOKEN — Used for Authorization header in example script.
-- RAILWAY_API_TOKEN — Optional; noted for API calls.
-- RAILWAY_PROJECT_NAME — Project name.
-- RAILWAY_ENVIRONMENT — Environment name.
-- PROJECT_ID / SERVICE_ID — Optional preset IDs to skip discovery.
-
-## GitHub Actions (CI)
-
-From `.github/workflows/ci.yml`
-- DATABASE_URL — For tests and prisma generate/migrate (uses local postgres service in CI).
-- JWT_SECRET — For tests.
-- JWT_EXPIRES_IN — For tests.
-- REDIS_URL — For tests.
-- REGISTRY, IMAGE_NAME — Docker image naming (set in workflow env).
-- GITHUB_TOKEN — Provided automatically; used for GHCR login.
-
-## Railway built-ins (runtime)
+## Render built-ins (runtime)
 - PORT — Port the app must bind to (backend uses `process.env.PORT || 3000`).
-- RAILWAY_PUBLIC_DOMAIN — Public domain assigned to the service, used in logs and for constructing URLs.
+- RENDER_PUBLIC_DOMAIN — Public domain assigned to the service, used in logs and for constructing URLs.
 
 ## Examples
 
@@ -152,7 +108,7 @@ VITE_MP_PUBLIC_KEY=
 ```
 
 ## Security and tips
-- Do not commit real tokens or secrets. Use Railway variables and GitHub Actions secrets.
+- Do not commit real tokens or secrets. Use Render dashboard environment variables for production.
 - Prefer `REDIS_URL` over host/port triples. Use `DISABLE_QUEUES=true` if Redis is not configured.
-- For Public GraphQL API deploys, ensure `RAILWAY_API_TOKEN` is set; `RAILWAY_TOKEN` alone may not trigger deployments.
+- Use MP_ prefix for all MercadoPago environment variables for consistency.
 - Pin Node version with `NIXPACKS_NODE_VERSION` and `NODE_VERSION` to avoid engine mismatch.

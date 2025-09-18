@@ -2,10 +2,20 @@ import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/co
 import { MercadoPagoService } from './mercadopago.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { Public } from '../auth/public.decorator';
 
 @Controller('mercadopago')
 export class MercadoPagoController {
   constructor(private readonly mercadoPagoService: MercadoPagoService) {}
+
+  /**
+   * Get MercadoPago SDK configuration status
+   */
+  @Public()
+  @Get('status')
+  async getStatus() {
+    return this.mercadoPagoService.getStatus();
+  }
 
   /**
    * Get all transactions/payments

@@ -73,15 +73,25 @@ export class MercadoPagoService implements OnModuleInit {
   private readonly logger = new Logger(MercadoPagoService.name);
   private api: AxiosInstance;
   private accessToken: string;
+  private publicKey: string;
 
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    this.accessToken = this.configService.get<string>('MERCADOPAGO_ACCESS_TOKEN');
-    
+    // Try both naming conventions
+    this.accessToken = this.configService.get<string>('MP_ACCESS_TOKEN') ||
+                      this.configService.get<string>('MERCADOPAGO_ACCESS_TOKEN');
+
+    this.publicKey = this.configService.get<string>('MP_PUBLIC_KEY') ||
+                    this.configService.get<string>('MERCADOPAGO_PUBLIC_KEY');
+
     if (!this.accessToken) {
-      this.logger.warn('MercadoPago access token not configured');
+      this.logger.warn('MercadoPago access token not configured (tried MP_ACCESS_TOKEN and MERCADOPAGO_ACCESS_TOKEN)');
       return;
+    }
+
+    if (!this.publicKey) {
+      this.logger.warn('MercadoPago public key not configured (tried MP_PUBLIC_KEY and MERCADOPAGO_PUBLIC_KEY)');
     }
 
     this.api = axios.create({
@@ -119,6 +129,38 @@ export class MercadoPagoService implements OnModuleInit {
         return Promise.reject(error);
       }
     );
+  }
+
+  /**
+   * Get MercadoPago SDK status
+   */
+  getStatus(): {
+    configured: boolean;
+    hasAccessToken: boolean;
+    hasPublicKey: boolean;
+    publicKey?: string;
+    message: string;
+  } {
+    const hasAccessToken = !!this.accessToken;
+    const hasPublicKey = !!this.publicKey;
+    const configured = hasAccessToken && hasPublicKey;
+
+    let message = 'MercadoPago SDK Status';
+    if (!hasPublicKey) {
+      message = 'MercadoPago public key not configured';
+    } else if (!hasAccessToken) {
+      message = 'MercadoPago access token not configured';
+    } else {
+      message = 'MercadoPago SDK configured successfully';
+    }
+
+    return {
+      configured,
+      hasAccessToken,
+      hasPublicKey,
+      publicKey: hasPublicKey ? this.publicKey : undefined,
+      message
+    };
   }
 
   /**

@@ -319,62 +319,72 @@ export class PosSyncService implements OnModuleInit {
               try {
                 processedTransactions++;
 
+                // Generate ID if missing - use multiple fallback strategies
+                let transactionId = sale.id;
+                if (!transactionId || transactionId === undefined || transactionId === null || transactionId === '') {
+                  // Try different ID fields that might exist
+                  transactionId = sale.transactionId || sale.saleId || sale.tuuSaleId;
+
+                  // If still no ID, generate one using available data
+                  if (!transactionId) {
+                    const timestamp = sale.transactionDateTime || new Date().toISOString();
+                    const serial = sale.serialNumber || 'unknown';
+                    const amount = sale.totalAmount || sale.saleAmount || 0;
+                    const sequence = sale.sequenceNumber || Math.floor(Math.random() * 10000);
+                    transactionId = `${serial}-${timestamp.replace(/[^0-9]/g, '').slice(0, 14)}-${amount}-${sequence}`;
+                    this.logger.warn(`Generated fallback ID for transaction: ${transactionId}`);
+                  }
+                }
+
                 // Debug: Log the sale ID validation
-                this.logger.debug(`Validating sale ID: ${sale.id} (type: ${typeof sale.id})`);
-                
-                // Validate required fields before processing
-                if (!sale.id || sale.id === undefined || sale.id === null || sale.id === '') {
-                  const errorMsg = `Skipping transaction with missing or invalid ID. Sale data: ${JSON.stringify(sale, null, 2)}`;
+                this.logger.debug(`Using transaction ID: ${transactionId} (original: ${sale.id}, type: ${typeof transactionId})`);
+
+                // Final validation - ensure we have a valid ID
+                if (!transactionId || transactionId === undefined || transactionId === null || transactionId === '') {
+                  const errorMsg = `Skipping transaction - unable to generate valid ID. Sale data: ${JSON.stringify(sale, null, 2)}`;
                   errors.push(errorMsg);
                   this.logger.error(errorMsg);
                   continue;
                 }
 
                 if (!sale.transactionDateTime) {
-                  const errorMsg = `Skipping transaction ${sale.id} with missing transactionDateTime`;
+                  const errorMsg = `Skipping transaction ${transactionId} with missing transactionDateTime`;
                   errors.push(errorMsg);
                   this.logger.warn(errorMsg);
                   continue;
                 }
 
                 if (!sale.saleAmount && sale.saleAmount !== 0) {
-                  const errorMsg = `Skipping transaction ${sale.id} with missing saleAmount`;
+                  const errorMsg = `Skipping transaction ${transactionId} with missing saleAmount`;
                   errors.push(errorMsg);
                   this.logger.warn(errorMsg);
                   continue;
                 }
 
                 if (!sale.totalAmount && sale.totalAmount !== 0) {
-                  const errorMsg = `Skipping transaction ${sale.id} with missing totalAmount`;
+                  const errorMsg = `Skipping transaction ${transactionId} with missing totalAmount`;
                   errors.push(errorMsg);
                   this.logger.warn(errorMsg);
                   continue;
                 }
 
                 if (!sale.transactionType) {
-                  const errorMsg = `Skipping transaction ${sale.id} with missing transactionType`;
+                  const errorMsg = `Skipping transaction ${transactionId} with missing transactionType`;
                   errors.push(errorMsg);
                   this.logger.warn(errorMsg);
                   continue;
                 }
 
-                // Check if transaction already exists - with additional safety check
-                if (!sale.id || sale.id === undefined || sale.id === null) {
-                  const errorMsg = `Critical: Sale ID validation failed before Prisma query. Sale ID: ${sale.id} (type: ${typeof sale.id})`;
-                  errors.push(errorMsg);
-                  this.logger.error(errorMsg);
-                  continue;
-                }
-
+                // Check if transaction already exists using the generated/validated ID
                 const existingTransaction = await this.prisma.pOSTransaction.findUnique({
-                  where: { tuuSaleId: sale.id }
+                  where: { tuuSaleId: transactionId }
                 });
 
                 if (!existingTransaction) {
                   // Debug: Log data being saved
                   const mappedStatus = this.mapTuuStatusToPrisma(sale.status);
                   const transactionData = {
-                    tuuSaleId: sale.id,
+                    tuuSaleId: transactionId,
                     sequenceNumber: sale.sequenceNumber || null,
                     serialNumber: sale.serialNumber || null,
                     locationId: branchData.location?.id || null,
@@ -389,6 +399,7 @@ export class PosSyncService implements OnModuleInit {
 
                   this.logger.debug('Creating transaction with data:', {
                     tuuSaleId: transactionData.tuuSaleId,
+                    originalSaleId: sale.id,
                     status: transactionData.status,
                     originalStatus: sale.status,
                     transactionDateTime: transactionData.transactionDateTime,
@@ -399,14 +410,6 @@ export class PosSyncService implements OnModuleInit {
                     address: transactionData.address,
                     merchant: branchData.merchant
                   });
-
-                  // Final validation before creating transaction
-                  if (!transactionData.tuuSaleId) {
-                    const errorMsg = `Critical: Cannot create transaction with invalid tuuSaleId: ${transactionData.tuuSaleId}`;
-                    errors.push(errorMsg);
-                    this.logger.error(errorMsg);
-                    continue;
-                  }
 
                   // Create new transaction with items
                   await this.prisma.pOSTransaction.create({
@@ -441,12 +444,13 @@ export class PosSyncService implements OnModuleInit {
                   });
 
                   createdTransactions++;
-                  this.logger.debug(`Created transaction: ${sale.id}`);
+                  this.logger.debug(`Created transaction: ${transactionId} (original: ${sale.id})`);
                 } else {
-                  this.logger.debug(`Transaction already exists: ${sale.id}`);
+                  this.logger.debug(`Transaction already exists: ${transactionId} (original: ${sale.id})`);
                 }
               } catch (error) {
-                const errorMsg = `Failed to process transaction ${sale.id}: ${error.message}`;
+                const usedId = transactionId || sale.id || 'unknown';
+                const errorMsg = `Failed to process transaction ${usedId}: ${error.message}`;
                 errors.push(errorMsg);
 
                 // Enhanced error logging
@@ -458,7 +462,8 @@ export class PosSyncService implements OnModuleInit {
                 });
 
                 this.logger.error('Transaction data that failed:', {
-                  tuuSaleId: sale.id,
+                  generatedTuuSaleId: transactionId,
+                  originalSaleId: sale.id,
                   status: sale.status,
                   mappedStatus: this.mapTuuStatusToPrisma(sale.status),
                   transactionDateTime: sale.transactionDateTime,
@@ -772,52 +777,69 @@ export class PosSyncService implements OnModuleInit {
                 try {
                   processedTransactions++;
 
-                  // Validate required fields before processing
-                  if (!sale.id) {
-                    const errorMsg = `Skipping transaction with missing ID: ${JSON.stringify(sale)}`;
+                  // Generate ID if missing - use multiple fallback strategies
+                  let transactionId = sale.id;
+                  if (!transactionId || transactionId === undefined || transactionId === null || transactionId === '') {
+                    // Try different ID fields that might exist
+                    transactionId = sale.transactionId || sale.saleId || sale.tuuSaleId;
+
+                    // If still no ID, generate one using available data
+                    if (!transactionId) {
+                      const timestamp = sale.transactionDateTime || new Date().toISOString();
+                      const serial = sale.serialNumber || 'unknown';
+                      const amount = sale.totalAmount || sale.saleAmount || 0;
+                      const sequence = sale.sequenceNumber || Math.floor(Math.random() * 10000);
+                      transactionId = `${serial}-${timestamp.replace(/[^0-9]/g, '').slice(0, 14)}-${amount}-${sequence}`;
+                      this.logger.warn(`Generated fallback ID for paginated transaction: ${transactionId}`);
+                    }
+                  }
+
+                  // Final validation - ensure we have a valid ID
+                  if (!transactionId || transactionId === undefined || transactionId === null || transactionId === '') {
+                    const errorMsg = `Skipping transaction - unable to generate valid ID: ${JSON.stringify(sale)}`;
                     errors.push(errorMsg);
                     this.logger.warn(errorMsg);
                     continue;
                   }
 
                   if (!sale.transactionDateTime) {
-                    const errorMsg = `Skipping transaction ${sale.id} with missing transactionDateTime`;
+                    const errorMsg = `Skipping transaction ${transactionId} with missing transactionDateTime`;
                     errors.push(errorMsg);
                     this.logger.warn(errorMsg);
                     continue;
                   }
 
                   if (!sale.saleAmount && sale.saleAmount !== 0) {
-                    const errorMsg = `Skipping transaction ${sale.id} with missing saleAmount`;
+                    const errorMsg = `Skipping transaction ${transactionId} with missing saleAmount`;
                     errors.push(errorMsg);
                     this.logger.warn(errorMsg);
                     continue;
                   }
 
                   if (!sale.totalAmount && sale.totalAmount !== 0) {
-                    const errorMsg = `Skipping transaction ${sale.id} with missing totalAmount`;
+                    const errorMsg = `Skipping transaction ${transactionId} with missing totalAmount`;
                     errors.push(errorMsg);
                     this.logger.warn(errorMsg);
                     continue;
                   }
 
                   if (!sale.transactionType) {
-                    const errorMsg = `Skipping transaction ${sale.id} with missing transactionType`;
+                    const errorMsg = `Skipping transaction ${transactionId} with missing transactionType`;
                     errors.push(errorMsg);
                     this.logger.warn(errorMsg);
                     continue;
                   }
-                  
-                  // Check if transaction already exists
+
+                  // Check if transaction already exists using the generated/validated ID
                   const existingTransaction = await prismaAny.pOSTransaction.findUnique({
-                    where: { tuuSaleId: sale.id }
+                    where: { tuuSaleId: transactionId }
                   });
 
                   if (!existingTransaction) {
                     // Create new transaction with items
                     await prismaAny.pOSTransaction.create({
                       data: {
-                        tuuSaleId: sale.id,
+                        tuuSaleId: transactionId,
                         sequenceNumber: sale.sequenceNumber,
                         serialNumber: sale.serialNumber,
                         locationId: branchData.location.id,
@@ -848,14 +870,15 @@ export class PosSyncService implements OnModuleInit {
                         items: true
                       }
                     });
-                    
+
                     createdTransactions++;
-                    this.logger.debug(`Created transaction: ${sale.id}`);
+                    this.logger.debug(`Created paginated transaction: ${transactionId} (original: ${sale.id})`);
                   } else {
-                    this.logger.debug(`Transaction already exists: ${sale.id}`);
+                    this.logger.debug(`Paginated transaction already exists: ${transactionId} (original: ${sale.id})`);
                   }
                 } catch (error) {
-                  const errorMsg = `Failed to process transaction ${sale.id}: ${error.message}`;
+                  const usedId = transactionId || sale.id || 'unknown';
+                  const errorMsg = `Failed to process paginated transaction ${usedId}: ${error.message}`;
                   errors.push(errorMsg);
                   this.logger.error(errorMsg, error);
                 }

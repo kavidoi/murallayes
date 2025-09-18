@@ -26,13 +26,18 @@ VITE_MP_PUBLIC_KEY=your_mercadopago_public_key_here
 
 ### Backend Environment Variables
 
-Set these in Render under the Backend service variables (see `docs/reference/env-vars.md`):
+Set these in Render dashboard under the Backend service variables:
 
 ```bash
-# MercadoPago Configuration  
+# MercadoPago Configuration (MP_ prefix required)
+MP_PUBLIC_KEY=your_mercadopago_public_key
 MP_ACCESS_TOKEN=your_mercadopago_access_token
 MP_CLIENT_ID=your_mercadopago_client_id
 MP_CLIENT_SECRET=your_mercadopago_client_secret
+MP_CURRENCY=CLP
+
+# Backward compatibility (optional)
+MERCADOPAGO_ACCESS_TOKEN=your_mercadopago_access_token
 ```
 
 ## Getting Your MercadoPago Credentials
