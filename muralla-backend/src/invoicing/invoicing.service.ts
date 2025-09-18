@@ -27,7 +27,16 @@ export class InvoicingService {
     return res.data;
   }
 
-  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string; includeOpenFactura?: boolean; openFacturaOnly?: boolean } = {}) {
+  async listDocuments(params: { type?: string; status?: string; startDate?: string; endDate?: string; search?: string; includeOpenFactura?: boolean; openFacturaOnly?: boolean; syncReceived?: boolean } = {}) {
+    // Auto-sync received documents from OpenFactura if enabled (default: true)
+    if (params.syncReceived !== false) {
+      try {
+        await this.syncReceivedDocuments();
+      } catch (error) {
+        this.logger.warn('Failed to sync received documents:', error.message);
+      }
+    }
+
     // Get local documents first
     const where: any = {};
     if (params.type) where.type = params.type;
@@ -37,11 +46,13 @@ export class InvoicingService {
       if (params.startDate) where.issuedAt.gte = new Date(params.startDate + 'T00:00:00Z');
       if (params.endDate) where.issuedAt.lte = new Date(params.endDate + 'T23:59:59.999Z');
     }
-    // simple search over receiver or folio
+    // Enhanced search over receiver, emitter, or folio
     if (params.search) {
       where.OR = [
         { receiverName: { contains: params.search, mode: 'insensitive' } },
         { receiverRUT: { contains: params.search, mode: 'insensitive' } },
+        { emitterName: { contains: params.search, mode: 'insensitive' } },
+        { emitterRUT: { contains: params.search, mode: 'insensitive' } },
         { folio: { contains: params.search, mode: 'insensitive' } },
       ];
     }
@@ -54,9 +65,9 @@ export class InvoicingService {
       take: 100,
     });
 
-    // Try to fetch from OpenFactura if enabled
+    // Try to fetch from OpenFactura if enabled (legacy support)
     let openFacturaDocs = [];
-    if (params.includeOpenFactura !== false) {
+    if (params.includeOpenFactura !== false && params.openFacturaOnly) {
       try {
         openFacturaDocs = await this.fetchDocumentsFromOpenFactura(params);
       } catch (error) {
@@ -683,6 +694,29 @@ export class InvoicingService {
     } catch (error) {
       this.logger.error('Failed to fetch received documents from OpenFactura:', error.response?.data || error.message);
       throw new Error(`OpenFactura received documents fetch failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Sync received documents (lightweight version for auto-sync)
+  async syncReceivedDocuments() {
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const startDate = lastWeek.toISOString().split('T')[0];
+
+    try {
+      const result = await this.importReceivedDocuments({ 
+        startDate, 
+        dryRun: false 
+      });
+      
+      if (result.totalImported > 0) {
+        this.logger.log(`Auto-sync: Imported ${result.totalImported} new received documents`);
+      }
+      
+      return result;
+    } catch (error) {
+      this.logger.warn('Auto-sync failed:', error.message);
+      throw error;
     }
   }
 

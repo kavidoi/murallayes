@@ -26,6 +26,7 @@ export class InvoicingController {
     @Query('search') search?: string,
     @Query('includeOpenFactura') includeOpenFactura?: string,
     @Query('openFacturaOnly') openFacturaOnly?: string,
+    @Query('syncReceived') syncReceived?: string,
   ) {
     return this.service.listDocuments({
       type,
@@ -35,6 +36,7 @@ export class InvoicingController {
       search,
       includeOpenFactura: includeOpenFactura === undefined ? undefined : includeOpenFactura === 'true',
       openFacturaOnly: openFacturaOnly === 'true',
+      syncReceived: syncReceived === undefined ? undefined : syncReceived === 'true',
     });
   }
 
