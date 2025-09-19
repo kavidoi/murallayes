@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './app.module.full';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
