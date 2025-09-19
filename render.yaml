@@ -15,7 +15,7 @@ services:
     autoDeploy: true
     region: oregon
     rootDir: muralla-backend
-    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && npx prisma generate && pnpm run build:js
+    buildCommand: rm -f ../pnpm-workspace.yaml && pnpm install --no-frozen-lockfile --ignore-scripts && npx prisma generate && pnpm run build
     startCommand: pnpm run start
     preDeployCommand: npx prisma migrate deploy
     healthCheckPath: /health/healthz
