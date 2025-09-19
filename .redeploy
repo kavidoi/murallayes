@@ -1,8 +1,13 @@
-# Force redeploy Sat Sep 13 11:59:07 -03 2025
-<<<<<<< HEAD
-# Trigger deployment: Tue Sep 16 23:41:58 -03 2025
-# Update API URL: Tue Sep 16 23:52:00 -03 2025
-# Fix WebSocket URL with VITE_WS_URL: Tue Sep 17 04:07:00 -03 2025
-=======
-# Trigger redeploy to fix POS migrations: Tue Sep 17 00:44:00 -03 2025
->>>>>>> main
+#This file is used to trigger redeployments on Render.
+Each time we modify this file and push to main, it should trigger a new deployment.
+
+Last deployment trigger: 2025-09-18 21:36:24
+Reason: Deploy merged frontend with enhanced invoicing features
+
+Changes included:
+- Merged frontend-deploy branch with new invoicing interface
+- Enhanced supplier invoices tab with real OpenFactura data
+- Advanced filtering, search, and PDF/XML/JSON viewing
+- KPI cards and comprehensive financial details
+- Real-time import functionality
+- Fixed render.yaml with correct OpenFactura API key
