@@ -16,7 +16,7 @@ The Muralla system is now split into two separate repositories for easier deploy
 **Service Type**: Web Service
 
 #### Build Settings:
-- **Build Command**: `npm ci --include=dev && npx prisma generate && npm run build`
+- **Build Command**: `npm ci --legacy-peer-deps && npx prisma generate && npm run build`
 - **Start Command**: `npm run start`
 - **Pre-Deploy Command**: `npx prisma migrate deploy`
 - **Health Check Path**: `/health/healthz`
@@ -25,13 +25,31 @@ The Muralla system is now split into two separate repositories for easier deploy
 ```
 NODE_ENV=production
 DATABASE_URL=[from Render database]
-JWT_SECRET=[secure secret]
+
+# Authentication
+JWT_SECRET=[generate secure secret]
+ADMIN_EMAIL=[primary admin email]
+ADMIN_PASSWORD=[primary admin password]
+ADMIN_USER=[primary admin name]
+SECONDARY_ADMIN_EMAIL=[secondary admin email]
+SECONDARY_ADMIN_PASSWORD=[secondary admin password]
+SECONDARY_ADMIN_USER=[secondary admin name]
+TERTIARY_ADMIN_EMAIL=[tertiary admin email]
+TERTIARY_ADMIN_PASSWORD=[tertiary admin password]
+TERTIARY_ADMIN_USER=[tertiary admin name]
+
+# OpenFactura Integration
 OPENFACTURA_API_KEY=717c541483da4406af113850262ca09c
 OPENFACTURA_BASE_URL=https://api.haulmer.com
 COMPANY_RUT=78188363-8
+
+# URLs
 BACKEND_URL=https://api.murallacafe.cl
 FRONTEND_URL=https://admin.murallacafe.cl
-# Add other secrets as needed
+
+# MercadoPago (if needed)
+MP_PUBLIC_KEY=[your public key]
+MP_ACCESS_TOKEN=[your access token]
 ```
 
 ### Frontend Service (muralla-frontend)
