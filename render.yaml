@@ -26,69 +26,47 @@ services:
         fromDatabase:
           name: muralla-database-v2
           property: connectionString
-      # Required app secrets
-      - key: JWT_SECRET
-        value: "WDKZqFHF3VKHGbVOUH059pmbQNurEApQSECyOg5pfP8="
+      # Required app settings (non-sensitive)
       - key: BACKEND_URL
         value: "https://api.murallacafe.cl"
       - key: FRONTEND_URL
         value: "https://admin.murallacafe.cl"
-      # Admin user creation on startup
       - key: ADMIN_USER
         value: "Admin"
       - key: ADMIN_EMAIL
         value: "contacto@murallacafe.cl"
-      - key: ADMIN_PASSWORD
-        value: "Muralla2025"
       - key: SECONDARY_ADMIN_USER
         value: "Kaví Doi"
       - key: SECONDARY_ADMIN_EMAIL
         value: "kavi@murallacafe.cl"
-      - key: SECONDARY_ADMIN_PASSWORD
-        value: "Muralla2025"
       - key: TERTIARY_ADMIN_USER
         value: "Darwin Bruna"
       - key: TERTIARY_ADMIN_EMAIL
         value: "darwin@murallacafe.cl"
-      - key: TERTIARY_ADMIN_PASSWORD
-        value: "Muralla2025"
-      # Optional: MercadoPago
-      - key: MP_PUBLIC_KEY
-        value: "APP_USR-3ec5c4d9-f346-41e5-b21c-ea71cad09749"
-      - key: MP_ACCESS_TOKEN
-        value: "APP_USR-8752454738170984-072709-c5d9569883a60f008b6e8e5160bb13e9-2502506501"
-      - key: MP_CLIENT_ID
-        value: "8752454738170984"
-      - key: MP_CLIENT_SECRET
-        value: "mnhFwqGUQtUw8dlwxHDo52ZXs7NpCbya"
       - key: MP_CURRENCY
         value: "CLP"
-      # POS/TUU Integration
-      - key: TUU_API_KEY
-        value: "SxVE4TUUj3gDAQQniBWw5yxe5JM3UtSLOqbKQz9Hlb7gBwHGqkRqyyNmQCbbJ4CaWczA1zTmdlaA4frKfYxCaBeVg1hL75xdUo8h4UCgD9UQCdCqo03EW4NSM87Pb8"
-      # OpenFactura Integration
       - key: OPENFACTURA_BASE_URL
         value: "https://api.haulmer.com"
-      - key: OPENFACTURA_API_KEY
-        value: "717c541483da4406af113850262ca09c"
       - key: COMPANY_RUT
         value: "78188363-8"
-      # Storage Services
-      - key: CLOUDINARY_CLOUD_NAME
-        value: "daqkotj1t"
-      - key: CLOUDINARY_API_KEY
-        value: "839819221611429"
-      - key: CLOUDINARY_API_SECRET
-        value: "Lbrmb6nc2CHccJYsjJqTc-hjE3I"
-      # AWS keys removed for security - configure in Render dashboard if needed
-      # - key: AWS_REGION
-      #   value: "us-east-1"
-      # - key: AWS_ACCESS_KEY_ID
-      #   value: "CONFIGURE_IN_RENDER_DASHBOARD"
-      # - key: AWS_SECRET_ACCESS_KEY
-      #   value: "CONFIGURE_IN_RENDER_DASHBOARD"
-      # - key: AWS_S3_BUCKET_NAME
-      #   value: "muralla-files"
+
+      # ------------------------------------------------------------------
+      # IMPORTANT: The following secrets MUST be set in the Render Dashboard
+      # Go to Environment > Secret Files / Environment Variables
+      # ------------------------------------------------------------------
+      # - JWT_SECRET
+      # - ADMIN_PASSWORD
+      # - SECONDARY_ADMIN_PASSWORD
+      # - TERTIARY_ADMIN_PASSWORD
+      # - MP_PUBLIC_KEY
+      # - MP_ACCESS_TOKEN
+      # - MP_CLIENT_ID
+      # - MP_CLIENT_SECRET
+      # - TUU_API_KEY
+      # - OPENFACTURA_API_KEY
+      # - CLOUDINARY_CLOUD_NAME
+      # - CLOUDINARY_API_KEY
+      # - CLOUDINARY_API_SECRET
 
   - type: web
     name: muralla-frontend
