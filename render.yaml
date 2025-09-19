@@ -15,7 +15,7 @@ services:
     autoDeploy: true
     region: oregon
     rootDir: muralla-backend
-    buildCommand: npm ci && npx prisma generate && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
     startCommand: npm run start
     preDeployCommand: npx prisma migrate deploy
     healthCheckPath: /health/healthz
