@@ -12,6 +12,7 @@ export interface TaxDocument {
   // Receiver info (when we emit documents)
   receiverRUT?: string;
   receiverName?: string;
+<<<<<<< HEAD
 
   // Emitter info (for received documents - supplier info)
   emitterRUT?: string;
@@ -24,8 +25,29 @@ export interface TaxDocument {
 
   // Status and dates
   status: 'DRAFT' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'ERROR';
+=======
+  emitterRUT?: string;
+  emitterName?: string;
+  emitterAddress?: string;
+  emitterActivity?: string;
+  netAmount?: number;
+  taxAmount?: number;
+  totalAmount?: number;
+  montoNeto?: number;
+  montoIVA?: number;
+  montoTotal?: number;
+  otherTaxes?: number;
+  status: 'DRAFT' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+  estadoRecepcion?: string;
+  tipoDocumento?: number;
+  fechaEmision?: string;
+  fechaRecepcion?: string;
+  paymentMethod?: string;
+  purchaseType?: string;
+>>>>>>> frontend-deploy
   issuedAt?: string;
   createdAt: string;
+<<<<<<< HEAD
 
   // Document access
   pdfUrl?: string;
@@ -35,6 +57,18 @@ export interface TaxDocument {
   notes?: string;
   rawResponse?: any;
   source?: string;
+=======
+  notes?: string;
+  rawResponse?: any;
+  source?: string;
+  items?: Array<{
+    description?: string;
+    name?: string;
+    quantity?: number;
+    unitPrice?: number;
+    totalPrice?: number;
+  }>;
+>>>>>>> frontend-deploy
 }
 
 class InvoicingService {

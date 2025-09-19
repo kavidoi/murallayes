@@ -1,14 +1,18 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
-import { Response } from 'express';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { InvoicingService } from './invoicing.service';
-import { Public } from '../auth/public.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('invoicing')
-@UseGuards(JwtAuthGuard)
 export class InvoicingController {
-  constructor(private readonly service: InvoicingService) {}
+  constructor(private readonly invoicingService: InvoicingService) {}
 
+<<<<<<< HEAD
   // Connectivity check (uses taxpayer info endpoint)
   @Public()
   @Get('health')
@@ -96,91 +100,30 @@ export class InvoicingController {
   async boletaFromPos(
     @Param('posTransactionId') posTransactionId: string,
     @Body() body: { receiverRUT?: string; receiverName?: string; receiverEmail?: string; sendEmail?: boolean; emitNow?: boolean }
+=======
+  @Get('tax-documents')
+  async getTaxDocuments(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+>>>>>>> frontend-deploy
   ) {
-    const result = await this.service.issueBoletaFromPos(posTransactionId, body || {});
-    
-    if (result.emission) {
-      return {
-        success: true,
-        message: `Boleta ${result.emission.success ? 'emitted successfully' : 'emission failed'}`,
-        data: result.document,
-        emission: result.emission,
-        folio: result.emission.folio,
-        pdfUrl: result.emission.pdfUrl
-      };
+    console.log('Controller method called, service is:', this.invoicingService);
+    if (!this.invoicingService) {
+      throw new Error('InvoicingService is not injected properly');
     }
-    
-    return {
-      success: true,
-      message: 'Draft document created. Use emitNow: true to emit to OpenFactura.',
-      data: result.document,
-    };
+    return this.invoicingService.getTaxDocuments(page, limit);
   }
 
-  // Phase 2: Real OpenFactura Factura emission from Cost
-  @Post('facturas/from-cost/:costId')
-  async facturaFromCost(
-    @Param('costId') costId: string,
-    @Body() body: { receiverRUT: string; receiverName?: string; receiverEmail?: string; emitNow?: boolean }
-  ) {
-    if (!body.receiverRUT) {
-      return { success: false, error: 'receiverRUT is required for Facturas' };
-    }
-
-    const result = await this.service.issueFacturaFromCost(costId, body);
-    
-    if (result.emission) {
-      return {
-        success: true,
-        message: `Factura ${result.emission.success ? 'emitted successfully' : 'emission failed'}`,
-        data: result.document,
-        emission: result.emission,
-        folio: result.emission.folio,
-        pdfUrl: result.emission.pdfUrl
-      };
-    }
-    
-    return {
-      success: true,
-      message: 'Draft Factura created. Use emitNow: true to emit to OpenFactura.',
-      data: result.document,
-    };
+  @Get('tax-documents/stats')
+  async getTaxDocumentStats() {
+    return this.invoicingService.getTaxDocumentStats();
   }
 
-  // Emit existing draft document to OpenFactura
-  @Post('documents/:id/emit')
-  async emitDocument(@Param('id') id: string) {
-    const document = await this.service.getDocument(id);
-    if (!document) {
-      return { success: false, error: 'Document not found' };
-    }
-
-    if (document.status !== 'DRAFT') {
-      return { success: false, error: 'Only DRAFT documents can be emitted' };
-    }
-
-    try {
-      let emissionResult;
-      if (document.type === 'BOLETA') {
-        emissionResult = await this.service.emitBoletaToOpenFactura(document);
-      } else if (document.type === 'FACTURA') {
-        emissionResult = await this.service.emitFacturaToOpenFactura(document);
-      } else {
-        return { success: false, error: 'Unsupported document type for emission' };
-      }
-
-      return {
-        success: true,
-        message: 'Document emitted successfully',
-        emission: emissionResult
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Emission failed: ${error.message}`
-      };
-    }
+  @Get('tax-documents/:id')
+  async getTaxDocumentById(@Param('id') id: string) {
+    return this.invoicingService.getTaxDocumentById(id);
   }
+<<<<<<< HEAD
 
   // Fetch received documents from OpenFactura (supplier invoices)
   @Public()
@@ -356,3 +299,6 @@ export class InvoicingController {
     };
   }
 }
+=======
+}
+>>>>>>> frontend-deploy

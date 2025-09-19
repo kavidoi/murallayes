@@ -1,0 +1,119 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-09-05T22:40:00.000Z",
+  "updated_by": "claude-terminal-001",
+  "todos": [
+    {
+      "id": "todo_001",
+      "content": "Create shared state system directory structure",
+      "status": "completed",
+      "activeForm": "Created shared state system directory structure",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "completed_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["infrastructure", "setup"]
+    },
+    {
+      "id": "todo_002", 
+      "content": "Implement filesystem watcher for real-time synchronization",
+      "status": "in_progress",
+      "activeForm": "Implementing filesystem watcher for real-time synchronization",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["core", "sync", "filesystem"]
+    },
+    {
+      "id": "todo_003",
+      "content": "Create terminal logs sharing system",
+      "status": "pending",
+      "activeForm": "Creating terminal logs sharing system",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["logs", "terminal", "sharing"]
+    },
+    {
+      "id": "todo_004",
+      "content": "Build AI changes tracking with interaction classification",
+      "status": "pending",
+      "activeForm": "Building AI changes tracking with interaction classification",
+      "priority": "medium",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["ai", "tracking", "classification"]
+    },
+    {
+      "id": "todo_005",
+      "content": "Implement project state management (TODOs, memories, server status)",
+      "status": "pending",
+      "activeForm": "Implementing project state management (TODOs, memories, server status)",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["state", "management", "core"]
+    },
+    {
+      "id": "todo_006",
+      "content": "Create muralla CLI command system",
+      "status": "pending",
+      "activeForm": "Creating muralla CLI command system",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["cli", "commands", "interface"]
+    },
+    {
+      "id": "todo_007",
+      "content": "Implement shared TODO system",
+      "status": "in_progress",
+      "activeForm": "Implementing shared TODO system",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["todos", "shared", "sync"]
+    },
+    {
+      "id": "todo_008",
+      "content": "Create shared memory system for project knowledge",
+      "status": "pending",
+      "activeForm": "Creating shared memory system for project knowledge",
+      "priority": "medium",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["memory", "knowledge", "persistence"]
+    },
+    {
+      "id": "todo_009",
+      "content": "Build event-driven architecture with instant updates",
+      "status": "pending",
+      "activeForm": "Building event-driven architecture with instant updates",
+      "priority": "high",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["events", "architecture", "realtime"]
+    },
+    {
+      "id": "todo_010",
+      "content": "Create .claude memories integration",
+      "status": "pending",
+      "activeForm": "Creating .claude memories integration",
+      "priority": "medium",
+      "created_at": "2025-09-05T22:40:00.000Z",
+      "created_by": "claude-terminal-001",
+      "tags": ["claude", "memories", "integration"]
+    }
+  ],
+  "stats": {
+    "total": 10,
+    "pending": 7,
+    "in_progress": 2,
+    "completed": 1,
+    "priority_distribution": {
+      "high": 7,
+      "medium": 3,
+      "low": 0
+    }
+  }
+}

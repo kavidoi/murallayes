@@ -1,0 +1,31 @@
+{
+  "batch_id": "ee4d5ed7b72aee08",
+  "timestamp": "2025-09-06T08:36:55.211Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "bf7082d69085e4ab",
+      "type": "state_change",
+      "timestamp": "2025-09-06T08:36:55.111Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    },
+    {
+      "id": "6e256d0703442563",
+      "type": "state_change",
+      "timestamp": "2025-09-06T08:36:55.111Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/vscode-MacBook-Pro-de-Kavi.local-1757098522161.json",
+      "change_type": "modification"
+    },
+    {
+      "id": "75a4194098dcb849",
+      "type": "state_change",
+      "timestamp": "2025-09-06T08:36:55.211Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}

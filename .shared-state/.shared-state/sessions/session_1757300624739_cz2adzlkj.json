@@ -1,0 +1,18 @@
+{
+  "session_id": "session_1757300624739_cz2adzlkj",
+  "ide": "unknown",
+  "started_at": "2025-09-08T03:03:44.744Z",
+  "last_activity": "2025-09-08T03:16:43.707Z",
+  "status": "active",
+  "pid": 62806,
+  "user": "kavi",
+  "project_context": {
+    "name": ".shared-state",
+    "root": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state"
+  },
+  "capabilities": {
+    "filesystem_watch": true,
+    "terminal_capture": true,
+    "cross_sync": true
+  }
+}

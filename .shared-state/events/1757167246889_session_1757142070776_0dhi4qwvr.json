@@ -1,0 +1,15 @@
+{
+  "batch_id": "d65b58e1f70db205",
+  "timestamp": "2025-09-06T14:00:46.889Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "fa97ff4a223e7b6b",
+      "type": "state_change",
+      "timestamp": "2025-09-06T14:00:46.799Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/vscode-MacBook-Pro-de-Kavi.local-1757098522161.json",
+      "change_type": "modification"
+    }
+  ]
+}

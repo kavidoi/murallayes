@@ -1,0 +1,24 @@
+{
+  "batch_id": "87272ae89da1e452",
+  "timestamp": "2025-09-06T07:45:02.439Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "32ec1bb1d6f9aad9",
+      "type": "project_change",
+      "timestamp": "2025-09-06T07:45:02.373Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/muralla-demo/src/pages/Compras.tsx",
+      "change_type": "modification",
+      "classification": "code"
+    },
+    {
+      "id": "82661e3c0902249b",
+      "type": "state_change",
+      "timestamp": "2025-09-06T07:45:02.374Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}

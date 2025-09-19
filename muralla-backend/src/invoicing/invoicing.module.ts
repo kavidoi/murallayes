@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { InvoicingService } from './invoicing.service';
 import { InvoicingController } from './invoicing.controller';
+import { InvoicingService } from './invoicing.service';
 import { PrismaService } from '../prisma/prisma.service';
-import axios from 'axios';
 
 @Module({
   controllers: [InvoicingController],
@@ -10,4 +9,3 @@ import axios from 'axios';
   exports: [InvoicingService],
 })
 export class InvoicingModule {}
-

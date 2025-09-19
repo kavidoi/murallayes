@@ -1,0 +1,27 @@
+{
+  "id": "fix-assignee-update-500-error",
+  "title": "Fix Task Assignee Update 500 Error",
+  "description": "Resolve persistent 500 Internal Server Error when updating task assignees",
+  "status": "in_progress",
+  "priority": "high",
+  "created": "2025-09-08T03:03:20Z",
+  "assignee": "cascade-ai",
+  "context": {
+    "issue": "Task assignee updates failing with 500 error due to database connection issues",
+    "solution": "Set up local PostgreSQL database with Docker to replace unreliable Render connection",
+    "progress": [
+      "✅ Identified root cause: Database connection failures to Render PostgreSQL",
+      "✅ Set up local Docker PostgreSQL database",
+      "✅ Updated DATABASE_URL to point to local database", 
+      "✅ Reset and migrated database schema successfully",
+      "✅ Backend server now running with local database connection",
+      "🔄 Need to test assignee update functionality with known credentials"
+    ]
+  },
+  "files": [
+    "muralla-backend/src/tasks/tasks.service.ts",
+    "muralla-backend/docker-compose.yml",
+    "muralla-backend/.env",
+    "muralla-backend/src/app.module.ts"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "vscode-MacBook-Pro-de-Kavi.local-30902-1757099301025",
+  "type": "vscode",
+  "hostname": "MacBook-Pro-de-Kavi.local",
+  "pid": 30902,
+  "cwd": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state",
+  "environment": "vscode",
+  "capabilities": [
+    "logging",
+    "change-tracking",
+    "project-state",
+    "extensions",
+    "debugging",
+    "git-integration"
+  ],
+  "startTime": "2025-09-05T19:08:21.025Z",
+  "lastSeen": "2025-09-05T20:36:52.420Z",
+  "version": "2.0.0"
+}

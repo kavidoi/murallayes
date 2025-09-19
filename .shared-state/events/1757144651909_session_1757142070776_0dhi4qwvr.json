@@ -1,0 +1,24 @@
+{
+  "batch_id": "1c408f2fbdcc6b34",
+  "timestamp": "2025-09-06T07:44:11.909Z",
+  "session_id": "session_1757142070776_0dhi4qwvr",
+  "events": [
+    {
+      "id": "bb30c4ac9ab88aba",
+      "type": "project_change",
+      "timestamp": "2025-09-06T07:44:11.859Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/muralla-demo/src/pages/Finanzas.tsx",
+      "change_type": "modification",
+      "classification": "code"
+    },
+    {
+      "id": "ac7634d7912c5ea1",
+      "type": "state_change",
+      "timestamp": "2025-09-06T07:44:11.859Z",
+      "session_id": "session_1757142070776_0dhi4qwvr",
+      "file_path": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state/sessions/session_1757142070776_0dhi4qwvr.json",
+      "change_type": "modification"
+    }
+  ]
+}

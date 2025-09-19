@@ -1,0 +1,8 @@
+Request: Restart backend and frontend dev servers
+When: 2025-09-08T06:17:43Z (UTC)
+Reason: Applied POS sync fix (Tuu pagination + error messages) and frontend API base URL; restart required.
+Action:
+- From repo root: pnpm restart:all
+- Or individually: pnpm dev:backend and pnpm dev:frontend (stop existing first)
+Notes:
+- If Claude owns current servers, please restart them to apply changes.

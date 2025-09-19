@@ -1,26 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class InvoicingService {
-  private readonly logger = new Logger(InvoicingService.name);
-  private api: AxiosInstance;
+  constructor(private prisma: PrismaService) {}
 
-  constructor(private prisma: PrismaService) {
-    const baseURL = (process.env.OPENFACTURA_BASE_URL || 'https://api.haulmer.com').replace(/\/$/, '');
-    const key = process.env.OPENFACTURA_API_KEY || '';
-    this.api = axios.create({
-      baseURL,
-      headers: {
-        apikey: key,
-        accept: 'application/json',
-        'content-type': 'application/json',
-      },
-      timeout: 15000,
-    });
-  }
+  async getTaxDocuments(page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
 
+<<<<<<< HEAD
   async healthCheck(rut?: string) {
     const companyRut = rut || process.env.COMPANY_RUT || '78188363-8';
     const res = await this.api.get(`/v2/dte/taxpayer/${encodeURIComponent(companyRut)}`);
@@ -414,78 +402,22 @@ export class InvoicingService {
             total: it.price ? Number(it.price) : 0,
             taxExempt: false,
           })),
+=======
+    const [documents, total] = await Promise.all([
+      this.prisma.taxDocument.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          items: true,
+>>>>>>> frontend-deploy
         },
-      },
-      include: { items: true },
-    });
+      }),
+      this.prisma.taxDocument.count(),
+    ]);
 
-    // Phase 2: Real emission to OpenFactura if requested
-    if (opts.emitNow) {
-      try {
-        const emissionResult = await this.emitBoletaToOpenFactura(doc);
-        return { created: true, document: doc, emission: emissionResult };
-      } catch (error) {
-        this.logger.error('Failed to emit to OpenFactura:', error);
-        // Update document status to ERROR
-        await prismaAny.taxDocument.update({
-          where: { id: doc.id },
-          data: { 
-            status: 'ERROR', 
-            notes: `Emission failed: ${error.message}` 
-          }
-        });
-        throw new Error(`Document created but emission failed: ${error.message}`);
-      }
-    }
-
-    return { created: true, document: doc };
-  }
-
-  // Real OpenFactura emission for Boleta (document code 39)
-  async emitBoletaToOpenFactura(document: any) {
-    const payload = this.buildBoletaPayload(document);
-    
-    try {
-      this.logger.log(`Emitting Boleta to OpenFactura: ${document.id}`);
-      const response = await this.api.post('/v2/dte/document', payload);
-      
-      const emissionData = response.data;
-      this.logger.log(`OpenFactura response:`, emissionData);
-      
-      // Update document with emission results
-      const prismaAny = this.prisma as any;
-      const updatedDoc = await prismaAny.taxDocument.update({
-        where: { id: document.id },
-        data: {
-          status: emissionData.estado === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING',
-          folio: emissionData.folio?.toString(),
-          openFacturaId: emissionData.id?.toString(),
-          pdfUrl: emissionData.urlPdf,
-          xmlUrl: emissionData.urlXml,
-          issuedAt: emissionData.fechaEmision ? new Date(emissionData.fechaEmision) : new Date(),
-          rawResponse: emissionData,
-          notes: `Emitted to OpenFactura. Status: ${emissionData.estado}`,
-        }
-      });
-
-      return {
-        success: true,
-        folio: emissionData.folio,
-        status: emissionData.estado,
-        pdfUrl: emissionData.urlPdf,
-        xmlUrl: emissionData.urlXml,
-        openFacturaId: emissionData.id,
-        document: updatedDoc
-      };
-    } catch (error) {
-      this.logger.error('OpenFactura emission failed:', error.response?.data || error.message);
-      throw new Error(`OpenFactura emission failed: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  // Build OpenFactura payload for Boleta (39)
-  private buildBoletaPayload(document: any) {
     return {
+<<<<<<< HEAD
       // Document identification
       codigoTipoDocumento: 39, // Boleta Electrónica
       rutEmisor: process.env.COMPANY_RUT || "78188363-8", // Company RUT
@@ -521,125 +453,54 @@ export class InvoicingService {
       enviarPorEmail: false, // Can be made configurable
       generarPdf: true,
       generarXml: true
+=======
+      documents,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+>>>>>>> frontend-deploy
     };
   }
 
-  // Create Factura from Cost (document code 33)
-  async issueFacturaFromCost(costId: string, opts: { receiverRUT: string; receiverName?: string; receiverEmail?: string; emitNow?: boolean } = { receiverRUT: '' }) {
-    const prismaAny = this.prisma as any;
-    const cost = await prismaAny.cost.findUnique({
-      where: { id: costId },
-      include: { lines: true },
-    });
-    
-    if (!cost) {
-      throw new Error('Cost record not found');
-    }
-
-    if (!opts.receiverRUT) {
-      throw new Error('Receiver RUT is required for Facturas');
-    }
-
-    // Calculate totals from cost lines
-    const totalAmount = Number(cost.total || 0);
-    const netAmount = Math.round(totalAmount / 1.19 * 100) / 100;
-    const taxAmount = Math.round((totalAmount - netAmount) * 100) / 100;
-
-    // Create tax document
-    const doc = await prismaAny.taxDocument.create({
-      data: {
-        type: 'FACTURA',
-        documentCode: 33,
-        receiverRUT: opts.receiverRUT,
-        receiverName: opts.receiverName || 'Cliente',
-        receiverEmail: opts.receiverEmail,
-        netAmount,
-        taxAmount,
-        totalAmount,
-        status: opts.emitNow ? 'PENDING' : 'DRAFT',
-        costId: cost.id,
-        notes: opts.emitNow ? 'Emitting to OpenFactura...' : 'Draft Factura created from Cost.',
-        items: {
-          create: (cost.lines || [{ description: cost.description || 'Servicio', price: cost.total }]).map((line: any, index: number) => ({
-            description: line.description || cost.description || 'Servicio',
-            quantity: line.quantity || 1,
-            unitPrice: line.price ? Number(line.price) : Number(cost.total),
-            net: line.price ? Number(line.price) : Number(cost.total),
-            tax: 0,
-            total: line.price ? Number(line.price) : Number(cost.total),
-            taxExempt: false,
-          })),
-        },
+  async getTaxDocumentById(id: string) {
+    return this.prisma.taxDocument.findUnique({
+      where: { id },
+      include: {
+        items: true,
       },
-      include: { items: true },
+    });
+  }
+
+  async getTaxDocumentStats() {
+    const [total, byStatus, byType, recentTotal] = await Promise.all([
+      this.prisma.taxDocument.count(),
+      this.prisma.taxDocument.groupBy({
+        by: ['status'],
+        _count: { status: true },
+      }),
+      this.prisma.taxDocument.groupBy({
+        by: ['type'],
+        _count: { type: true },
+      }),
+      this.prisma.taxDocument.count({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+          },
+        },
+      }),
+    ]);
+
+    const totalAmount = await this.prisma.taxDocument.aggregate({
+      _sum: { totalAmount: true },
+      where: { status: 'ISSUED' },
     });
 
-    // Emit to OpenFactura if requested
-    if (opts.emitNow) {
-      try {
-        const emissionResult = await this.emitFacturaToOpenFactura(doc);
-        return { created: true, document: doc, emission: emissionResult };
-      } catch (error) {
-        this.logger.error('Failed to emit Factura to OpenFactura:', error);
-        await prismaAny.taxDocument.update({
-          where: { id: doc.id },
-          data: { 
-            status: 'ERROR', 
-            notes: `Factura emission failed: ${error.message}` 
-          }
-        });
-        throw new Error(`Factura created but emission failed: ${error.message}`);
-      }
-    }
-
-    return { created: true, document: doc };
-  }
-
-  // Real OpenFactura emission for Factura (document code 33)
-  async emitFacturaToOpenFactura(document: any) {
-    const payload = this.buildFacturaPayload(document);
-    
-    try {
-      this.logger.log(`Emitting Factura to OpenFactura: ${document.id}`);
-      const response = await this.api.post('/v2/dte/document', payload);
-      
-      const emissionData = response.data;
-      this.logger.log(`OpenFactura Factura response:`, emissionData);
-      
-      // Update document with emission results
-      const prismaAny = this.prisma as any;
-      const updatedDoc = await prismaAny.taxDocument.update({
-        where: { id: document.id },
-        data: {
-          status: emissionData.estado === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING',
-          folio: emissionData.folio?.toString(),
-          openFacturaId: emissionData.id?.toString(),
-          pdfUrl: emissionData.urlPdf,
-          xmlUrl: emissionData.urlXml,
-          issuedAt: emissionData.fechaEmision ? new Date(emissionData.fechaEmision) : new Date(),
-          rawResponse: emissionData,
-          notes: `Factura emitted to OpenFactura. Status: ${emissionData.estado}`,
-        }
-      });
-
-      return {
-        success: true,
-        folio: emissionData.folio,
-        status: emissionData.estado,
-        pdfUrl: emissionData.urlPdf,
-        xmlUrl: emissionData.urlXml,
-        openFacturaId: emissionData.id,
-        document: updatedDoc
-      };
-    } catch (error) {
-      this.logger.error('OpenFactura Factura emission failed:', error.response?.data || error.message);
-      throw new Error(`OpenFactura Factura emission failed: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  // Build OpenFactura payload for Factura (33)
-  private buildFacturaPayload(document: any) {
     return {
+<<<<<<< HEAD
       // Document identification
       codigoTipoDocumento: 33, // Factura Electrónica
       rutEmisor: process.env.COMPANY_RUT || "78188363-8", // Company RUT
@@ -1177,3 +1038,19 @@ export class InvoicingService {
     throw new Error('XML not available for this document');
   }
 }
+=======
+      total,
+      totalAmount: totalAmount._sum.totalAmount || 0,
+      recentTotal,
+      byStatus: byStatus.reduce((acc, item) => {
+        acc[item.status] = item._count.status;
+        return acc;
+      }, {}),
+      byType: byType.reduce((acc, item) => {
+        acc[item.type] = item._count.type;
+        return acc;
+      }, {}),
+    };
+  }
+}
+>>>>>>> frontend-deploy

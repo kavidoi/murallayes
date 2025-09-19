@@ -1,0 +1,19 @@
+{
+  "id": "windsurf-MacBook-Pro-de-Kavi.local-34410-1757105231248",
+  "type": "windsurf",
+  "hostname": "MacBook-Pro-de-Kavi.local",
+  "pid": 34410,
+  "cwd": "/Users/kavi/Sharedcodingprojects/Muralla-4.0/.shared-state",
+  "environment": "windsurf",
+  "capabilities": [
+    "logging",
+    "change-tracking",
+    "project-state",
+    "ai-integration",
+    "file-editing",
+    "terminal-access"
+  ],
+  "startTime": "2025-09-05T20:47:11.249Z",
+  "lastSeen": "2025-09-05T21:01:07.954Z",
+  "version": "2.0.0"
+}
