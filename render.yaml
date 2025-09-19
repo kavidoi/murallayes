@@ -80,14 +80,15 @@ services:
         value: "839819221611429"
       - key: CLOUDINARY_API_SECRET
         value: "Lbrmb6nc2CHccJYsjJqTc-hjE3I"
-      - key: AWS_REGION
-        value: "us-east-1"
-      - key: AWS_ACCESS_KEY_ID
-        value: "REPLACE_WITH_ACTUAL_KEY"
-      - key: AWS_SECRET_ACCESS_KEY
-        value: "REPLACE_WITH_ACTUAL_SECRET"
-      - key: AWS_S3_BUCKET_NAME
-        value: "muralla-files"
+      # AWS keys removed for security - configure in Render dashboard if needed
+      # - key: AWS_REGION
+      #   value: "us-east-1"
+      # - key: AWS_ACCESS_KEY_ID
+      #   value: "CONFIGURE_IN_RENDER_DASHBOARD"
+      # - key: AWS_SECRET_ACCESS_KEY
+      #   value: "CONFIGURE_IN_RENDER_DASHBOARD"
+      # - key: AWS_S3_BUCKET_NAME
+      #   value: "muralla-files"
 
   - type: web
     name: muralla-frontend
