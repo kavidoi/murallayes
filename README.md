@@ -1,6 +1,15 @@
-# Muralla 4.0
+# Muralla 4.0 - Cafe Management System
 
-**Coffee shop management system with POS integration, finance tracking, and project management.**
+A comprehensive management system for Muralla Cafe, built with modern web technologies.
+
+## 🚨 Important: Repository Structure Update
+
+This monorepo has been split into two separate repositories for easier deployment:
+
+- **Backend API**: [github.com/kavidoi/muralla-backend](https://github.com/kavidoi/muralla-backend)
+- **Frontend App**: [github.com/kavidoi/muralla-frontend](https://github.com/kavidoi/muralla-frontend)
+
+Please use the individual repositories for development and deployment.
 
 > NestJS • React • Prisma • PostgreSQL • Render • MercadoPago
 
