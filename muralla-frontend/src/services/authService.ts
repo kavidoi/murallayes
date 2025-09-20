@@ -104,7 +104,7 @@ export class AuthService {
     const res = await fetch(`${this.API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: identifier, password }),
+      body: JSON.stringify({ email: identifier, password }),
     });
     
     console.log('Login response status:', res.status);
@@ -112,17 +112,28 @@ export class AuthService {
     if (!res.ok) {
       const errorText = await res.text();
       console.error('Login failed response:', errorText);
-      throw new Error(`Login failed: ${res.status} - ${errorText}`);
+
+      // Friendly error messages
+      if (res.status === 401) {
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      } else if (res.status === 429) {
+        throw new Error('Too many login attempts. Please wait a moment and try again.');
+      } else if (res.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      } else {
+        throw new Error('Login failed. Please check your connection and try again.');
+      }
     }
     
     const data = await res.json();
-    console.log('Login response data:', { hasAccessToken: !!data?.access_token, hasRefreshToken: !!data?.refresh_token });
-    
-    if (data?.access_token && data?.refresh_token) {
-      this.setTokens(data.access_token, data.refresh_token);
+    console.log('Login response data:', { hasAccessToken: !!data?.access_token, hasUser: !!data?.user });
+
+    if (data?.access_token) {
+      // Use access_token for both tokens since we don't have refresh tokens yet
+      this.setTokens(data.access_token, data.access_token);
       console.log('Tokens set successfully');
     } else {
-      throw new Error('Invalid response: missing tokens');
+      throw new Error('Invalid response: missing access token');
     }
   }
 
